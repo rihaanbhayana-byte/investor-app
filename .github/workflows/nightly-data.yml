@@ -1,0 +1,32 @@
+name: Nightly data refresh
+
+on:
+  schedule:
+    # 22:30 UTC, Monday to Friday = 5:30 pm New York (winter), 6:30 pm (summer)
+    - cron: "30 22 * * 1-5"
+  workflow_dispatch: # adds a "Run workflow" button for manual runs
+
+jobs:
+  load-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install packages
+        run: pip install -r data-pipeline/requirements.txt
+
+      - name: Load prices and financials
+        run: python data-pipeline/load_data.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
