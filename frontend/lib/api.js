@@ -23,4 +23,6 @@ export const api = {
   stocks: () => request("/stocks"),
   stock: (symbol) => request(`/stocks/${symbol}`),
   chat: (body) => post("/chat", body),
+  parseGoal: (body) => post("/parse-goal", body),
+  explainStock: (symbol) => request(`/explain-stock/${symbol}`),
 };

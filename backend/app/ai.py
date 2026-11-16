@@ -72,3 +72,15 @@ def run_with_tools(messages, tool_specs, tool_functions, max_rounds=5):
                 "content": json.dumps(result, default=str)[:6000],
             })
     return complete(messages).get("content") or ""
+
+
+def parse_json(text):
+    """Read JSON from the AI's reply, even if it wrapped it in extra text."""
+    import re
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", text, re.S)
+        if not match:
+            raise ValueError("The AI did not return JSON")
+        return json.loads(match.group(0))

@@ -241,3 +241,81 @@ def chat(request: ChatRequest):
     except Exception as error:
         raise HTTPException(503, f"The AI coach is unavailable right now: {error}")
     return {"reply": reply}
+
+
+# =====================================================================
+# AI: read a goal written in plain words
+# =====================================================================
+from datetime import date  # noqa: E402
+
+GOAL_OPTIONS = ["Grow my wealth", "Retirement", "Buying a home", "Education", "A big purchase"]
+
+GOAL_PROMPT = """Extract an investing plan from the user's description. Reply with JSON only, using these keys:
+"goal": one of OPTIONS (pick the closest),
+"initial_amount": US dollars they can invest now (0 if not mentioned),
+"monthly_contribution": US dollars per month (convert weekly x 52 / 12, yearly / 12; 0 if not mentioned),
+"years": whole number of years until they need the money (1 to 50; if they give a target age, work it out; if unknown, 10),
+"summary": one friendly sentence saying what you understood.
+OPTIONS: """ + json.dumps(GOAL_OPTIONS)
+
+
+class GoalText(BaseModel):
+    text: str = Field(min_length=5, max_length=1000)
+
+
+def _number(value, default=0.0):
+    try:
+        return max(0.0, float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+@app.post("/parse-goal")
+def parse_goal(request: GoalText):
+    messages = [{"role": "system", "content": GOAL_PROMPT}, {"role": "user", "content": request.text}]
+    try:
+        try:
+            reply = ai.complete(messages, temperature=0, json_mode=True)
+        except RuntimeError:
+            reply = ai.complete(messages, temperature=0)  # some models don't support JSON mode
+        data = ai.parse_json(reply.get("content") or "")
+    except Exception as error:
+        raise HTTPException(503, f"Could not read your goal: {error}")
+    return {
+        "goal": data.get("goal") if data.get("goal") in GOAL_OPTIONS else GOAL_OPTIONS[0],
+        "initial_amount": round(_number(data.get("initial_amount"))),
+        "monthly_contribution": round(_number(data.get("monthly_contribution"))),
+        "years": int(min(50, max(1, _number(data.get("years"), 10)))),
+        "summary": str(data.get("summary", ""))[:300],
+    }
+
+
+# =====================================================================
+# AI: explain a stock in plain words
+# =====================================================================
+EXPLAIN_PROMPT = """You explain stocks and funds to complete beginners using ONLY the data provided.
+Write 4 to 6 short bullet points covering: what it is; how the price has grown since 2016; how bumpy the ride
+has been (volatility and biggest drop); and for companies, whether revenue is growing, whether it is profitable,
+and how its debts compare with its assets.
+Use simple words and round numbers, and say what each number means. Do not recommend buying or selling.
+Finish with the line: "Educational only, not financial advice." """
+
+_explain_cache = {}
+
+
+@app.get("/explain-stock/{symbol}")
+def explain_stock(symbol: str):
+    key = (symbol.upper(), date.today().isoformat())
+    if key in _explain_cache:
+        return {"explanation": _explain_cache[key]}
+    data = tool_get_stock(symbol)
+    messages = [
+        {"role": "system", "content": EXPLAIN_PROMPT},
+        {"role": "user", "content": json.dumps(data, default=str)},
+    ]
+    try:
+        text = ai.complete(messages, temperature=0.3).get("content") or ""
+    except Exception as error:
+        raise HTTPException(503, f"The AI explainer is unavailable right now: {error}")
+    _explain_cache[key] = text
+    return {"explanation": text}

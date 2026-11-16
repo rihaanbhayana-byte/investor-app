@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import PriceChart from "@/components/PriceChart";
+import AIExplainer from "@/components/AIExplainer";
 import { api } from "@/lib/api";
 import { bigMoney, percent, price } from "@/lib/format";
 
@@ -46,6 +47,8 @@ export default function StockPage() {
         <h2 className="text-lg font-semibold">Price since 2016</h2>
         <PriceChart data={stock.prices} />
       </section>
+
+      <AIExplainer symbol={stock.symbol} />
 
       {stats && (
         <section className="grid grid-cols-2 gap-4 md:grid-cols-4">

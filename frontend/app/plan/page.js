@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import GrowthChart from "@/components/GrowthChart";
+import GoalFromText from "@/components/GoalFromText";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { LEVEL_LABELS, money, percent } from "@/lib/format";
@@ -143,6 +144,14 @@ export default function PlanPage() {
             setStep("questions");
           }}
         >
+          <GoalFromText
+            onFill={(v) => {
+              setGoal(v.goal);
+              setInitialAmount(v.initial_amount);
+              setMonthly(v.monthly_contribution);
+              setYears(v.years);
+            }}
+          />
           <label className="block">
             <span className="font-medium">What are you investing for?</span>
             <select className={input} value={goal} onChange={(e) => setGoal(e.target.value)}>
