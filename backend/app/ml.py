@@ -39,7 +39,7 @@ def kmeans(points, k, restarts=20, iterations=100, seed=7):
 
 
 PERSONALITIES = {
-    "steady": ("Steady & calm", "Small swings and gentle growth. These rarely keep you up at night."),
+    "steady": ("Calmer rides", "The smallest swings in our list. Calm is relative: even these can drop a lot in a crash."),
     "rocket": ("Rockets", "The biggest growth since 2016, with big swings along the way."),
     "grower": ("Solid growers", "Good growth with moderate ups and downs."),
     "bumpy": ("Bumpy rides", "Lots of ups and downs, but less reward for the stress."),

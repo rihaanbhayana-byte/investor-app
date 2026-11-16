@@ -101,7 +101,7 @@ export default function StockPage() {
 
       {stock.live && (
         <p className="rounded-2xl border border-line bg-surface px-5 py-3 text-sm text-muted">
-          {stock.symbol} isn&rsquo;t in our saved list, so we fetched its data live from Alpaca and SEC EDGAR.
+          {stock.symbol} isn&rsquo;t one of our 36 featured stocks, so this page shows the latest public data: prices from Alpaca and financials from the company&rsquo;s SEC filings.
         </p>
       )}
 

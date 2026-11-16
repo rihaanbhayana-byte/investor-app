@@ -54,7 +54,7 @@ function KeyBadge({ n }) {
   );
 }
 
-function SliderField({ id, label, value, setValue, min, max, step, prefix = "", suffix = "" }) {
+function SliderField({ id, label, value, setValue, min, max, cap = max, step, prefix = "", suffix = "" }) {
   return (
     <div className="rounded-2xl border border-line bg-ink p-5">
       <div className="flex items-center justify-between gap-4">
@@ -62,11 +62,11 @@ function SliderField({ id, label, value, setValue, min, max, step, prefix = "", 
         <div className="flex items-baseline gap-0.5 rounded-xl px-2 py-1 font-display text-3xl font-bold tabular-nums focus-within:bg-slate-100">
           {prefix && <span className="text-muted">{prefix}</span>}
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             aria-label={label}
-            min={min}
             value={value}
-            onChange={(e) => setValue(Math.max(min, Number(e.target.value)))}
+            onChange={(e) => setValue(Math.min(cap, Math.max(min, Number(e.target.value.replace(/[^0-9]/g, "")) || 0)))}
             style={{ width: `${Math.max(String(value).length, 1) + 0.6}ch` }}
             className="bg-transparent text-right [appearance:textfield] focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
@@ -83,6 +83,9 @@ function SliderField({ id, label, value, setValue, min, max, step, prefix = "", 
         onChange={(e) => setValue(Number(e.target.value))}
         className="mt-4 w-full cursor-pointer accent-mint"
       />
+      {cap !== max && value >= cap && (
+        <p className="mt-2 text-xs text-muted">That&rsquo;s the most this calculator handles ({prefix}{cap.toLocaleString()}{suffix && ` ${suffix}`}).</p>
+      )}
     </div>
   );
 }
@@ -101,6 +104,14 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
   const [aiSummary, setAiSummary] = useState("");
   const [aiError, setAiError] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
+  const nothingToInvest = initialAmount <= 0 && monthly <= 0;
+
+  // Closing by accident shouldn't throw away answers: ask first once the user has made progress.
+  function requestClose() {
+    if (index > 0 || aiText.trim()) setConfirmClose(true);
+    else onClose();
+  }
 
   const screens = [mode === "ai" ? "ai" : "goal", "money", ...questions.map((q) => q.id)];
   const screen = screens[index];
@@ -113,7 +124,7 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
   }
 
   function back() {
-    if (index === 0) onClose();
+    if (index === 0) requestClose();
     else go(-1);
   }
 
@@ -161,9 +172,10 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
   const keyHandler = useRef(() => {});
   useEffect(() => {
     keyHandler.current = (e) => {
-      if (e.key === "Escape") return onClose();
+      if (e.key === "Escape") return confirmClose ? setConfirmClose(false) : requestClose();
+      if (confirmClose) return;
       const typing = ["TEXTAREA", "INPUT"].includes(e.target.tagName) && e.target.type !== "range";
-      if (screen === "money" && e.key === "Enter") return go(1);
+      if (screen === "money" && e.key === "Enter") return nothingToInvest ? null : go(1);
       if (typing) return;
       const n = Number(e.key);
       if (!n) return;
@@ -192,7 +204,7 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
       role="dialog"
       aria-modal="true"
       aria-labelledby="wizard-title"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => e.target === e.currentTarget && requestClose()}
     >
       <style>{KEYFRAMES}</style>
       <div className="relative flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-line bg-surface shadow-float motion-safe:animate-[sw-pop_0.4s_cubic-bezier(.2,.9,.3,1.15)_both]">
@@ -207,10 +219,23 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
               </div>
             ))}
           </div>
-          <button onClick={onClose} aria-label="Close" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-slate-100 hover:text-fg">
+          <button onClick={requestClose} aria-label="Close" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-slate-100 hover:text-fg">
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" {...STROKE}><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </div>
+
+        {confirmClose && (
+          <div role="alertdialog" aria-labelledby="leave-title" className="absolute inset-0 z-10 flex items-center justify-center bg-surface/90 p-6 backdrop-blur-sm motion-safe:animate-[sw-fade_0.2s_ease-out_both]">
+            <div className="max-w-sm text-center">
+              <h3 id="leave-title" className="font-display text-2xl font-bold">Leave your plan?</h3>
+              <p className="mt-2 text-muted">You&rsquo;ll lose the answers you&rsquo;ve given so far.</p>
+              <div className="mt-6 flex justify-center gap-3">
+                <button autoFocus onClick={() => setConfirmClose(false)} className="rounded-full bg-mint px-6 py-3 font-semibold text-mint-ink transition hover:bg-mint-light">Keep going</button>
+                <button onClick={onClose} className="rounded-full border border-line px-6 py-3 text-muted transition hover:border-slate-300 hover:text-fg">Leave</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="overflow-y-auto px-5 pb-8 pt-6 sm:px-10 sm:pb-10">
           <div key={`${mode}-${index}`} className={slide}>
@@ -297,14 +322,20 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
                   For <span className="font-semibold text-fg">{goal}</span>. Drag the sliders or type a number. You can change this later.
                 </p>
                 <div className="mt-6 flex flex-col gap-3">
-                  <SliderField id="start" label="Start with" value={initialAmount} setValue={setInitialAmount} min={0} max={50000} step={100} prefix="$" />
-                  <SliderField id="monthly" label="Add each month" value={monthly} setValue={setMonthly} min={0} max={5000} step={10} prefix="$" />
+                  <SliderField id="start" label="Start with" value={initialAmount} setValue={setInitialAmount} min={0} max={50000} cap={10000000} step={100} prefix="$" />
+                  <SliderField id="monthly" label="Add each month" value={monthly} setValue={setMonthly} min={0} max={5000} cap={100000} step={10} prefix="$" />
                   <SliderField id="years" label="For how long" value={years} setValue={(v) => setYears(Math.min(50, Math.max(1, v)))} min={1} max={40} step={1} suffix={years === 1 ? "year" : "years"} />
                 </div>
-                <div className="mt-5 rounded-2xl border border-mint-line bg-green-50 px-5 py-4 text-slate-800">
-                  You&rsquo;ll put in <span className="font-semibold text-mint">{money(initialAmount + monthly * 12 * years)}</span> over {years} {years === 1 ? "year" : "years"}. Next, let&rsquo;s see how it could grow.
-                </div>
-                <button onClick={() => go(1)} className="mt-6 w-full rounded-full bg-mint px-6 py-4 text-base font-semibold text-mint-ink transition hover:bg-mint-light">
+                {nothingToInvest ? (
+                  <div role="alert" className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-slate-800">
+                    Add a starting amount or a monthly amount (even $10 counts) so there&rsquo;s something to grow.
+                  </div>
+                ) : (
+                  <div className="mt-5 rounded-2xl border border-mint-line bg-green-50 px-5 py-4 text-slate-800">
+                    You&rsquo;ll put in <span className="font-semibold text-mint">{money(initialAmount + monthly * 12 * years)}</span> over {years} {years === 1 ? "year" : "years"}. Next, let&rsquo;s see how it could grow.
+                  </div>
+                )}
+                <button onClick={() => go(1)} disabled={nothingToInvest} className="mt-6 w-full rounded-full bg-mint px-6 py-4 text-base font-semibold text-mint-ink transition hover:bg-mint-light disabled:cursor-not-allowed disabled:opacity-40">
                   Continue →
                 </button>
               </div>

@@ -16,7 +16,7 @@ const FEATURES = [
     href: "/practice",
     title: "Practice portfolio",
     text: "Get $10,000 of play money and invest it at real prices. Learn by doing, with zero risk.",
-    demo: <>Can you beat the S&amp;P 500? <span className="font-semibold text-mint">Start practising →</span></>,
+    demo: <>Can you beat the S&amp;P 500? <span className="font-semibold text-mint">Start practicing →</span></>,
     icon: <><rect x="3" y="6" width="18" height="14" rx="2" /><path d="M16 13h2" /><path d="M3 10h18" /></>,
   },
   {
@@ -51,7 +51,7 @@ const FEATURES = [
     href: "/learn",
     title: "Learn in 7 lessons",
     text: "Bite-sized lessons with quick quizzes, from “what is a stock” to opening your first account.",
-    icon: <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z" />,
+    icon: <><path d="M22 10L12 5 2 10l10 5 10-5z" /><path d="M6 12v5c3 2 9 2 12 0v-5" /></>,
   },
 ];
 
@@ -92,7 +92,7 @@ export default function Home() {
   return (
     <div className="flex flex-col gap-24">
       {/* HERO */}
-      <section className="flex flex-wrap items-center gap-14 pt-6">
+      <section className="flex flex-wrap items-center gap-14 overflow-x-clip pt-6">
         <div className="min-w-0 flex-[1_1_440px]">
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-2 text-[13px] text-slate-700">
             <span className="h-2 w-2 rounded-full bg-mint" />
@@ -124,11 +124,11 @@ export default function Home() {
           <div className="relative rounded-3xl border border-line bg-gradient-to-b from-surface to-surface-2 p-7 shadow-float">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-[13px] text-muted">Balanced Builder · Example plan</div>
-              <div className="mt-1.5 font-display text-4xl font-bold tracking-tight">$27,200</div>
-              <div className="mt-1 text-sm text-mint">Likely value in 6 years</div>
+              <div className="text-[13px] text-muted">Balanced Builder · $5,000 + $150/month</div>
+              <div className="mt-1.5 font-display text-4xl font-bold tracking-tight">$40,500</div>
+              <div className="mt-1 text-sm text-mint">Likely value in 10 years</div>
             </div>
-            <div className="rounded-full bg-mint/10 px-3 py-1.5 text-[13px] font-semibold text-mint">9.1% avg / yr</div>
+            <div className="rounded-full bg-mint/10 px-3 py-1.5 text-[13px] font-semibold text-mint">9.1% past avg / yr</div>
           </div>
           <svg viewBox="0 0 440 200" className="mt-5 h-auto w-full" role="img" aria-label="Example projection: a range of outcomes widening over time, with the likely path rising above the money put in">
             <path d="M0 170 C 120 150, 260 110, 440 40 L 440 130 C 260 150, 120 165, 0 170 Z" fill="color-mix(in srgb, var(--color-mint) 16%, transparent)" />
@@ -145,16 +145,22 @@ export default function Home() {
       </section>
 
       {/* LIVE TICKER */}
-      {tickers.length > 0 && (
-        <section aria-label="Market prices and 1-year returns" className="-mt-10 overflow-hidden rounded-2xl border border-line bg-surface-2 py-4">
+      <section aria-label="Market prices and 1-year returns" aria-busy={tickers.length === 0} className="-mt-10 h-[54px] overflow-hidden rounded-2xl border border-line bg-surface-2 py-4">
+        {tickers.length > 0 ? (
           <div className="flex w-max gap-10 px-6 animate-[seedwise-marquee_70s_linear_infinite] hover:[animation-play-state:paused] motion-reduce:animate-none">
             {[...tickers, ...tickers].map((s, i) => (
               <TickerItem key={i} s={s} />
             ))}
           </div>
-          <style>{`@keyframes seedwise-marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
-        </section>
-      )}
+        ) : (
+          <div className="flex gap-10 px-6" aria-hidden="true">
+            {Array.from({ length: 8 }, (_, i) => (
+              <span key={i} className="h-5 w-40 shrink-0 animate-pulse rounded-full bg-line" />
+            ))}
+          </div>
+        )}
+        <style>{`@keyframes seedwise-marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
+      </section>
 
       {/* HOW IT WORKS */}
       <section className="reveal">

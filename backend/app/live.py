@@ -95,4 +95,9 @@ def fundamentals(cik, years=10):
     series = {name: _annual(us_gaap, tags) for name, tags in CONCEPTS.items()}
     first = date.today().year - years
     all_years = sorted({y for values in series.values() for y in values if y >= first})
-    return [{"fiscal_year": y, **{name: series[name].get(y) for name in series}} for y in all_years]
+    rows = [{"fiscal_year": y, **{name: series[name].get(y) for name in series}} for y in all_years]
+    for row in rows:
+        # A $0.00 EPS next to a real profit or loss is a reporting quirk (e.g. pre-IPO share classes): show it as missing.
+        if row["eps"] == 0 and row["net_income"]:
+            row["eps"] = None
+    return rows

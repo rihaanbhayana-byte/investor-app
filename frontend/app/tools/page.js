@@ -90,7 +90,10 @@ export default function ToolsPage() {
               key={t.id}
               role="tab"
               aria-selected={on}
-              onClick={() => setTab(t.id)}
+              onClick={() => {
+                setTab(t.id);
+                window.history.replaceState(null, "", `/tools?tab=${t.id}`); // keep the link shareable and accurate
+              }}
               className={`flex flex-col items-start gap-3 rounded-3xl border-2 p-5 text-left transition ${
                 on ? "border-mint bg-glow" : "border-line bg-surface hover:-translate-y-0.5 hover:border-slate-300"
               }`}
@@ -154,12 +157,12 @@ function TimeMachine({ stocks, startSymbol }) {
           <span className="inline-flex items-baseline rounded-2xl border-2 border-mint/40 bg-ink px-3 text-mint focus-within:border-mint">
             $
             <input
-              type="number"
-              min={1}
+              type="text"
+              inputMode="numeric"
               aria-label="Amount"
-              value={amount}
-              onChange={(e) => setAmount(Math.max(1, Number(e.target.value)))}
-              style={{ width: `${String(amount).length + 0.8}ch` }}
+              value={amount.toLocaleString("en-US")}
+              onChange={(e) => setAmount(Math.min(10000000, Math.max(1, Number(e.target.value.replace(/[^0-9]/g, "")) || 1)))}
+              style={{ width: `${amount.toLocaleString("en-US").length + 0.8}ch` }}
               className="bg-transparent [appearance:textfield] focus:outline-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </span>{" "}
@@ -316,14 +319,26 @@ function GoalCalculator() {
         {error && <ErrorBox>{error}</ErrorBox>}
         {result && (
           <>
-            <div>
-              <div className="text-muted">Save about</div>
-              <div className="font-display text-6xl font-bold tracking-tight tabular-nums">
-                {money(shown)}
-                <span className="text-2xl text-muted"> / month</span>
+            {initial >= target ? (
+              <div>
+                <div className="font-display text-4xl font-bold tracking-tight text-mint">You&rsquo;ve already reached this goal!</div>
+                <div className="mt-2 text-muted">Your starting {money(initial)} is already more than {money(target)}. Try a bigger goal.</div>
               </div>
-              <div className="mt-1 text-muted">to reach {money(target)} in {years} {years === 1 ? "year" : "years"}.</div>
-            </div>
+            ) : monthly <= 0 ? (
+              <div>
+                <div className="font-display text-4xl font-bold tracking-tight text-mint">No monthly saving needed</div>
+                <div className="mt-2 text-muted">Invested like this, your {money(initial)} could grow to {money(target)} in {years} {years === 1 ? "year" : "years"} on its own (at this level of certainty).</div>
+              </div>
+            ) : (
+              <div>
+                <div className="text-muted">Save about</div>
+                <div className="font-display text-6xl font-bold tracking-tight tabular-nums">
+                  {money(shown)}
+                  <span className="text-2xl text-muted"> / month</span>
+                </div>
+                <div className="mt-1 text-muted">to reach {money(target)} in {years} {years === 1 ? "year" : "years"}.</div>
+              </div>
+            )}
             <div>
               <div className="mb-2 text-sm text-slate-700">How sure do you want to be?</div>
               <Segmented label="Certainty" value={chance} onChange={setChance} options={[["50", "50% chance"], ["75", "75% chance"], ["90", "90% chance"]]} />

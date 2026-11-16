@@ -136,10 +136,13 @@ export default function CrashTest() {
   const shown = data.series.map((r, i) => (i <= step ? r : { month: r.month }));
   const current = data.series[step];
   const value = choice ? current[choice] : current.stayed;
-  const change = value / data.amount - 1;
+  // The % must compare with the money actually put in, so the extra top-up doesn't count as "growth".
+  const addedExtra = choice === "buy_more" && step > bottomIndex;
+  const putIn = data.amount + (addedExtra ? data.extra : 0);
+  const change = value / putIn - 1;
   const latestEvent = [...data.series.slice(0, step + 1)].reverse().find((r) => r.event);
   const all = data.series.flatMap((r) => [r.stayed, r.panic, r.buy_more, r.sp500 || r.stayed]);
-  const domain = [Math.floor((Math.min(...all) * 0.95) / 100) * 100, Math.ceil((Math.max(...all) * 1.03) / 100) * 100];
+  const { domain, ticks: yTicks } = niceAxis(Math.min(...all), Math.max(...all));
   const yearTicks = data.series.filter((r) => r.month.endsWith("-01") || r.month.endsWith("-07")).map((r) => r.month);
   const lines = [
     { key: "stayed", name: "Held on", color: "var(--color-mint)" },
@@ -155,7 +158,7 @@ export default function CrashTest() {
             <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">{data.title} · {data.portfolio_name}</div>
             <div className="mt-2 font-display text-5xl font-bold tabular-nums">{money(value)}</div>
             <div className={`mt-1 font-semibold ${change >= 0 ? "text-mint" : "text-red-600"}`}>
-              {change >= 0 ? "+" : ""}{percent(change)} since {monthName(data.series[0].month)} · {monthName(current.month)}
+              {change >= 0 ? "+" : ""}{percent(change)} on the {money(putIn)} you put in · {monthName(current.month)}
             </div>
           </div>
           <div className="flex gap-2">
@@ -178,12 +181,23 @@ export default function CrashTest() {
             <LineChart data={shown} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="var(--color-grid)" vertical={false} />
               <XAxis dataKey="month" ticks={yearTicks} interval={0} tickFormatter={(m) => monthName(m)} tick={{ fill: "var(--color-muted)", fontSize: 12 }} tickLine={false} axisLine={{ stroke: "var(--color-line)" }} />
-              <YAxis domain={domain} width={70} tickFormatter={(v) => money(v)} tick={{ fill: "var(--color-muted)", fontSize: 12 }} tickLine={false} axisLine={false} />
+              <YAxis domain={domain} ticks={yTicks} interval={0} width={70} tickFormatter={(v) => money(v)} tick={{ fill: "var(--color-muted)", fontSize: 12 }} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip format={money} labelFormat={monthName} />} cursor={{ stroke: "var(--color-line-strong)" }} />
-              <Line type="monotone" dataKey="sp500" name="S&P 500" stroke="var(--color-dim)" strokeDasharray="6 6" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls={false} />
+              <Line type="linear" dataKey="sp500" name="S&P 500" stroke="var(--color-dim)" strokeDasharray="6 6" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls={false} />
               {lines.map((l) => (
-                <Line key={l.key} type="monotone" dataKey={l.key} name={l.name} stroke={l.color} strokeWidth={l.key === (choice || "stayed") ? 3.5 : 2} dot={false} isAnimationActive={false} />
+                <Line key={l.key} type="linear" dataKey={l.key} name={l.name} stroke={l.color} strokeWidth={l.key === (choice || "stayed") ? 3.5 : 2} dot={false} isAnimationActive={false} />
               ))}
+              {lines.some((l) => l.key === "buy_more") && step > bottomIndex && (
+                <ReferenceDot
+                  x={data.series[bottomIndex + 1]?.month}
+                  y={data.series[bottomIndex + 1]?.buy_more}
+                  r={5}
+                  fill="var(--color-sky)"
+                  stroke="var(--color-ink)"
+                  strokeWidth={2}
+                  label={{ value: `+${money(data.extra)} added`, position: "top", fill: "var(--color-sky)", fontSize: 12, fontWeight: 600 }}
+                />
+              )}
               {step >= bottomIndex && <ReferenceDot x={data.bottom_month} y={data.bottom_value} r={6} fill="var(--color-loss)" stroke="var(--color-ink)" strokeWidth={2} />}
             </LineChart>
           </ResponsiveContainer>
@@ -244,4 +258,17 @@ export default function CrashTest() {
       )}
     </div>
   );
+}
+
+
+// Even, round steps for the money axis (e.g. $8,000 · $9,000 · $10,000 instead of $15,100 · $15,800).
+function niceAxis(min, max) {
+  const raw = (max - min) / 5 || 1;
+  const power = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * power).find((m) => m >= raw);
+  const lo = Math.floor(min / step) * step;
+  const hi = Math.ceil(max / step) * step;
+  const ticks = [];
+  for (let v = lo; v <= hi + step / 2; v += step) ticks.push(Math.round(v));
+  return { domain: [lo, hi], ticks };
 }

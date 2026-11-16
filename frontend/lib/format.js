@@ -16,9 +16,10 @@ export function percent(n) {
 export function bigMoney(n) {
   if (n == null) return "–";
   const size = Math.abs(n);
-  if (size >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-  if (size >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
-  if (size >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+  const sign = n < 0 ? "-" : ""; // "-$9.1B", the same style as "-$4.65"
+  if (size >= 1e12) return `${sign}$${(size / 1e12).toFixed(2)}T`;
+  if (size >= 1e9) return `${sign}$${(size / 1e9).toFixed(1)}B`;
+  if (size >= 1e6) return `${sign}$${(size / 1e6).toFixed(1)}M`;
   return money(n);
 }
 

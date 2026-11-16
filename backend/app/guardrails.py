@@ -72,14 +72,19 @@ def privacy_notice(found):
 # ---------------------------------------------------------------------
 # 3. Prompt injection
 # ---------------------------------------------------------------------
+# Kept deliberately narrow: blocking a real investing question by mistake is worse than letting
+# an odd one through, because the topic check and the coach's own rules are still behind this layer.
 INJECTION = re.compile(
     r"(?i)("
     r"ignore (all |any |the |your |my )?(previous|prior|above|earlier|system) (instructions|rules|prompts?|messages)"
     r"|disregard (the |your |all )?(rules|instructions|guidelines)"
     r"|forget (your|the|all) (rules|instructions)"
     r"|(reveal|show|print|repeat|tell me) (me )?(your|the) (system )?(prompt|instructions|rules)"
-    r"|system prompt|developer mode|jailbreak|\bDAN\b"
-    r"|you are (now|no longer)|pretend (to be|you are|you're)|act as (an? )?(unfiltered|unrestricted|different)"
+    r"|system prompt|developer mode|jailbreak|DAN mode|do anything now"
+    r"|you are now (an? )?(unfiltered|unrestricted|uncensored|jailbroken|free from|no longer bound)"
+    r"|you are no longer (bound|restricted|limited|an? (investing|finance) )"
+    r"|pretend (that )?(you have no|there are no) (rules|restrictions|limits)"
+    r"|act as (an? )?(unfiltered|unrestricted|uncensored|different (ai|assistant|chatbot))"
     r"|new instructions:"
     r")"
 )

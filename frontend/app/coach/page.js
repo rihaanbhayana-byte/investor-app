@@ -7,6 +7,13 @@ import remarkGfm from "remark-gfm";
 import { api } from "@/lib/api";
 import { money } from "@/lib/format";
 
+// Hide card numbers and SSNs in the user's own bubble too (the server also strips them before the AI sees them).
+function mask(text) {
+  return text
+    .replace(/\b\d(?:[ -]?\d){12,18}\b/g, (m) => `•••• ${m.replace(/\D/g, "").slice(-4)}`)
+    .replace(/\b\d{3}-\d{2}-(\d{4})\b/g, "•••-••-$1");
+}
+
 const SUGGESTIONS = [
   { text: "What is an ETF, in simple words?", icon: <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z" /> },
   { text: "Explain my plan to me", icon: <><path d="M3 17l6-6 4 4 8-8" /><path d="M14 7h7v7" /></> },
@@ -63,6 +70,20 @@ export default function CoachPage() {
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState(null);
   const [shield, setShield] = useState(null);
+  const shieldRef = useRef(null);
+
+  // Close the guardrails panel with Escape or a click anywhere else.
+  useEffect(() => {
+    if (!shield) return;
+    const onKey = (e) => e.key === "Escape" && setShield(null);
+    const onClick = (e) => shieldRef.current && !shieldRef.current.contains(e.target) && setShield(null);
+    window.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClick);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onClick);
+    };
+  }, [shield]);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -154,7 +175,7 @@ export default function CoachPage() {
               </p>
             </div>
           </div>
-          <div className="relative ml-auto mr-2">
+          <div ref={shieldRef} className="relative ml-auto mr-2">
             <button
               onClick={() => (shield ? setShield(null) : api.guardrails().then(setShield).catch(() => setShield({ layers: [] })))}
               aria-expanded={Boolean(shield)}
@@ -218,7 +239,7 @@ export default function CoachPage() {
               {messages.map((m, i) =>
                 m.role === "user" ? (
                   <div key={i} className="flex justify-end motion-safe:animate-[sw-rise_0.25s_ease-out_both]">
-                    <div className="max-w-[80%] rounded-2xl rounded-br-md bg-mint px-4 py-3 font-medium text-mint-ink">{m.content}</div>
+                    <div className="max-w-[80%] rounded-2xl rounded-br-md bg-mint px-4 py-3 font-medium text-mint-ink">{mask(m.content)}</div>
                   </div>
                 ) : (
                   <div key={i} className="flex items-start gap-3 motion-safe:animate-[sw-rise_0.3s_ease-out_both]">

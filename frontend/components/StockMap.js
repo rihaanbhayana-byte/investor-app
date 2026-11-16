@@ -13,12 +13,17 @@ export const CLUSTER_COLORS = {
   bumpy: "var(--color-rose)",
 };
 
-function Dot({ cx, cy, fill, payload, dimmed, onPick }) {
+// Labels are only drawn for the group you focus on, so 36 symbols never pile on top of each other.
+function Dot({ cx, cy, fill, payload, dimmed, showLabel, onPick }) {
   if (cx == null || cy == null) return null;
   return (
     <g style={{ cursor: "pointer", opacity: dimmed ? 0.15 : 1, transition: "opacity 0.3s" }} onClick={() => onPick(payload.symbol)}>
       <circle cx={cx} cy={cy} r={payload.asset_type === "etf" ? 9 : 7} fill={fill} fillOpacity={0.85} stroke="var(--color-surface)" strokeWidth={2} />
-      <text x={cx + 11} y={cy + 4} fontSize={11} fill="var(--color-muted)">{payload.symbol}</text>
+      {showLabel && (
+        <text x={cx + 11} y={cy + 4} fontSize={11} fontWeight={600} fill="var(--color-fg)" stroke="var(--color-surface)" strokeWidth={3} paintOrder="stroke">
+          {payload.symbol}
+        </text>
+      )}
     </g>
   );
 }
@@ -99,9 +104,9 @@ export default function StockMap() {
         ))}
       </div>
 
-      <div className="h-[460px] w-full">
+      <div className="h-[340px] w-full sm:h-[460px]">
         <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 10, right: 40, bottom: 30, left: 10 }}>
+          <ScatterChart margin={{ top: 10, right: 16, bottom: 30, left: 0 }}>
             <CartesianGrid stroke="var(--color-grid)" />
             <XAxis
               type="number"
@@ -132,7 +137,7 @@ export default function StockMap() {
                 name={c.name}
                 data={data.points.filter((p) => p.cluster === c.key)}
                 fill={CLUSTER_COLORS[c.key]}
-                shape={(props) => <Dot {...props} dimmed={focus && focus !== c.key} onPick={pick} />}
+                shape={(props) => <Dot {...props} dimmed={focus && focus !== c.key} showLabel={focus === c.key} onPick={pick} />}
                 animationDuration={900}
               />
             ))}
@@ -166,7 +171,7 @@ export default function StockMap() {
           </div>
         ))}
       </div>
-      <p className="text-xs text-slate-500">Bigger dots are funds. Click any dot to open it. {data.disclaimer}</p>
+      <p className="text-xs text-slate-500">Hover a dot for details, or tap a group above to label its members. Bigger dots are funds. Click a dot to open it. {data.disclaimer}</p>
     </section>
   );
 }

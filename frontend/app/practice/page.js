@@ -51,7 +51,9 @@ export default function PracticePage() {
   const [stocks, setStocks] = useState([]);
   const [symbol, setSymbol] = useState("VOO");
   const [side, setSide] = useState("buy");
-  const [dollars, setDollars] = useState(1000);
+  const [dollarsText, setDollarsText] = useState("1000");
+  const dollars = Number(dollarsText) || 0;
+  const setDollars = (v) => setDollarsText(String(v));
   const [sellAll, setSellAll] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
@@ -92,7 +94,8 @@ export default function PracticePage() {
   const position = state.holdings.find((h) => h.symbol === symbol);
   const livePrice = position?.price ?? stock?.latest_price;
   const maxDollars = side === "buy" ? state.cash : position?.value ?? 0;
-  const amount = sellAll ? maxDollars : Math.min(dollars, maxDollars);
+  const amount = sellAll ? maxDollars : dollars;
+  const tooMuch = !sellAll && amount > maxDollars + 0.005;
   const shares = livePrice ? amount / livePrice : 0;
   const ahead = state.sp500_value != null ? state.total - state.sp500_value : null;
   const etfs = new Set(stocks.filter((s) => s.asset_type === "etf").map((s) => s.symbol));
@@ -107,7 +110,7 @@ export default function PracticePage() {
 
   async function trade(e) {
     e.preventDefault();
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0 || tooMuch) return;
     setBusy(true);
     setError("");
     try {
@@ -152,7 +155,7 @@ export default function PracticePage() {
         <div className="max-w-2xl">
           <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">Practice portfolio</div>
           <h1 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl">Play money. Real prices.</h1>
-          <p className="mt-3 text-lg text-muted">Practise investing with $10,000 of pretend money. Nothing here is real, so mistakes are free lessons.</p>
+          <p className="mt-3 text-lg text-muted">Practice investing with $10,000 of pretend money. Nothing here is real, so mistakes are free lessons.</p>
         </div>
         {confirmReset ? (
           <div className="flex items-center gap-2">
@@ -167,10 +170,10 @@ export default function PracticePage() {
         )}
       </div>
 
-      <section className="grid gap-6 rounded-3xl border border-mint-line bg-glow p-7 lg:grid-cols-[1.3fr_1fr]">
+      <section className="grid grid-cols-1 gap-6 rounded-3xl border border-mint-line bg-glow p-5 sm:p-7 lg:grid-cols-[1.3fr_1fr] [&>*]:min-w-0">
         <div>
           <div className="text-muted">Your portfolio is worth</div>
-          <div className="mt-1 font-display text-6xl font-bold tracking-tight tabular-nums">{money(total)}</div>
+          <div className="mt-1 font-display text-5xl font-bold tracking-tight tabular-nums sm:text-6xl">{money(total)}</div>
           <div className="mt-3 flex flex-wrap gap-2.5 text-sm">
             <ReturnPill value={state.gain}>
               {money(Math.abs(state.gain))} ({percent(Math.abs(state.gain_pct))})
@@ -203,7 +206,9 @@ export default function PracticePage() {
               <p className="text-sm">
                 {state.trade_count === 0 ? (
                   <span className="text-muted">Make a trade to start the race.</span>
-                ) : ahead >= 0 ? (
+                ) : Math.abs(ahead) < 0.5 ? (
+                  <span className="text-muted">You&rsquo;re even with the S&amp;P 500 so far.</span>
+                ) : ahead > 0 ? (
                   <span className="font-semibold text-mint">You&rsquo;re ahead by {money(ahead)}!</span>
                 ) : (
                   <span className="text-muted">You&rsquo;re {money(-ahead)} behind. Most pros are too!</span>
@@ -224,8 +229,8 @@ export default function PracticePage() {
 
       <PortfolioDoctor hasHoldings={state.holdings.length > 0} />
 
-      <div className="grid items-start gap-6 lg:grid-cols-[380px_1fr]">
-        <form onSubmit={trade} className="flex flex-col gap-5 rounded-3xl border border-line bg-surface p-6 lg:sticky lg:top-24">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[380px_minmax(0,1fr)] [&>*]:min-w-0">
+        <form onSubmit={trade} className="flex flex-col gap-5 rounded-3xl border border-line bg-surface p-5 sm:p-6 lg:sticky lg:top-24">
           <h2 className="font-display text-xl font-bold">Make a trade</h2>
           <Select label="Stock or fund" value={symbol} onChange={(v) => { setSymbol(v); setSellAll(false); }}>
             {stocks.map((s) => (
@@ -245,15 +250,23 @@ export default function PracticePage() {
           <Segmented label="Buy or sell" value={side} onChange={(v) => { setSide(v); setSellAll(false); }} options={[["buy", "Buy"], ["sell", "Sell"]]} />
           <div>
             <label htmlFor="amount" className="text-sm font-medium text-slate-700">Amount</label>
-            <div className="mt-2 flex items-baseline gap-1 rounded-2xl border border-line bg-ink px-4 py-3 focus-within:border-mint">
+            <div className={`mt-2 flex items-baseline gap-1 rounded-2xl border bg-ink px-4 py-3 ${tooMuch ? "border-red-400" : "border-line focus-within:border-mint"}`}>
               <span className="font-display text-2xl font-bold text-muted">$</span>
               <input
                 id="amount"
-                type="number"
-                min={1}
-                step="any"
-                value={sellAll ? Math.floor(maxDollars * 100) / 100 : dollars}
-                onChange={(e) => { setSellAll(false); setDollars(Math.max(0, Number(e.target.value))); }}
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                aria-invalid={tooMuch}
+                value={sellAll ? (Math.floor(maxDollars * 100) / 100).toString() : dollarsText}
+                onChange={(e) => {
+                  setSellAll(false);
+                  // digits and one decimal point only: no minus signs, no letters, no leading zeros
+                  let v = e.target.value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1").replace(/^0+(?=\d)/, "");
+                  const [whole, cents] = v.split(".");
+                  if (cents !== undefined) v = `${whole}.${cents.slice(0, 2)}`;
+                  setDollarsText(v);
+                }}
                 className="w-full bg-transparent font-display text-2xl font-bold tabular-nums [appearance:textfield] focus:outline-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
@@ -268,13 +281,24 @@ export default function PracticePage() {
               </button>
             </div>
           </div>
-          <p className="text-sm text-muted">
-            {side === "buy" ? `You have ${money(state.cash)} to spend.` : position ? `You own ${position.shares.toFixed(4)} shares (${money(position.value)}).` : `You don't own any ${symbol} yet.`}
-            {amount > 0 && livePrice ? ` That's about ${shares.toFixed(4)} shares.` : ""}
-          </p>
+          {tooMuch ? (
+            <p className="text-sm font-medium text-red-600" role="alert">
+              {side === "buy" ? `You only have ${money(state.cash)} to spend.` : position ? `You only own ${money(position.value)} of ${symbol}.` : `You don't own any ${symbol} to sell.`}{" "}
+              {maxDollars > 0 && (
+                <button type="button" onClick={() => (side === "sell" ? setSellAll(true) : setDollars(Math.floor(maxDollars * 100) / 100))} className="font-semibold underline underline-offset-2">
+                  Use {money(maxDollars)}
+                </button>
+              )}
+            </p>
+          ) : (
+            <p className="text-sm text-muted">
+              {side === "buy" ? `You have ${money(state.cash)} to spend.` : position ? `You own ${position.shares.toFixed(4)} shares (${money(position.value)}).` : `You don't own any ${symbol} yet.`}
+              {amount > 0 && livePrice ? ` ${money(amount)} ≈ ${shares.toFixed(4)} shares.` : ""}
+            </p>
+          )}
           {error && <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
           <button
-            disabled={busy || !amount || amount <= 0}
+            disabled={busy || !amount || amount <= 0 || tooMuch}
             className={`rounded-full py-4 font-semibold transition disabled:opacity-40 ${side === "buy" ? "bg-mint text-mint-ink hover:bg-mint-light" : "bg-gold text-gold-ink hover:opacity-90"}`}
           >
             {busy ? "Placing order..." : `${side === "buy" ? "Buy" : "Sell"} ${money(amount)} of ${symbol}`}
@@ -305,15 +329,15 @@ export default function PracticePage() {
                     key={h.symbol}
                     onClick={() => { setSymbol(h.symbol); setSide("sell"); }}
                     style={{ animationDelay: `${i * 40}ms` }}
-                    className="flex items-center gap-4 rounded-2xl border border-line bg-ink p-4 text-left transition hover:border-slate-300 motion-safe:animate-[sw-rise_0.35s_ease-out_both]"
+                    className="flex items-center gap-3 rounded-2xl border border-line bg-ink p-3.5 text-left transition hover:border-slate-300 sm:gap-4 sm:p-4 motion-safe:animate-[sw-rise_0.35s_ease-out_both]"
                   >
-                    <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }} />
+                    <span className="hidden h-3 w-3 shrink-0 rounded-full sm:block" style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }} />
                     <Avatar symbol={h.symbol} size={38} />
                     <span className="min-w-0 flex-1">
                       <span className="block font-semibold">{h.symbol}</span>
                       <span className="block truncate text-xs text-muted">{h.shares.toFixed(4)} shares · avg {price(h.average_cost)}</span>
                     </span>
-                    <span className="text-right">
+                    <span className="shrink-0 text-right">
                       <span className="block font-semibold tabular-nums">{money(h.value)}</span>
                       <span className={`block text-xs font-semibold ${h.gain >= 0 ? "text-mint" : "text-red-600"}`}>
                         {h.gain >= 0 ? "+" : "−"}{money(Math.abs(h.gain))} ({percent(Math.abs(h.gain_pct))})

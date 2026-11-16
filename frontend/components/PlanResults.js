@@ -97,12 +97,17 @@ export default function PlanResults({ result, goal, years, saved, onStartOver })
 
   return (
     <div className="flex flex-col gap-6">
-      <Confetti />
+      {saved !== "opened" && <Confetti />}
       <style>{`@keyframes sw-rise { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: none } }`}</style>
 
       {saved === "saved" && (
         <p className="rounded-2xl border border-mint-line bg-green-50 px-5 py-3 text-sm text-slate-800">
           <span className="font-semibold text-mint">Plan saved.</span> Find it any time under My plans.
+        </p>
+      )}
+      {saved === "opened" && (
+        <p className="rounded-2xl border border-line bg-surface px-5 py-3 text-sm text-muted">
+          Your saved plan, recalculated with the latest market data.
         </p>
       )}
       {saved === "login" && (

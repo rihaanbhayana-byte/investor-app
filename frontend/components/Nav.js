@@ -29,7 +29,8 @@ export default function Nav() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null));
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") localStorage.removeItem("lastPlan");
       setUser(session?.user ?? null);
     });
     return () => data.subscription.unsubscribe();
@@ -37,6 +38,7 @@ export default function Nav() {
 
   async function logOut() {
     await supabase.auth.signOut();
+    localStorage.removeItem("lastPlan"); // don't show this person's plan to the next one on this device
     window.location.href = "/";
   }
 

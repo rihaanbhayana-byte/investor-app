@@ -161,6 +161,9 @@ def get_stock(symbol: str):
         "symbol": f"eq.{symbol}",
         "order": "fiscal_year",
     })
+    for row in fundamentals:
+        if row.get("eps") is not None and float(row["eps"]) == 0 and row.get("net_income"):
+            row["eps"] = None  # $0.00 next to a real profit/loss is a reporting quirk
     return {
         **found[0],
         "prices": [{"month": m, "close": c} for m, c in closes],
@@ -204,7 +207,8 @@ def tool_get_stock(symbol):
         "latest_price": prices[-1] if prices else None,
         "price_1_year_ago": prices[-13] if len(prices) >= 13 else None,
         "first_price_in_data": prices[0] if prices else None,
-        "stats_since_2016": data["stats"],
+        "price_data_starts": prices[0]["month"] if prices else None,
+        "stats_over_price_history": data["stats"],
         "financials_last_4_years": data["fundamentals"][-4:],
     }
 
@@ -343,10 +347,19 @@ def parse_goal(request: GoalText, _: None = Depends(ai_rate_limit)):
 # AI: explain a stock in plain words
 # =====================================================================
 EXPLAIN_PROMPT = """You explain stocks and funds to complete beginners using ONLY the data provided.
-Write 4 to 6 short bullet points covering: what it is; how the price has grown since 2016; how bumpy the ride
-has been (volatility and biggest drop); and for companies, whether revenue is growing, whether it is profitable,
-and how its debts compare with its assets.
-Use simple words and round numbers, and say what each number means. Do not recommend buying or selling.
+Write 4 to 6 short bullet points covering: what it is; how the price has changed since the data starts
+(use "price_data_starts" for the year, never assume 2016); how bumpy the ride has been (volatility and biggest
+drop); and for companies, whether revenue is growing, whether it is profitable, and how its debts compare with
+its assets.
+Number rules:
+- Ratios such as 0.075 or -0.42 are fractions: always write them as rounded percentages (8%, -42%). Never show raw decimals.
+- Round money to whole dollars or to millions/billions ($9.1 billion), and percentages to whole numbers.
+- Volatility is the typical size of a year's ups and downs around the average return, not how much value is lost
+  each year. Explain it like: "a volatility of 42% means that in a typical year the price could end roughly 42% above
+  or below its usual path, so it is a bumpy ride."
+- If a financial value is 0 or missing, say the data isn't available instead of quoting it.
+Use simple words and say what each number means. Do not recommend buying or selling.
+Do not use headings; just bullet points.
 Finish with the line: "Educational only, not financial advice." """
 
 _explain_cache = {}
@@ -526,7 +539,8 @@ def tool_get_stock(symbol):
         "latest_price": prices[-1],
         "price_1_year_ago": prices[-13] if len(prices) >= 13 else None,
         "first_price_in_data": prices[0],
-        "stats_since_2016": data["stats"],
+        "price_data_starts": prices[0]["month"],
+        "stats_over_price_history": data["stats"],
         "financials_last_4_years": data["fundamentals"][-4:],
     }
 
@@ -636,7 +650,7 @@ def practice_state(user_id):
             "symbol": symbol,
             "name": names.get(symbol, symbol),
             "shares": round(p["shares"], 6),
-            "average_cost": round(p["cost"] / p["shares"], 2),
+            "average_cost": round(p["cost"] / p["shares"], 4),  # keep precision; the page rounds once
             "price": price,
             "value": round(value, 2),
             "gain": round(value - p["cost"], 2),
@@ -1043,6 +1057,8 @@ PRACTICE portfolio (play money) as JSON, including a grade that was already calc
 reply with JSON only:
 {"headline": "one encouraging sentence summing up the portfolio (max 20 words)",
  "tips": ["3 short, specific tips that each mention real numbers from the facts"]}
+Holdings with "is_fund": true are funds (ETFs) that hold hundreds of companies: never call them a single stock.
+Match your tone to the grade: do not praise diversification if a check about it says "ok" or "warn".
 Never tell the user to buy or sell a specific stock. You may suggest ideas like adding a broad fund or spreading money out."""
 
 
@@ -1064,16 +1080,20 @@ def practice_doctor(request: DoctorRequest, user_id: str = Depends(current_user)
     invested_share = 1 - cash_share
     funds = [h["symbol"] for h in holdings if info.get(h["symbol"], {}).get("asset_type") == "etf"]
     single = [h for h in holdings if h["symbol"] not in funds]
+    invested = sum(h["value"] for h in holdings)
+    # Concentration is measured against the money that is actually invested, not the whole account,
+    # otherwise a mostly-cash portfolio looks "well spread" just because every holding is small.
+    fund_share = sum(h["value"] for h in holdings if h["symbol"] in funds) / invested if invested else 0.0
     biggest_single = max(single, key=lambda h: h["value"]) if single else None
-    biggest_single_share = biggest_single["value"] / total if biggest_single else 0.0
+    biggest_single_share = biggest_single["value"] / invested if biggest_single else 0.0
 
     sectors = {}
     for h in single:
         sector = info.get(h["symbol"], {}).get("sector") or "Other"
-        sectors[sector] = sectors.get(sector, 0.0) + h["value"] / total
+        sectors[sector] = sectors.get(sector, 0.0) + h["value"] / invested
     top_sector, top_sector_share = max(sectors.items(), key=lambda x: x[1]) if sectors else (None, 0.0)
 
-    invested_weights = {s: w / invested_share for s, w in weights.items()} if invested_share > 0 else {}
+    invested_weights = {h["symbol"]: h["value"] / invested for h in holdings} if invested else {}
     history = None
     if invested_weights:
         months, returns = analytics.portfolio_returns(invested_weights)
@@ -1093,28 +1113,34 @@ def practice_doctor(request: DoctorRequest, user_id: str = Depends(current_user)
         score -= penalty
         checks.append({"name": name, "status": status, "detail": detail})
 
-    if funds:
-        check("Diversification", "good", f"You own {len(funds)} fund(s), which each hold many companies.")
+    if fund_share >= 0.5:
+        check("Diversification", "good", f"{fund_share:.0%} of your invested money is in broad funds, which each hold many companies.")
+    elif funds:
+        check("Diversification", "ok", f"Only {fund_share:.0%} of your invested money is in funds; the rest rides on a few companies.", 10)
     elif len(holdings) >= 5:
-        check("Diversification", "ok", f"{len(holdings)} different stocks, but no broad fund yet.", 10)
+        check("Diversification", "ok", f"{len(holdings)} different stocks, but no broad fund yet.", 15)
     else:
         check("Diversification", "warn", f"Only {len(holdings)} stock(s) and no fund, so one bad result hurts a lot.", 25)
 
-    if biggest_single_share > 0.4:
-        check("Biggest bet", "warn", f"{biggest_single['symbol']} is {biggest_single_share:.0%} of everything.", 25)
+    if biggest_single_share > 0.7:
+        check("Biggest bet", "warn", f"{biggest_single['symbol']} is {biggest_single_share:.0%} of your invested money: almost everything rides on one company.", 30)
+    elif biggest_single_share > 0.4:
+        check("Biggest bet", "warn", f"{biggest_single['symbol']} is {biggest_single_share:.0%} of your invested money.", 15)
     elif biggest_single_share > 0.25:
-        check("Biggest bet", "ok", f"{biggest_single['symbol']} is {biggest_single_share:.0%} of everything.", 10)
+        check("Biggest bet", "ok", f"{biggest_single['symbol']} is {biggest_single_share:.0%} of your invested money.", 10)
     else:
-        check("Biggest bet", "good", "No single company is more than 25% of your portfolio.")
+        check("Biggest bet", "good", "No single company is more than 25% of your invested money.")
 
     if top_sector and top_sector_share > 0.5:
-        check("Industries", "warn", f"{top_sector_share:.0%} is in one industry ({top_sector}).", 15)
+        check("Industries", "warn", f"{top_sector_share:.0%} of your invested money is in one industry ({top_sector}).", 10)
     elif top_sector and top_sector_share > 0.35:
-        check("Industries", "ok", f"{top_sector_share:.0%} is in {top_sector}.", 5)
+        check("Industries", "ok", f"{top_sector_share:.0%} of your invested money is in {top_sector}.", 5)
     else:
         check("Industries", "good", "Your single stocks are spread across industries.")
 
-    if cash_share > 0.3:
+    if cash_share > 0.6:
+        check("Cash", "warn", f"{cash_share:.0%} is still in cash, so most of your money isn't growing.", 25)
+    elif cash_share > 0.3:
         check("Cash", "ok", f"{cash_share:.0%} is still in cash, so it isn't growing.", 10)
     else:
         check("Cash", "good", f"Only {cash_share:.0%} is sitting in cash.")
@@ -1126,7 +1152,8 @@ def practice_doctor(request: DoctorRequest, user_id: str = Depends(current_user)
         if ratio > 1.5:
             check("Matches your plan", "warn", f"It swings about {history['volatility']:.0%} a year, a lot more than a {level} plan (~{target:.0%}).", 15)
         elif ratio < 0.5:
-            check("Matches your plan", "ok", f"It's calmer ({history['volatility']:.0%} swings) than your {level} plan allows.", 5)
+            # if it's only calm because of idle cash, the Cash check already covers that
+            check("Matches your plan", "ok", f"It's calmer ({history['volatility']:.0%} swings) than your {level} plan allows.", 0 if cash_share > 0.3 else 5)
         else:
             check("Matches your plan", "good", f"Its swings (~{history['volatility']:.0%} a year) suit a {level} plan.")
 
@@ -1138,7 +1165,7 @@ def practice_doctor(request: DoctorRequest, user_id: str = Depends(current_user)
         "score": score,
         "total_value": total,
         "cash_share": round(cash_share, 3),
-        "holdings": [{"symbol": h["symbol"], "share": round(h["value"] / total, 3), "is_fund": h["symbol"] in funds} for h in holdings],
+        "holdings": [{"symbol": h["symbol"], "share_of_account": round(h["value"] / total, 3), "is_fund": h["symbol"] in funds} for h in holdings],
         "top_industry": top_sector,
         "top_industry_share": round(top_sector_share, 3),
         "history_since_2016": history,

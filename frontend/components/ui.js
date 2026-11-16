@@ -39,12 +39,12 @@ export function PageHeader({ eyebrow, title, subtitle, children }) {
 
 export function Select({ value, onChange, children, label, className = "" }) {
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative min-w-0 ${className}`}>
       <select
         aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full cursor-pointer appearance-none rounded-2xl border border-line bg-ink py-3.5 pl-4 pr-11 text-fg transition hover:border-slate-300 focus:border-mint focus:outline-none"
+        className="w-full min-w-0 cursor-pointer appearance-none truncate rounded-2xl border border-line bg-ink py-3.5 pl-4 pr-11 text-fg transition hover:border-slate-300 focus:border-mint focus:outline-none"
       >
         {children}
       </select>

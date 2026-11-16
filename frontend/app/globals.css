@@ -212,6 +212,10 @@ html.light {
   html.light {
     color-scheme: light;
   }
+  html,
+  body {
+    overflow-x: clip; /* decorative glows must never make the page scroll sideways on phones */
+  }
   body {
     background: var(--color-ink);
     color: var(--color-fg);

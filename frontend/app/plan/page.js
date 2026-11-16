@@ -83,7 +83,8 @@ export default function PlanPage() {
     setPhase("loading");
     const { data, error } = await supabase.from("investment_plans").select("*").eq("id", id).single();
     if (error) {
-      setError("Could not open that plan. Are you logged in?");
+      const { data: auth } = await supabase.auth.getUser();
+      setError(auth.user ? "We couldn't find that plan. It may have been deleted. Open one from My plans." : "Log in to open your saved plans.");
       setPhase("intro");
       return;
     }
@@ -95,12 +96,13 @@ export default function PlanPage() {
         monthly: Number(data.monthly_contribution),
         answers: data.risk_answers || {},
       },
-      false
+      false,
+      true
     );
-    if (ok) setSaved("saved");
+    if (ok) setSaved("opened");
   }
 
-  async function buildResults(p, save) {
+  async function buildResults(p, save, reopening = false) {
     setPlan(p);
     setWizardMode(null);
     setPhase("loading");
@@ -115,7 +117,7 @@ export default function PlanPage() {
         ]);
         return { risk, portfolio, projection };
       })();
-      const [{ risk, portfolio, projection }] = await Promise.all([work, wait(2400)]);
+      const [{ risk, portfolio, projection }] = await Promise.all([work, wait(reopening ? 400 : 2400)]);
 
       setResult({ risk, portfolio, projection });
       localStorage.setItem(

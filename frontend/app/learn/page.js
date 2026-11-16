@@ -19,7 +19,7 @@ const LESSONS = [
   {
     title: "Choose the type of account",
     minutes: 2,
-    text: "A regular brokerage account lets you withdraw any time. Retirement accounts such as a Roth IRA (you need earned income) or a 401(k) through work have tax benefits but rules on withdrawals.",
+    text: "A regular brokerage account lets you withdraw any time. Retirement accounts such as a Roth IRA (you need earned income) or a 401(k) through work have tax benefits but rules on withdrawals. Under 18? A parent or guardian can open a custodial account (UTMA/UGMA) for you, or a custodial Roth IRA if you have a job.",
     key: "Saving for retirement? Look at a Roth IRA or 401(k) first. Saving for something sooner? A regular brokerage account.",
     quiz: {
       q: "Which of these has tax benefits but rules on when you can withdraw?",
@@ -187,7 +187,7 @@ function FlipCard({ term, meaning }) {
       onClick={() => setFlipped(!flipped)}
       aria-pressed={flipped}
       aria-label={`${term}. ${flipped ? meaning : "Tap to see the meaning."}`}
-      className="group h-36 [perspective:1000px]"
+      className="group h-44 [perspective:1000px]"
     >
       <span
         className="relative block h-full w-full rounded-3xl transition duration-500 [transform-style:preserve-3d]"
@@ -197,8 +197,9 @@ function FlipCard({ term, meaning }) {
           <span className="font-display text-xl font-bold">{term}</span>
           <span className="text-xs text-muted">Tap to flip</span>
         </span>
-        <span className="absolute inset-0 flex items-center justify-center rounded-3xl border border-mint-line bg-mint-soft p-5 text-center text-sm leading-relaxed text-slate-800 [backface-visibility:hidden] [transform:rotateY(180deg)]">
-          {meaning}
+        <span className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-3xl border border-mint-line bg-mint-soft p-4 text-center [backface-visibility:hidden] [transform:rotateY(180deg)]">
+          <span className="font-display text-sm font-bold text-mint">{term}</span>
+          <span className="text-sm leading-snug text-slate-800">{meaning}</span>
         </span>
       </span>
     </button>
