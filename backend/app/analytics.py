@@ -76,3 +76,20 @@ def _year_row(year, balances, initial, monthly):
         "contributed": round(initial + monthly * 12 * year, 2),
         "median_in_todays_dollars": round(float(median) / (1 + INFLATION) ** year, 2),
     }
+
+
+def required_monthly(returns, initial, target, years, paths=5000, seed=42):
+    """How much to save each month to reach a target, across 5,000 simulated futures."""
+    rng = np.random.default_rng(seed)
+    months = years * 12
+    growth = 1 + rng.choice(returns, size=(paths, months), replace=True)
+    start_growth = np.prod(growth, axis=1)                    # what $1 invested today becomes
+    later = np.cumprod(growth[:, ::-1], axis=1)[:, ::-1]      # growth from month m to the end
+    per_dollar_monthly = np.concatenate([later[:, 1:], np.ones((paths, 1))], axis=1).sum(axis=1)
+    needed = np.maximum(0, (target - initial * start_growth) / per_dollar_monthly)
+    return {
+        "monthly_for_50_percent": round(float(np.percentile(needed, 50)), 2),
+        "monthly_for_75_percent": round(float(np.percentile(needed, 75)), 2),
+        "monthly_for_90_percent": round(float(np.percentile(needed, 90)), 2),
+        "monthly_without_growth": round(max(0.0, (target - initial) / months), 2),
+    }

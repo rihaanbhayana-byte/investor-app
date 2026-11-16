@@ -25,4 +25,7 @@ export const api = {
   chat: (body) => post("/chat", body),
   parseGoal: (body) => post("/parse-goal", body),
   explainStock: (symbol) => request(`/explain-stock/${symbol}`),
+  timeMachine: (symbol, amount, start) => request(`/time-machine?symbol=${symbol}&amount=${amount}&start=${start}`),
+  goalCalculator: (body) => post("/goal-calculator", body),
+  compare: (symbols) => request(`/compare?symbols=${symbols.join(",")}`),
 };

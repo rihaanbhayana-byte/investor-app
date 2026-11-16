@@ -319,3 +319,89 @@ def explain_stock(symbol: str):
         raise HTTPException(503, f"The AI explainer is unavailable right now: {error}")
     _explain_cache[key] = text
     return {"explanation": text}
+
+
+# =====================================================================
+# Calculators
+# =====================================================================
+import re  # noqa: E402
+
+from fastapi import Query  # noqa: E402
+
+
+def clean_symbol(symbol):
+    symbol = symbol.strip().upper()
+    if not re.fullmatch(r"[A-Z.]{1,6}", symbol):
+        raise HTTPException(400, f"'{symbol}' is not a valid ticker")
+    return symbol
+
+
+@app.get("/time-machine")
+def time_machine(symbol: str, amount: float = Query(1000, gt=0, le=10_000_000), start: str = "2016-01"):
+    symbol = clean_symbol(symbol)
+    names = {s["symbol"]: s["name"] for s in db.select("securities", {"select": "symbol,name", "symbol": f"in.({symbol},VOO)"})}
+    if symbol not in names:
+        raise HTTPException(404, f"{symbol} is not in our list")
+    series = analytics.monthly_closes([symbol, "VOO"])
+    closes = [c for c in series.get(symbol, []) if c[0] >= start]
+    if len(closes) < 2:
+        raise HTTPException(400, "Not enough price history after that date.")
+    sp500 = dict(series.get("VOO", []))
+    first_month, first_price = closes[0]
+    sp500_start = sp500.get(first_month)
+    points = []
+    for month, price in closes:
+        point = {"month": month, "value": round(amount * price / first_price, 2)}
+        if sp500_start and month in sp500:
+            point["sp500_value"] = round(amount * sp500[month] / sp500_start, 2)
+        points.append(point)
+    final = points[-1]["value"]
+    years = (len(closes) - 1) / 12
+    return {
+        "symbol": symbol,
+        "name": names[symbol],
+        "amount": amount,
+        "start_month": first_month,
+        "end_month": closes[-1][0],
+        "final_value": final,
+        "gain": round(final - amount, 2),
+        "total_return": round(final / amount - 1, 4),
+        "annual_return": round((final / amount) ** (1 / years) - 1, 4),
+        "sp500_final_value": points[-1].get("sp500_value"),
+        "series": points,
+        "disclaimer": DISCLAIMER,
+    }
+
+
+class GoalCalcRequest(BaseModel):
+    target: float = Field(gt=0, le=100_000_000)
+    years: int = Field(ge=1, le=50)
+    initial_amount: float = Field(ge=0, le=10_000_000)
+    risk_level: RiskLevel
+
+
+@app.post("/goal-calculator")
+def goal_calculator(request: GoalCalcRequest):
+    portfolio = load_portfolio(request.risk_level)
+    _, returns = analytics.portfolio_returns(weights_of(portfolio))
+    result = analytics.required_monthly(returns, request.initial_amount, request.target, request.years)
+    return {"portfolio_name": portfolio["name"], **result, "disclaimer": DISCLAIMER}
+
+
+@app.get("/compare")
+def compare(symbols: str):
+    wanted = list(dict.fromkeys(clean_symbol(s) for s in symbols.split(",") if s.strip()))[:4]
+    if len(wanted) < 2:
+        raise HTTPException(400, "Pick at least two different stocks.")
+    series = analytics.monthly_closes(wanted)
+    missing = [s for s in wanted if s not in series]
+    if missing:
+        raise HTTPException(404, f"Not in our list: {', '.join(missing)}")
+    by_month = {s: dict(series[s]) for s in wanted}
+    months = sorted(set.intersection(*(set(m) for m in by_month.values())))
+    rows = [{"month": m, **{s: round(100 * by_month[s][m] / by_month[s][months[0]], 2) for s in wanted}} for m in months]
+    stats = {
+        s: analytics.summarize(analytics.returns_from_closes([(m, by_month[s][m]) for m in months]))
+        for s in wanted
+    }
+    return {"symbols": wanted, "series": rows, "stats": stats, "disclaimer": DISCLAIMER}

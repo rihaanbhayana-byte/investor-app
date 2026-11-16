@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/coach", label: "AI Coach" },
   { href: "/dashboard", label: "My plans" },
   { href: "/stocks", label: "Stocks" },
+  { href: "/tools", label: "Calculators" },
   { href: "/learn", label: "How to invest" },
 ];
 
