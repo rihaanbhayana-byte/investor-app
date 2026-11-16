@@ -187,3 +187,15 @@ insert into public.portfolio_holdings (risk_level, symbol, weight) values
   ('aggressive',   'BND',  0.10), ('aggressive',   'VTI', 0.55), ('aggressive',   'VXUS', 0.20),
   ('aggressive',   'QQQ',  0.15)
 on conflict (risk_level, symbol) do nothing;
+
+-- =====================================================
+-- Step 6: one closing price per symbol per month
+-- =====================================================
+create or replace view public.monthly_prices
+with (security_invoker = true) as
+select distinct on (symbol, date_trunc('month', date))
+  symbol, date, close
+from public.daily_prices
+order by symbol, date_trunc('month', date), date desc;
+
+grant select on public.monthly_prices to anon, authenticated;
