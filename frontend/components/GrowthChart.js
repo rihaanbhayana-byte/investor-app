@@ -1,24 +1,75 @@
 "use client";
 
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { money } from "@/lib/format";
 
-export default function GrowthChart({ data }) {
+function axisMoney(v) {
+  if (Math.abs(v) >= 1e6) return `$${(v / 1e6).toLocaleString("en-US", { maximumFractionDigits: 1 })}M`;
+  if (Math.abs(v) >= 1e3) return `$${(v / 1e3).toLocaleString("en-US", { maximumFractionDigits: 1 })}k`;
+  return `$${v}`;
+}
+
+function Row({ color, label, value, dashed }) {
   return (
-    <div className="h-80 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="year" tickFormatter={(y) => `Yr ${y}`} />
-          <YAxis tickFormatter={(v) => `$${(v / 1000).toLocaleString("en-US", { maximumFractionDigits: 1 })}k`} width={60} />
-          <Tooltip formatter={(value) => money(value)} labelFormatter={(y) => `Year ${y}`} />
-          <Legend />
-          <Line type="monotone" dataKey="high" name="Good case" stroke="#10b981" strokeWidth={2} dot={false} />
-          <Line type="monotone" dataKey="median" name="Typical" stroke="#2563eb" strokeWidth={3} dot={false} />
-          <Line type="monotone" dataKey="low" name="Bad case" stroke="#f59e0b" strokeWidth={2} dot={false} />
-          <Line type="monotone" dataKey="contributed" name="Money you put in" stroke="#64748b" strokeDasharray="5 5" dot={false} />
-        </LineChart>
-      </ResponsiveContainer>
+    <div className="flex items-center justify-between gap-6 py-0.5">
+      <span className="flex items-center gap-2 text-muted">
+        <span className={dashed ? "w-3 border-t-2 border-dashed" : "h-2.5 w-2.5 rounded-sm"} style={dashed ? { borderColor: color } : { background: color }} />
+        {label}
+      </span>
+      <span className="font-semibold text-fg">{money(value)}</span>
+    </div>
+  );
+}
+
+function TooltipBox({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="rounded-xl border border-line bg-ink/95 px-4 py-3 text-sm shadow-2xl">
+      <div className="mb-1.5 font-semibold">Year {label}</div>
+      <Row color="#7BEBB9" label="Good case" value={d.high} />
+      <Row color="#3DDC97" label="Likely" value={d.median} />
+      <Row color="#2E6B53" label="Bad case" value={d.low} />
+      <Row color="#5B6876" label="You put in" value={d.contributed} dashed />
+    </div>
+  );
+}
+
+export default function GrowthChart({ data }) {
+  const rows = data.map((d) => ({ ...d, range: [d.low, d.high] }));
+
+  return (
+    <div>
+      <div className="h-72 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={rows} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="sw-band" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3DDC97" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="#3DDC97" stopOpacity={0.06} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="#1A222C" vertical={false} />
+            <XAxis
+              dataKey="year"
+              tickFormatter={(y) => `Yr ${y}`}
+              tick={{ fill: "#9AA7B4", fontSize: 12 }}
+              tickLine={false}
+              axisLine={{ stroke: "#1F2833" }}
+            />
+            <YAxis tickFormatter={axisMoney} width={56} tick={{ fill: "#9AA7B4", fontSize: 12 }} tickLine={false} axisLine={false} />
+            <Tooltip content={<TooltipBox />} cursor={{ stroke: "#2A3542" }} />
+            <Area type="monotone" dataKey="range" stroke="none" fill="url(#sw-band)" animationDuration={1400} />
+            <Line type="monotone" dataKey="contributed" stroke="#5B6876" strokeWidth={2} strokeDasharray="6 6" dot={false} animationDuration={1400} />
+            <Line type="monotone" dataKey="median" stroke="#3DDC97" strokeWidth={3} dot={false} activeDot={{ r: 5 }} animationDuration={1800} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-5 text-[13px] text-muted">
+        <span className="flex items-center gap-2"><span className="h-[3px] w-4 bg-mint" />Likely path</span>
+        <span className="flex items-center gap-2"><span className="h-2.5 w-4 rounded-sm bg-mint/25" />Range (bad case to good case)</span>
+        <span className="flex items-center gap-2"><span className="w-4 border-t-2 border-dashed border-[#5B6876]" />Money you put in</span>
+      </div>
     </div>
   );
 }

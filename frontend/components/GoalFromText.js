@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 
-const EXAMPLE = "I'm 22 and want to buy a house in about 6 years. I have $2,000 saved and can invest $250 a month.";
+const EXAMPLES = [
+  "I'm 22 and want to buy a house in about 6 years. I have $2,000 saved and can invest $250 a month.",
+  "I want to grow my money for retirement over 30 years. I can start with $500 and add $150 a month.",
+  "Saving for a car in 3 years. I have $1,000 and can add $100 a month.",
+];
 
 export default function GoalFromText({ onFill }) {
   const [text, setText] = useState("");
@@ -26,30 +30,52 @@ export default function GoalFromText({ onFill }) {
   }
 
   return (
-    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-      <p className="font-medium text-emerald-900">✨ Describe your goal in your own words</p>
+    <div className="rounded-3xl border border-[#23493A] bg-[radial-gradient(130%_120%_at_0%_0%,#15392B_0%,#10171F_60%)] p-6 sm:p-8">
+      <div className="flex items-center gap-2.5">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3DDC97" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" />
+        </svg>
+        <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">Fastest way · AI</span>
+      </div>
+      <label htmlFor="goal-text" className="mt-3 block font-display text-2xl font-bold tracking-tight">
+        Tell us your goal in your own words
+      </label>
       <textarea
+        id="goal-text"
         rows={3}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder={EXAMPLE}
-        className="mt-2 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2"
+        placeholder={EXAMPLES[0]}
+        className="mt-4 w-full resize-none rounded-2xl border border-line bg-ink px-4 py-3.5 text-fg placeholder:text-slate-500 focus:border-mint focus:outline-none"
       />
-      <div className="mt-2 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={fill}
-          disabled={loading || text.trim().length < 5}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          {loading ? "Reading..." : "Fill in the form for me"}
-        </button>
-        <button type="button" onClick={() => setText(EXAMPLE)} className="text-sm text-emerald-800 underline">
-          Use an example
-        </button>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="text-[13px] text-muted">Try:</span>
+        {["House in 6 years", "Retirement", "A car"].map((label, i) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => setText(EXAMPLES[i])}
+            className="rounded-full border border-slate-300 px-3 py-1.5 text-[13px] text-slate-700 transition hover:border-mint hover:text-mint"
+          >
+            {label}
+          </button>
+        ))}
       </div>
-      {summary && <p className="mt-2 text-sm text-emerald-900">{summary} Check the boxes below and change anything that's off.</p>}
-      {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
+      <button
+        type="button"
+        onClick={fill}
+        disabled={loading || text.trim().length < 5}
+        className="mt-5 rounded-full bg-mint px-6 py-3 font-semibold text-mint-ink transition hover:bg-mint-light disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {loading ? "Reading your goal..." : "Read my goal →"}
+      </button>
+      {summary && (
+        <p className="mt-4 rounded-xl border border-[#23493A] bg-ink/60 px-4 py-3 text-sm text-slate-700">
+          <span className="font-semibold text-mint">Got it. </span>
+          {summary} Check the details below and change anything that&rsquo;s off.
+        </p>
+      )}
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </div>
   );
 }

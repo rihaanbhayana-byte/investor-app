@@ -1,31 +1,76 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import GrowthChart from "@/components/GrowthChart";
-import GoalFromText from "@/components/GoalFromText";
+import PlanWizard, { GOALS } from "@/components/PlanWizard";
+import PlanResults from "@/components/PlanResults";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
-import { LEVEL_LABELS, money, percent } from "@/lib/format";
 
-const GOALS = ["Grow my wealth", "Retirement", "Buying a home", "Education", "A big purchase"];
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const input = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2";
-const card = "rounded-xl border border-slate-200 bg-white p-6";
-const primary = "rounded-lg bg-emerald-600 px-5 py-2.5 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50";
-const secondary = "rounded-lg border border-slate-300 px-5 py-2.5 font-semibold hover:bg-slate-50";
+const LOADING_STEPS = [
+  "Reading your answers...",
+  "Finding your investor personality...",
+  "Picking your funds...",
+  "Simulating 5,000 possible futures...",
+];
+
+function Loading() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((x) => Math.min(x + 1, LOADING_STEPS.length - 1)), 600);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-8 text-center" role="status">
+      <style>{`@keyframes sw-bar { 0%,100% { transform: scaleY(0.35) } 50% { transform: scaleY(1) } } @keyframes sw-fade { from { opacity: 0 } to { opacity: 1 } }`}</style>
+      <div className="flex h-20 items-end gap-2" aria-hidden="true">
+        {[0, 1, 2, 3, 4, 5, 6].map((b) => (
+          <div
+            key={b}
+            className="h-full w-3 origin-bottom rounded-full bg-mint motion-safe:animate-[sw-bar_1s_ease-in-out_infinite]"
+            style={{ animationDelay: `${b * 0.12}s`, opacity: 0.4 + b * 0.09 }}
+          />
+        ))}
+      </div>
+      <div>
+        <h2 key={i} className="font-display text-3xl font-bold motion-safe:animate-[sw-fade_0.3s_ease-out_both]">
+          {LOADING_STEPS[i]}
+        </h2>
+        <p className="mt-2 text-muted">Replaying real market months since 2016 to see where your money could go.</p>
+      </div>
+    </div>
+  );
+}
+
+function ChoiceCard({ onClick, featured, icon, title, text, cta }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`group relative flex flex-col gap-4 rounded-3xl border p-8 text-left transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.45)] ${
+        featured
+          ? "border-[#23493A] bg-[radial-gradient(130%_120%_at_0%_0%,#17402F_0%,#10171F_60%)] hover:border-mint/60"
+          : "border-line bg-surface hover:border-slate-300"
+      }`}
+    >
+      {featured && <span className="absolute right-6 top-6 rounded-full bg-mint px-3 py-1 text-xs font-semibold text-mint-ink">Recommended</span>}
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-mint/15 text-mint">{icon}</span>
+      <span className="font-display text-2xl font-bold">{title}</span>
+      <span className="leading-relaxed text-muted">{text}</span>
+      <span className="mt-2 font-semibold text-mint">
+        {cta} <span className="inline-block transition group-hover:translate-x-1">→</span>
+      </span>
+    </button>
+  );
+}
 
 export default function PlanPage() {
-  const [step, setStep] = useState("goal");
-  const [goal, setGoal] = useState(GOALS[0]);
-  const [initialAmount, setInitialAmount] = useState(1000);
-  const [monthly, setMonthly] = useState(100);
-  const [years, setYears] = useState(10);
+  const [phase, setPhase] = useState("intro"); // intro | loading | results
+  const [wizardMode, setWizardMode] = useState(null); // null (closed) | "ai" | "manual"
   const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState({});
+  const [plan, setPlan] = useState({ goal: GOALS[0], initialAmount: 1000, monthly: 100, years: 10, answers: {} });
   const [result, setResult] = useState(null);
   const [saved, setSaved] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -35,64 +80,69 @@ export default function PlanPage() {
   }, []);
 
   async function openSavedPlan(id) {
-    setLoading(true);
+    setPhase("loading");
     const { data, error } = await supabase.from("investment_plans").select("*").eq("id", id).single();
     if (error) {
       setError("Could not open that plan. Are you logged in?");
-      setLoading(false);
+      setPhase("intro");
       return;
     }
-    const plan = {
-      goal: data.goal,
-      years: data.horizon_years,
-      initialAmount: Number(data.initial_amount),
-      monthly: Number(data.monthly_contribution),
-      answers: data.risk_answers || {},
-    };
-    setGoal(plan.goal);
-    setYears(plan.years);
-    setInitialAmount(plan.initialAmount);
-    setMonthly(plan.monthly);
-    setAnswers(plan.answers);
-    await buildResults(plan, false);
-    setSaved("saved");
+    const ok = await buildResults(
+      {
+        goal: data.goal,
+        years: data.horizon_years,
+        initialAmount: Number(data.initial_amount),
+        monthly: Number(data.monthly_contribution),
+        answers: data.risk_answers || {},
+      },
+      false
+    );
+    if (ok) setSaved("saved");
   }
 
-  async function buildResults(plan, save) {
-    setLoading(true);
+  async function buildResults(p, save) {
+    setPlan(p);
+    setWizardMode(null);
+    setPhase("loading");
     setError("");
+    window.scrollTo({ top: 0 });
     try {
-      const risk = await api.riskProfile({ answers: plan.answers, horizon_years: plan.years });
-      const [portfolio, projection] = await Promise.all([
-        api.portfolio(risk.risk_level),
-        api.projection({
-          risk_level: risk.risk_level,
-          initial_amount: plan.initialAmount,
-          monthly_contribution: plan.monthly,
-          years: plan.years,
-        }),
-      ]);
+      const work = (async () => {
+        const risk = await api.riskProfile({ answers: p.answers, horizon_years: p.years });
+        const [portfolio, projection] = await Promise.all([
+          api.portfolio(risk.risk_level),
+          api.projection({ risk_level: risk.risk_level, initial_amount: p.initialAmount, monthly_contribution: p.monthly, years: p.years }),
+        ]);
+        return { risk, portfolio, projection };
+      })();
+      const [{ risk, portfolio, projection }] = await Promise.all([work, wait(2400)]);
+
       setResult({ risk, portfolio, projection });
-      localStorage.setItem("lastPlan", JSON.stringify({
-        goal: plan.goal,
-        years: plan.years,
-        initial_amount: plan.initialAmount,
-        monthly_contribution: plan.monthly,
-        risk_level: risk.risk_level,
-        risk_score: risk.score,
-        portfolio: portfolio.name,
-        holdings: portfolio.holdings.map((h) => ({ symbol: h.symbol, weight: h.weight })),
-        projected_final: projection.final,
-      }));
-      setStep("results");
-      if (save) await savePlan(plan, risk);
+      localStorage.setItem(
+        "lastPlan",
+        JSON.stringify({
+          goal: p.goal,
+          years: p.years,
+          initial_amount: p.initialAmount,
+          monthly_contribution: p.monthly,
+          risk_level: risk.risk_level,
+          risk_score: risk.score,
+          portfolio: portfolio.name,
+          holdings: portfolio.holdings.map((h) => ({ symbol: h.symbol, weight: h.weight })),
+          projected_final: projection.final,
+        })
+      );
+      setPhase("results");
+      if (save) await savePlan(p, risk);
+      return true;
     } catch (e) {
       setError(e.message);
+      setPhase("intro");
+      return false;
     }
-    setLoading(false);
   }
 
-  async function savePlan(plan, risk) {
+  async function savePlan(p, risk) {
     const { data } = await supabase.auth.getUser();
     if (!data.user) {
       setSaved("login");
@@ -100,11 +150,11 @@ export default function PlanPage() {
     }
     const { error } = await supabase.from("investment_plans").insert({
       user_id: data.user.id,
-      goal: plan.goal,
-      horizon_years: plan.years,
-      initial_amount: plan.initialAmount,
-      monthly_contribution: plan.monthly,
-      risk_answers: plan.answers,
+      goal: p.goal,
+      horizon_years: p.years,
+      initial_amount: p.initialAmount,
+      monthly_contribution: p.monthly,
+      risk_answers: p.answers,
       risk_score: risk.score,
       risk_level: risk.risk_level,
     });
@@ -113,193 +163,66 @@ export default function PlanPage() {
   }
 
   function startOver() {
-    setStep("goal");
-    setAnswers({});
+    setPhase("intro");
     setResult(null);
     setSaved(null);
     window.history.replaceState(null, "", "/plan");
+    window.scrollTo({ top: 0 });
   }
 
-  const allAnswered = questions.length > 0 && questions.every((q) => answers[q.id]);
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Build my plan</h1>
-        <p className="mt-1 text-slate-600">
-          {step === "goal" && "Step 1 of 3: your goal and budget"}
-          {step === "questions" && "Step 2 of 3: how you feel about risk"}
-          {step === "results" && "Step 3 of 3: your plan"}
-        </p>
-      </div>
+    <div className="flex flex-col gap-8">
+      {error && <p className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm text-red-700">{error}</p>}
 
-      {error && <p className="rounded-lg bg-red-50 p-3 text-red-700">{error}</p>}
-      {loading && <p className="text-slate-600">Crunching the numbers...</p>}
-
-      {step === "goal" && (
-        <form
-          className={`${card} space-y-5`}
-          onSubmit={(e) => {
-            e.preventDefault();
-            setStep("questions");
-          }}
-        >
-          <GoalFromText
-            onFill={(v) => {
-              setGoal(v.goal);
-              setInitialAmount(v.initial_amount);
-              setMonthly(v.monthly_contribution);
-              setYears(v.years);
-            }}
-          />
-          <label className="block">
-            <span className="font-medium">What are you investing for?</span>
-            <select className={input} value={goal} onChange={(e) => setGoal(e.target.value)}>
-              {GOALS.map((g) => (
-                <option key={g}>{g}</option>
-              ))}
-            </select>
-          </label>
-          <div className="grid gap-5 md:grid-cols-3">
-            <label className="block">
-              <span className="font-medium">Amount to start with ($)</span>
-              <input type="number" min={0} step={50} className={input} value={initialAmount} onChange={(e) => setInitialAmount(Number(e.target.value))} required />
-            </label>
-            <label className="block">
-              <span className="font-medium">Add each month ($)</span>
-              <input type="number" min={0} step={10} className={input} value={monthly} onChange={(e) => setMonthly(Number(e.target.value))} required />
-            </label>
-            <label className="block">
-              <span className="font-medium">For how many years?</span>
-              <input type="number" min={1} max={50} className={input} value={years} onChange={(e) => setYears(Number(e.target.value))} required />
-            </label>
+      {phase === "intro" && (
+        <section className="flex flex-col items-center gap-10 pt-6 text-center">
+          <div className="max-w-2xl">
+            <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">Build my plan</div>
+            <h1 className="mt-4 font-display text-5xl font-bold tracking-tight sm:text-6xl">Let&rsquo;s build your plan.</h1>
+            <p className="mt-4 text-lg text-muted">About 2 minutes. No jargon. You can change anything later.</p>
           </div>
-          <button className={primary}>Next: risk questions</button>
-        </form>
-      )}
 
-      {step === "questions" && (
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            buildResults({ goal, years, initialAmount, monthly, answers }, true);
-          }}
-        >
-          {questions.map((q, i) => (
-            <fieldset key={q.id} className={card}>
-              <legend className="font-semibold">
-                {i + 1}. {q.text}
-              </legend>
-              <div className="mt-3 space-y-2">
-                {q.options.map((o) => (
-                  <label key={o.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3 hover:bg-slate-50">
-                    <input type="radio" name={q.id} checked={answers[q.id] === o.id} onChange={() => setAnswers({ ...answers, [q.id]: o.id })} />
-                    {o.text}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          ))}
-          <div className="flex gap-3">
-            <button type="button" className={secondary} onClick={() => setStep("goal")}>
-              Back
-            </button>
-            <button className={primary} disabled={!allAnswered || loading}>
-              See my plan
-            </button>
+          <div className="grid w-full max-w-4xl gap-5 md:grid-cols-2">
+            <ChoiceCard
+              featured
+              onClick={() => setWizardMode("ai")}
+              icon={<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" /></svg>}
+              title="Describe it in my own words"
+              text="Type one sentence like “a house deposit in 6 years, $250 a month” and our AI fills in everything for you."
+              cta="Start with AI"
+            />
+            <ChoiceCard
+              onClick={() => setWizardMode("manual")}
+              icon={<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11" /><path d="M4 6h.01M4 12h.01M4 18h.01" /></svg>}
+              title="Answer step by step"
+              text="Pick your goal, set your numbers with sliders, then answer a few quick questions about you."
+              cta="Start"
+            />
           </div>
-        </form>
+
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-muted">
+            <span>About 2 minutes</span>
+            <span>5,000 simulated futures</span>
+            <span>Real US market data since 2016</span>
+          </div>
+        </section>
       )}
 
-      {step === "results" && result && <Results result={result} saved={saved} startOver={startOver} goal={goal} />}
-    </div>
-  );
-}
+      {phase === "loading" && <Loading />}
 
-function Results({ result, saved, startOver, goal }) {
-  const { risk, portfolio, projection } = result;
-  const final = projection.final;
-  const stats = portfolio.stats;
-
-  return (
-    <div className="space-y-6">
-      {saved === "saved" && <p className="rounded-lg bg-emerald-50 p-3 text-emerald-800">Plan saved. Find it any time under My plans.</p>}
-      {saved === "login" && (
-        <p className="rounded-lg bg-amber-50 p-3 text-amber-800">
-          <Link href="/login" className="font-semibold underline">Log in or sign up</Link> to save plans like this one.
-        </p>
+      {phase === "results" && result && (
+        <PlanResults result={result} goal={plan.goal} years={plan.years} saved={saved} onStartOver={startOver} />
       )}
 
-      <section className={card}>
-        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Your risk level</p>
-        <h2 className="mt-1 text-2xl font-bold">
-          {LEVEL_LABELS[risk.risk_level]} <span className="text-base font-normal text-slate-500">(score {risk.score} of {risk.max_score})</span>
-        </h2>
-        <p className="mt-2 text-slate-600">{risk.explanation}</p>
-      </section>
-
-      <section className={card}>
-        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Your portfolio for &ldquo;{goal}&rdquo;</p>
-        <h2 className="mt-1 text-2xl font-bold">{portfolio.name}</h2>
-        <p className="mt-1 text-slate-600">{portfolio.description}</p>
-        <table className="mt-4 w-full text-left">
-          <thead className="text-sm text-slate-500">
-            <tr>
-              <th className="py-2">Fund</th>
-              <th>What it holds</th>
-              <th className="text-right">Share</th>
-            </tr>
-          </thead>
-          <tbody>
-            {portfolio.holdings.map((h) => (
-              <tr key={h.symbol} className="border-t border-slate-100">
-                <td className="py-2 font-semibold">
-                  <Link href={`/stocks/${h.symbol}`} className="text-emerald-700 hover:underline">{h.symbol}</Link>
-                </td>
-                <td>{h.name} <span className="text-slate-500">({h.sector})</span></td>
-                <td className="text-right font-semibold">{percent(h.weight)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <Stat label="Average yearly return" value={percent(stats.annual_return)} />
-          <Stat label="Worst 12 months" value={percent(stats.worst_12_months)} />
-          <Stat label="Biggest drop" value={percent(stats.max_drawdown)} />
-          <Stat label="Years of data" value={stats.years_of_data} />
-        </div>
-      </section>
-
-      <section className={card}>
-        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">What it could grow to</p>
-        <h2 className="mt-1 text-2xl font-bold">
-          After {final.year} years: about {money(final.median)}
-        </h2>
-        <p className="mt-1 text-slate-600">
-          You would put in {money(final.contributed)}. In a bad case you might have {money(final.low)}; in a good case {money(final.high)}.
-          In today&rsquo;s money, the typical result is worth about {money(final.median_in_todays_dollars)}.
-        </p>
-        <div className="mt-4">
-          <GrowthChart data={projection.yearly} />
-        </div>
-        <p className="mt-3 text-xs text-slate-500">{projection.disclaimer}</p>
-      </section>
-
-      <div className="flex flex-wrap gap-3">
-        <Link href="/coach" className={primary}>Ask the AI Coach about my plan</Link>
-        <Link href="/learn" className={secondary}>How do I actually invest?</Link>
-        <button onClick={startOver} className={secondary}>Start over</button>
-      </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }) {
-  return (
-    <div className="rounded-lg bg-slate-50 p-3">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className="text-lg font-semibold">{value}</div>
+      {wizardMode && questions.length > 0 && (
+        <PlanWizard
+          questions={questions}
+          startMode={wizardMode}
+          initial={plan}
+          onClose={() => setWizardMode(null)}
+          onFinish={(p) => buildResults(p, true)}
+        />
+      )}
     </div>
   );
 }
