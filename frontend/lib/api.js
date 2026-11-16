@@ -44,4 +44,7 @@ export const api = {
   practiceReset: () => withLogin("/practice/reset", { method: "POST" }),
   crashTest: (event, level, amount) => request(`/crash-test?event=${event}&risk_level=${level}&amount=${amount}`),
   strategyTest: (text) => post("/strategy-test", { text }),
+  stockMap: () => request("/stock-map"),
+  matchInterests: (text) => post("/match-interests", { text }),
+  practiceDoctor: (riskLevel) => withLogin("/practice/doctor", { method: "POST", body: JSON.stringify({ risk_level: riskLevel }) }),
 };

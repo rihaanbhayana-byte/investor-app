@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import TickerSearch from "@/components/TickerSearch";
+import InterestMatcher from "@/components/InterestMatcher";
+import StockMap from "@/components/StockMap";
 import { Avatar, PageHeader, ReturnPill, RISE, Segmented, Select } from "@/components/ui";
 import { percent, price } from "@/lib/format";
 
@@ -92,6 +94,8 @@ export default function StocksPage() {
 
       <TickerSearch />
 
+      <InterestMatcher />
+
       {best.length > 0 && (
         <section>
           <h2 className="font-display text-xl font-bold">Biggest movers this year</h2>
@@ -128,6 +132,8 @@ export default function StocksPage() {
           </div>
         </section>
       )}
+
+      <StockMap />
 
       <section className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-4">

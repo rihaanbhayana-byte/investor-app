@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { money, percent, price } from "@/lib/format";
+import PortfolioDoctor from "@/components/PortfolioDoctor";
 import { Avatar, ReturnPill, RISE, SERIES_COLORS, Segmented, Select, useCountUp } from "@/components/ui";
 
 const QUICK = [100, 500, 1000];
@@ -220,6 +221,8 @@ export default function PracticePage() {
           <Badge key={b.title} {...b} />
         ))}
       </section>
+
+      <PortfolioDoctor hasHoldings={state.holdings.length > 0} />
 
       <div className="grid items-start gap-6 lg:grid-cols-[380px_1fr]">
         <form onSubmit={trade} className="flex flex-col gap-5 rounded-3xl border border-line bg-surface p-6 lg:sticky lg:top-24">

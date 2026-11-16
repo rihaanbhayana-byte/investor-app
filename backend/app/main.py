@@ -898,3 +898,227 @@ def strategy_test(request: StrategyRequest):
         verdict = ""
     result["verdict"] = verdict
     return result
+
+
+# =====================================================================
+# Stock personality map (machine learning: k-means clustering)
+# =====================================================================
+from . import ml  # noqa: E402
+
+_map_cache = {}
+
+
+@app.get("/stock-map")
+def stock_map():
+    today = date.today().isoformat()
+    if today in _map_cache:
+        return _map_cache[today]
+    securities = db.select("securities", {"select": "symbol,name,asset_type,sector", "order": "symbol"})
+    series = analytics.monthly_closes([s["symbol"] for s in securities])
+    stats = {}
+    for s in securities:
+        closes = series.get(s["symbol"], [])
+        if len(closes) >= 25:
+            stats[s["symbol"]] = analytics.summarize(analytics.returns_from_closes(closes))
+    clusters, cluster_of, inertia = ml.stock_map(stats, k=4)
+    info = {s["symbol"]: s for s in securities}
+    result = {
+        "points": [
+            {
+                **info[symbol],
+                "annual_return": stats[symbol]["annual_return"],
+                "annual_volatility": stats[symbol]["annual_volatility"],
+                "max_drawdown": stats[symbol]["max_drawdown"],
+                "cluster": cluster_of[symbol],
+            }
+            for symbol in sorted(stats)
+        ],
+        "clusters": clusters,
+        "method": (
+            "k-means clustering (k = 4) on three numbers per stock from real monthly prices since 2016: "
+            "average yearly return, volatility and biggest drop. The numbers are standardised first, "
+            "and the algorithm finds the groups by itself."
+        ),
+        "inertia": inertia,
+        "disclaimer": DISCLAIMER,
+    }
+    _map_cache.clear()
+    _map_cache[today] = result
+    return result
+
+
+# =====================================================================
+# Match my interests: the AI connects hobbies and brands to companies
+# =====================================================================
+MATCH_PROMPT = """You help complete beginners see which companies they already know.
+The user describes their interests, hobbies or favourite brands. Pick 3 to 6 companies from the LIST that
+are genuinely connected to those interests. Reply with JSON only:
+{"matches": [{"symbol": "...", "reason": "one short sentence linking the interest to how this company makes money"}],
+ "fund_tip": "one short sentence suggesting a broad fund from the LIST (VOO, VTI or QQQ) as a simpler way to own many of these at once",
+ "no_match_note": "" }
+Rules: only use symbols from the LIST. Never say buy or sell. If nothing in the LIST fits, return an empty
+matches list and explain kindly in no_match_note.
+LIST: """
+
+
+class MatchRequest(BaseModel):
+    text: str = Field(min_length=3, max_length=400)
+
+
+@app.post("/match-interests")
+def match_interests(request: MatchRequest):
+    stocks = get_stocks()
+    listing = [{"symbol": s["symbol"], "name": s["name"], "sector": s["sector"]} for s in stocks]
+    messages = [
+        {"role": "system", "content": MATCH_PROMPT + json.dumps(listing)},
+        {"role": "user", "content": request.text},
+    ]
+    try:
+        try:
+            reply = ai.complete(messages, temperature=0.2, json_mode=True)
+        except RuntimeError:
+            reply = ai.complete(messages, temperature=0.2)
+        data = ai.parse_json(reply.get("content") or "")
+    except Exception as error:
+        raise HTTPException(503, f"The AI couldn't answer right now: {error}")
+
+    by_symbol = {s["symbol"]: s for s in stocks}
+    matches, seen = [], set()
+    for m in data.get("matches") or []:
+        symbol = str(m.get("symbol", "")).upper()
+        if symbol in by_symbol and symbol not in seen:
+            seen.add(symbol)
+            matches.append({**by_symbol[symbol], "reason": str(m.get("reason") or "")[:200]})
+    return {
+        "matches": matches[:6],
+        "fund_tip": str(data.get("fund_tip") or "")[:250],
+        "no_match_note": str(data.get("no_match_note") or "")[:250],
+        "disclaimer": "Educational only, not financial advice. Liking a brand isn't a reason to invest on its own.",
+    }
+
+
+# =====================================================================
+# Portfolio Doctor: grade the practice portfolio and explain why
+# =====================================================================
+TARGET_VOLATILITY = {"conservative": 0.07, "moderate": 0.11, "aggressive": 0.16}
+
+DOCTOR_PROMPT = """You are a friendly investing coach for complete beginners. You get the facts about a
+PRACTICE portfolio (play money) as JSON, including a grade that was already calculated. Using ONLY these facts,
+reply with JSON only:
+{"headline": "one encouraging sentence summing up the portfolio (max 20 words)",
+ "tips": ["3 short, specific tips that each mention real numbers from the facts"]}
+Never tell the user to buy or sell a specific stock. You may suggest ideas like adding a broad fund or spreading money out."""
+
+
+class DoctorRequest(BaseModel):
+    risk_level: RiskLevel | None = None
+
+
+@app.post("/practice/doctor")
+def practice_doctor(request: DoctorRequest, user_id: str = Depends(current_user)):
+    state = practice_state(user_id)
+    total = state["total"]
+    holdings = state["holdings"]
+    if not holdings:
+        raise HTTPException(400, "Make a few practice trades first, then ask the doctor for a check-up.")
+
+    info = {s["symbol"]: s for s in db.select("securities", {"select": "symbol,asset_type,sector"})}
+    weights = {h["symbol"]: h["value"] / total for h in holdings}
+    cash_share = state["cash"] / total
+    invested_share = 1 - cash_share
+    funds = [h["symbol"] for h in holdings if info.get(h["symbol"], {}).get("asset_type") == "etf"]
+    single = [h for h in holdings if h["symbol"] not in funds]
+    biggest_single = max(single, key=lambda h: h["value"]) if single else None
+    biggest_single_share = biggest_single["value"] / total if biggest_single else 0.0
+
+    sectors = {}
+    for h in single:
+        sector = info.get(h["symbol"], {}).get("sector") or "Other"
+        sectors[sector] = sectors.get(sector, 0.0) + h["value"] / total
+    top_sector, top_sector_share = max(sectors.items(), key=lambda x: x[1]) if sectors else (None, 0.0)
+
+    invested_weights = {s: w / invested_share for s, w in weights.items()} if invested_share > 0 else {}
+    history = None
+    if invested_weights:
+        months, returns = analytics.portfolio_returns(invested_weights)
+        if len(returns) >= 24:
+            stats = analytics.summarize(returns)
+            history = {
+                "volatility": round(stats["annual_volatility"] * invested_share, 4),
+                "worst_12_months": round(stats["worst_12_months"] * invested_share, 4),
+                "annual_return": round(stats["annual_return"] * invested_share, 4),
+            }
+
+    # ---- deterministic score: the AI explains it, but doesn't decide it ----
+    score, checks = 100, []
+
+    def check(name, status, detail, penalty=0):
+        nonlocal score
+        score -= penalty
+        checks.append({"name": name, "status": status, "detail": detail})
+
+    if funds:
+        check("Diversification", "good", f"You own {len(funds)} fund(s), which each hold many companies.")
+    elif len(holdings) >= 5:
+        check("Diversification", "ok", f"{len(holdings)} different stocks, but no broad fund yet.", 10)
+    else:
+        check("Diversification", "warn", f"Only {len(holdings)} stock(s) and no fund, so one bad result hurts a lot.", 25)
+
+    if biggest_single_share > 0.4:
+        check("Biggest bet", "warn", f"{biggest_single['symbol']} is {biggest_single_share:.0%} of everything.", 25)
+    elif biggest_single_share > 0.25:
+        check("Biggest bet", "ok", f"{biggest_single['symbol']} is {biggest_single_share:.0%} of everything.", 10)
+    else:
+        check("Biggest bet", "good", "No single company is more than 25% of your portfolio.")
+
+    if top_sector and top_sector_share > 0.5:
+        check("Industries", "warn", f"{top_sector_share:.0%} is in one industry ({top_sector}).", 15)
+    elif top_sector and top_sector_share > 0.35:
+        check("Industries", "ok", f"{top_sector_share:.0%} is in {top_sector}.", 5)
+    else:
+        check("Industries", "good", "Your single stocks are spread across industries.")
+
+    if cash_share > 0.3:
+        check("Cash", "ok", f"{cash_share:.0%} is still in cash, so it isn't growing.", 10)
+    else:
+        check("Cash", "good", f"Only {cash_share:.0%} is sitting in cash.")
+
+    level = request.risk_level
+    if history and level:
+        target = TARGET_VOLATILITY[level]
+        ratio = history["volatility"] / target
+        if ratio > 1.5:
+            check("Matches your plan", "warn", f"It swings about {history['volatility']:.0%} a year, a lot more than a {level} plan (~{target:.0%}).", 15)
+        elif ratio < 0.5:
+            check("Matches your plan", "ok", f"It's calmer ({history['volatility']:.0%} swings) than your {level} plan allows.", 5)
+        else:
+            check("Matches your plan", "good", f"Its swings (~{history['volatility']:.0%} a year) suit a {level} plan.")
+
+    score = max(0, score)
+    grade = "A" if score >= 90 else "B" if score >= 75 else "C" if score >= 60 else "D" if score >= 45 else "F"
+
+    facts = {
+        "grade": grade,
+        "score": score,
+        "total_value": total,
+        "cash_share": round(cash_share, 3),
+        "holdings": [{"symbol": h["symbol"], "share": round(h["value"] / total, 3), "is_fund": h["symbol"] in funds} for h in holdings],
+        "top_industry": top_sector,
+        "top_industry_share": round(top_sector_share, 3),
+        "history_since_2016": history,
+        "risk_level_of_plan": level,
+        "checks": checks,
+    }
+    headline, tips = "", []
+    try:
+        try:
+            reply = ai.complete([{"role": "system", "content": DOCTOR_PROMPT}, {"role": "user", "content": json.dumps(facts)}], temperature=0.3, json_mode=True)
+        except RuntimeError:
+            reply = ai.complete([{"role": "system", "content": DOCTOR_PROMPT}, {"role": "user", "content": json.dumps(facts)}], temperature=0.3)
+        data = ai.parse_json(reply.get("content") or "")
+        headline = str(data.get("headline") or "")[:200]
+        tips = [str(t)[:240] for t in (data.get("tips") or [])][:3]
+    except Exception:
+        tips = [c["detail"] for c in checks if c["status"] != "good"][:3]
+
+    return {**facts, "headline": headline, "tips": tips, "disclaimer": "Practice only. Educational, not financial advice."}
