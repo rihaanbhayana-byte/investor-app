@@ -110,7 +110,7 @@ function Lesson({ lesson, index, open, done, onToggle, onComplete }) {
   const correct = picked === lesson.quiz.answer;
 
   return (
-    <li className={`overflow-hidden rounded-3xl border transition ${open ? "border-slate-300 bg-surface" : done ? "border-[#23493A] bg-surface" : "border-line bg-surface hover:border-slate-300"}`}>
+    <li className={`overflow-hidden rounded-3xl border transition ${open ? "border-slate-300 bg-surface" : done ? "border-mint-line bg-surface" : "border-line bg-surface hover:border-slate-300"}`}>
       <button onClick={onToggle} aria-expanded={open} className="flex w-full items-center gap-4 p-5 text-left sm:p-6">
         <span
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full font-display font-bold transition ${
@@ -131,7 +131,7 @@ function Lesson({ lesson, index, open, done, onToggle, onComplete }) {
       {open && (
         <div className="flex flex-col gap-5 px-5 pb-6 motion-safe:animate-[sw-rise_0.3s_ease-out_both] sm:px-6 sm:pl-[84px]">
           <p className="text-lg leading-relaxed text-slate-800">{lesson.text}</p>
-          <div className="flex gap-3 rounded-2xl border border-[#23493A] bg-green-50 p-4">
+          <div className="flex gap-3 rounded-2xl border border-mint-line bg-green-50 p-4">
             <svg className="mt-0.5 shrink-0 text-mint" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
             </svg>
@@ -197,7 +197,7 @@ function FlipCard({ term, meaning }) {
           <span className="font-display text-xl font-bold">{term}</span>
           <span className="text-xs text-muted">Tap to flip</span>
         </span>
-        <span className="absolute inset-0 flex items-center justify-center rounded-3xl border border-[#23493A] bg-[#10241C] p-5 text-center text-sm leading-relaxed text-slate-800 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+        <span className="absolute inset-0 flex items-center justify-center rounded-3xl border border-mint-line bg-mint-soft p-5 text-center text-sm leading-relaxed text-slate-800 [backface-visibility:hidden] [transform:rotateY(180deg)]">
           {meaning}
         </span>
       </span>
@@ -255,16 +255,17 @@ export default function LearnPage() {
         <div className="flex items-center gap-5 rounded-3xl border border-line bg-surface p-5">
           <div className="relative h-20 w-20">
             <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90" aria-hidden="true">
-              <circle cx="18" cy="18" r="15.5" fill="none" stroke="#1A222C" strokeWidth="3.5" />
+              <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--color-grid)" strokeWidth="3.5" />
               <circle
                 cx="18"
                 cy="18"
                 r="15.5"
                 fill="none"
-                stroke="#3DDC97"
+                stroke="var(--color-mint)"
                 strokeWidth="3.5"
                 strokeLinecap="round"
                 strokeDasharray={`${(progress / 100) * 97.4} 97.4`}
+                strokeOpacity={progress > 0 ? 1 : 0}
                 className="transition-all duration-700"
               />
             </svg>
@@ -281,7 +282,7 @@ export default function LearnPage() {
       </section>
 
       {allDone && (
-        <section className="flex flex-wrap items-center justify-between gap-6 rounded-3xl border border-[#23493A] bg-[radial-gradient(130%_140%_at_0%_0%,#17402F_0%,#10171F_60%)] p-8 motion-safe:animate-[sw-rise_0.4s_ease-out_both]">
+        <section className="flex flex-wrap items-center justify-between gap-6 rounded-3xl border border-mint-line bg-glow p-8 motion-safe:animate-[sw-rise_0.4s_ease-out_both]">
           <div>
             <h2 className="font-display text-2xl font-bold">Course complete. You know the basics!</h2>
             <p className="mt-1 text-muted">Now put it to work: build a plan and see your numbers.</p>

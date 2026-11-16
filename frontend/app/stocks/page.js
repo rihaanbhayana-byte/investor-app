@@ -27,7 +27,7 @@ function StockCard({ s, index }) {
     <Link
       href={`/stocks/${s.symbol}`}
       style={{ animationDelay: `${Math.min(index, 20) * 25}ms` }}
-      className="group flex flex-col gap-4 rounded-3xl border border-line bg-surface p-5 transition duration-200 hover:-translate-y-1 hover:border-mint/40 hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] motion-safe:animate-[sw-rise_0.4s_ease-out_both]"
+      className="group flex flex-col gap-4 rounded-3xl border border-line bg-surface p-5 transition duration-200 hover:-translate-y-1 hover:border-mint/40 hover:shadow-lift motion-safe:animate-[sw-rise_0.4s_ease-out_both]"
     >
       <div className="flex items-center gap-3">
         <Avatar symbol={s.symbol} />
@@ -100,7 +100,7 @@ export default function StocksPage() {
               <Link
                 key={s.symbol}
                 href={`/stocks/${s.symbol}`}
-                className="relative overflow-hidden rounded-3xl border border-[#23493A] bg-[radial-gradient(130%_120%_at_0%_0%,#15392B_0%,#10171F_65%)] p-5 transition hover:-translate-y-1 hover:border-mint/60"
+                className="relative overflow-hidden rounded-3xl border border-mint-line bg-glow p-5 transition hover:-translate-y-1 hover:border-mint/60"
               >
                 <div className="flex items-center justify-between">
                   <Avatar symbol={s.symbol} size={40} />
@@ -114,7 +114,7 @@ export default function StocksPage() {
             {worst && (
               <Link
                 href={`/stocks/${worst.symbol}`}
-                className="rounded-3xl border border-red-200 bg-[radial-gradient(130%_120%_at_0%_0%,#3A1A1E_0%,#10171F_65%)] p-5 transition hover:-translate-y-1"
+                className="rounded-3xl border border-red-200 bg-glow-danger p-5 transition hover:-translate-y-1"
               >
                 <div className="flex items-center justify-between">
                   <Avatar symbol={worst.symbol} size={40} />
@@ -145,7 +145,7 @@ export default function StocksPage() {
 
         <div className="flex flex-wrap gap-3">
           <div className="relative min-w-64 flex-1">
-            <svg className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9AA7B4" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <svg className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-muted)" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <circle cx="11" cy="11" r="7" />
               <path d="M20 20l-3.5-3.5" />
             </svg>

@@ -483,3 +483,403 @@ def tool_get_stock(symbol):
 
 
 TOOL_FUNCTIONS["get_stock"] = tool_get_stock
+
+
+# =====================================================================
+# Practice portfolio: $10,000 of play money, real prices
+# =====================================================================
+import time  # noqa: E402
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+from fastapi import Depends, Header  # noqa: E402
+
+START_CASH = 10_000.0
+_user_cache = {}
+
+
+def current_user(authorization: str | None = Header(default=None)):
+    """Check the Supabase login token the website sends, and return the user's id."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(401, "Please log in to use the practice portfolio.")
+    token = authorization.split(" ", 1)[1].strip()
+    cached = _user_cache.get(token)
+    if cached and cached[1] > time.time():
+        return cached[0]
+    user = db.get_user(token)
+    if not user or not user.get("id"):
+        raise HTTPException(401, "Your login has expired. Please log in again.")
+    _user_cache[token] = (user["id"], time.time() + 300)
+    return user["id"]
+
+
+def latest_prices(symbols):
+    """{symbol: (price, "YYYY-MM-DD")} using the newest daily close we have."""
+    symbols = sorted(set(symbols))
+    if not symbols:
+        return {}
+    since = (date.today() - timedelta(days=14)).isoformat()
+    rows = db.select("daily_prices", {
+        "select": "symbol,date,close",
+        "symbol": f"in.({','.join(symbols)})",
+        "date": f"gte.{since}",
+        "order": "date",
+    })
+    prices = {r["symbol"]: (float(r["close"]), r["date"]) for r in rows}
+    missing = [s for s in symbols if s not in prices]
+    if missing:
+        for symbol, closes in analytics.monthly_closes(missing).items():
+            prices[symbol] = (closes[-1][1], closes[-1][0])
+    return prices
+
+
+def price_on(symbol, day):
+    """Closing price on (or just before) a given date."""
+    since = (date.fromisoformat(day) - timedelta(days=10)).isoformat()
+    rows = db.select("daily_prices", {
+        "select": "close",
+        "symbol": f"eq.{symbol}",
+        "and": f"(date.gte.{since},date.lte.{day})",
+        "order": "date.desc",
+    })
+    return float(rows[0]["close"]) if rows else None
+
+
+def practice_account(user_id):
+    rows = db.admin("GET", "practice_accounts", {"select": "user_id,started_at", "user_id": f"eq.{user_id}"})
+    if rows:
+        return rows[0]
+    return db.admin("POST", "practice_accounts", json={"user_id": user_id}, prefer="return=representation")[0]
+
+
+def practice_state(user_id):
+    account = practice_account(user_id)
+    trades = db.admin("GET", "practice_trades", {
+        "select": "id,symbol,side,shares,price,created_at",
+        "user_id": f"eq.{user_id}",
+        "order": "created_at",
+    }) or []
+
+    cash, positions = START_CASH, {}
+    for t in trades:
+        shares, price = float(t["shares"]), float(t["price"])
+        p = positions.setdefault(t["symbol"], {"shares": 0.0, "cost": 0.0})
+        if t["side"] == "buy":
+            cash -= shares * price
+            p["shares"] += shares
+            p["cost"] += shares * price
+        else:
+            average = p["cost"] / p["shares"] if p["shares"] else 0.0
+            cash += shares * price
+            p["shares"] -= shares
+            p["cost"] -= average * shares
+            if p["shares"] < 1e-6:
+                p["shares"], p["cost"] = 0.0, 0.0
+
+    held = [s for s, p in positions.items() if p["shares"] > 0]
+    prices = latest_prices(held + ["VOO"])
+    names = {s["symbol"]: s["name"] for s in db.select("securities", {"select": "symbol,name"})}
+    holdings = []
+    for symbol in held:
+        p = positions[symbol]
+        price = prices.get(symbol, (None,))[0] or 0.0
+        value = p["shares"] * price
+        holdings.append({
+            "symbol": symbol,
+            "name": names.get(symbol, symbol),
+            "shares": round(p["shares"], 6),
+            "average_cost": round(p["cost"] / p["shares"], 2),
+            "price": price,
+            "value": round(value, 2),
+            "gain": round(value - p["cost"], 2),
+            "gain_pct": round(value / p["cost"] - 1, 4) if p["cost"] else 0.0,
+        })
+    holdings.sort(key=lambda h: -h["value"])
+    total = cash + sum(h["value"] for h in holdings)
+
+    started = account["started_at"][:10]
+    voo_start = price_on("VOO", started)
+    voo_now = prices.get("VOO", (None,))[0]
+    sp500_value = round(START_CASH * voo_now / voo_start, 2) if voo_start and voo_now else None
+
+    return {
+        "start_cash": START_CASH,
+        "started_at": account["started_at"],
+        "cash": round(cash, 2),
+        "invested": round(total - cash, 2),
+        "total": round(total, 2),
+        "gain": round(total - START_CASH, 2) + 0.0,
+        "gain_pct": round(total / START_CASH - 1, 4) + 0.0,
+        "sp500_value": sp500_value,
+        "prices_as_of": prices.get("VOO", (None, None))[1],
+        "holdings": holdings,
+        "trades": [
+            {**t, "shares": float(t["shares"]), "price": float(t["price"]), "name": names.get(t["symbol"], t["symbol"])}
+            for t in reversed(trades[-30:])
+        ],
+        "trade_count": len(trades),
+    }
+
+
+@app.get("/practice")
+def get_practice(user_id: str = Depends(current_user)):
+    return practice_state(user_id)
+
+
+class TradeRequest(BaseModel):
+    symbol: str
+    side: Literal["buy", "sell"]
+    dollars: float = Field(gt=0, le=1_000_000)
+    sell_all: bool = False
+
+
+@app.post("/practice/trade")
+def practice_trade(request: TradeRequest, user_id: str = Depends(current_user)):
+    symbol = clean_symbol(request.symbol)
+    if not db.select("securities", {"select": "symbol", "symbol": f"eq.{symbol}"}):
+        raise HTTPException(400, f"{symbol} isn't in our list. Practice trading works with our 36 stocks and funds.")
+    price = latest_prices([symbol]).get(symbol, (None,))[0]
+    if not price:
+        raise HTTPException(400, f"No price available for {symbol} right now.")
+    state = practice_state(user_id)
+
+    if request.side == "buy":
+        if request.dollars > state["cash"] + 0.005:
+            raise HTTPException(400, f"You only have ${state['cash']:,.2f} of play money left.")
+        shares = request.dollars / price
+        message = f"Bought ${request.dollars:,.2f} of {symbol}"
+    else:
+        owned = next((h["shares"] for h in state["holdings"] if h["symbol"] == symbol), 0.0)
+        if owned <= 0:
+            raise HTTPException(400, f"You don't own any {symbol} yet.")
+        shares = owned if request.sell_all else min(owned, request.dollars / price)
+        message = f"Sold ${shares * price:,.2f} of {symbol}"
+
+    shares = round(shares, 6)
+    if shares <= 0:
+        raise HTTPException(400, "That amount is too small.")
+    db.admin("POST", "practice_trades", json={
+        "user_id": user_id, "symbol": symbol, "side": request.side, "shares": shares, "price": price,
+    })
+    return {**practice_state(user_id), "message": f"{message} at ${price:,.2f} a share."}
+
+
+@app.post("/practice/reset")
+def practice_reset(user_id: str = Depends(current_user)):
+    practice_account(user_id)
+    db.admin("DELETE", "practice_trades", {"user_id": f"eq.{user_id}"})
+    db.admin("PATCH", "practice_accounts", {"user_id": f"eq.{user_id}"},
+             json={"started_at": datetime.now(timezone.utc).isoformat()})
+    return practice_state(user_id)
+
+
+# =====================================================================
+# Crash test: replay a real market drop on a model portfolio
+# =====================================================================
+CRASHES = {
+    "covid": {
+        "title": "The COVID crash",
+        "when": "2020",
+        "start": "2019-12",
+        "end": "2021-06",
+        "intro": "In early 2020 a new virus spread around the world. Countries locked down and markets fell faster than ever before.",
+        "events": {
+            "2020-02": "Virus fears spread. Markets start to wobble.",
+            "2020-03": "Lockdowns begin. Stocks fall fast.",
+            "2020-04": "Governments and central banks step in with huge support.",
+            "2020-08": "The S&P 500 is back above its pre-crash high.",
+            "2020-11": "Vaccine news lifts markets further.",
+        },
+    },
+    "bear2022": {
+        "title": "The 2022 bear market",
+        "when": "2022",
+        "start": "2021-12",
+        "end": "2024-03",
+        "intro": "Prices were rising fast, so interest rates went up quickly. Both stocks and bonds fell for most of the year.",
+        "events": {
+            "2022-01": "High inflation. Interest rates are about to rise.",
+            "2022-03": "The US central bank starts raising rates.",
+            "2022-06": "Stocks officially enter a bear market (down 20%).",
+            "2022-10": "Markets hit their low point for the year.",
+            "2023-06": "Excitement about AI lifts big tech stocks.",
+            "2024-01": "The S&P 500 sets a new record high.",
+        },
+    },
+    "dip2018": {
+        "title": "The late-2018 drop",
+        "when": "2018",
+        "start": "2018-08",
+        "end": "2019-08",
+        "intro": "Worries about rising interest rates and a US-China trade war pushed stocks down at the end of 2018.",
+        "events": {
+            "2018-10": "Rate and trade-war worries hit stocks.",
+            "2018-12": "One of the worst Decembers for stocks in decades.",
+            "2019-01": "Markets bounce back quickly.",
+            "2019-04": "The S&P 500 is back near its old high.",
+        },
+    },
+}
+
+
+@app.get("/crash-test")
+def crash_test(
+    event: Literal["covid", "bear2022", "dip2018"] = "covid",
+    risk_level: RiskLevel = "moderate",
+    amount: float = Query(10_000, gt=0, le=10_000_000),
+):
+    crash = CRASHES[event]
+    portfolio = load_portfolio(risk_level)
+    months, returns = analytics.portfolio_returns(weights_of(portfolio))
+    if crash["start"] not in months:
+        raise HTTPException(400, "Not enough price history for this event.")
+    i0 = months.index(crash["start"])
+    i1 = months.index(crash["end"]) if crash["end"] in months else len(months) - 1
+    window = months[i0:i1 + 1]
+
+    stayed = [amount]
+    for k in range(i0, i1):
+        stayed.append(stayed[-1] * (1 + returns[k]))
+    bottom = min(range(len(stayed)), key=lambda j: stayed[j])
+    extra = round(amount * 0.2, 2)
+    panic = [v if j <= bottom else stayed[bottom] for j, v in enumerate(stayed)]
+    buy_more = [v if j <= bottom else v / stayed[bottom] * (stayed[bottom] + extra) for j, v in enumerate(stayed)]
+    recovered = next((window[j] for j in range(bottom + 1, len(stayed)) if stayed[j] >= amount), None)
+
+    voo = dict(analytics.monthly_closes(["VOO"]).get("VOO", []))
+    voo_start = voo.get(window[0])
+
+    series = []
+    for j, month in enumerate(window):
+        row = {"month": month, "stayed": round(stayed[j], 2), "panic": round(panic[j], 2), "buy_more": round(buy_more[j], 2)}
+        if voo_start and month in voo:
+            row["sp500"] = round(amount * voo[month] / voo_start, 2)
+        row["event"] = crash["events"].get(month)
+        series.append(row)
+
+    return {
+        "event": event,
+        "title": crash["title"],
+        "when": crash["when"],
+        "intro": crash["intro"],
+        "portfolio_name": portfolio["name"],
+        "amount": amount,
+        "extra": extra,
+        "bottom_month": window[bottom],
+        "bottom_value": round(stayed[bottom], 2),
+        "max_drop": round(stayed[bottom] / amount - 1, 4),
+        "recovered_month": recovered,
+        "months_to_recover": (window.index(recovered) - bottom) if recovered else None,
+        "end_month": window[-1],
+        "final": {"stayed": round(stayed[-1], 2), "panic": round(panic[-1], 2), "buy_more": round(buy_more[-1], 2)},
+        "series": series,
+        "note": "Uses month-end prices, so the real drops inside each month were even bigger. " + DISCLAIMER,
+    }
+
+
+# =====================================================================
+# Strategy lab: describe a strategy in words, the AI turns it into rules,
+# and we test the rules on real prices since 2016
+# =====================================================================
+STRATEGY_PROMPT = """Turn the user's investing strategy into rules for a simple monthly backtest.
+Reply with JSON only, using these keys:
+"name": a short name for the strategy (max 6 words),
+"symbol": ONE ticker from ALLOWED. "S&P 500" means VOO, "Nasdaq" or "tech fund" means QQQ, "bonds" means BND,
+          "whole US market" means VTI, "international" means VXUS. Default "VOO".
+"initial": dollars invested at the start (0 if not mentioned),
+"monthly": dollars invested every month (100 if no amounts at all are mentioned, otherwise 0 if not mentioned),
+"dip_drop_pct": buy extra when the price is at least this % below its 12-month high (null if not mentioned),
+"dip_extra": extra dollars to invest in those months (null if not mentioned; if dip_drop_pct is set but no amount, use 2 x monthly),
+"stop_loss_pct": sell everything if the price falls this % below its peak since buying (null if not mentioned),
+"start_year": a year from 2016 to 2024 (default 2016),
+"summary": one plain sentence restating exactly the rules you will test,
+"not_supported": a short note about any part of the request you could not model, or "".
+ALLOWED: """
+
+VERDICT_PROMPT = """You explain backtest results to a complete beginner. Using ONLY the JSON data given, write 3 short
+bullet points: how the strategy did, how it compared with simple monthly investing in the same fund, and one lesson.
+Use round numbers. Mention that past results don't guarantee future ones. Do not tell the user to buy or sell anything."""
+
+
+class StrategyRequest(BaseModel):
+    text: str = Field(min_length=5, max_length=600)
+
+
+def _optional_number(value, low, high):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return min(high, max(low, number)) if number > 0 else None
+
+
+@app.post("/strategy-test")
+def strategy_test(request: StrategyRequest):
+    allowed = [s["symbol"] for s in db.select("securities", {"select": "symbol", "order": "symbol"})]
+    messages = [
+        {"role": "system", "content": STRATEGY_PROMPT + json.dumps(allowed)},
+        {"role": "user", "content": request.text},
+    ]
+    try:
+        try:
+            reply = ai.complete(messages, temperature=0, json_mode=True)
+        except RuntimeError:
+            reply = ai.complete(messages, temperature=0)
+        rules = ai.parse_json(reply.get("content") or "")
+    except Exception as error:
+        raise HTTPException(503, f"The AI couldn't read that strategy right now: {error}")
+
+    symbol = str(rules.get("symbol") or "VOO").upper()
+    if symbol not in allowed:
+        raise HTTPException(400, f"The strategy uses {symbol}, which isn't in our list. Try one of: VOO, QQQ, VTI, BND, AAPL, MSFT...")
+    initial = _optional_number(rules.get("initial"), 0, 10_000_000) or 0.0
+    monthly = _optional_number(rules.get("monthly"), 0, 1_000_000) or 0.0
+    if initial == 0 and monthly == 0:
+        monthly = 100.0
+    dip_drop = _optional_number(rules.get("dip_drop_pct"), 1, 90)
+    dip_extra = _optional_number(rules.get("dip_extra"), 0, 1_000_000) or (2 * monthly if dip_drop else 0.0)
+    stop_loss = _optional_number(rules.get("stop_loss_pct"), 1, 90)
+    start_year = int(_optional_number(rules.get("start_year"), 2016, 2024) or 2016)
+
+    closes = [c for c in analytics.monthly_closes([symbol]).get(symbol, []) if c[0] >= f"{start_year}-01"]
+    if len(closes) < 13:
+        raise HTTPException(400, "Not enough price history to test that.")
+    strategy_rows, events = analytics.backtest(closes, initial, monthly, dip_drop, dip_extra, stop_loss)
+    simple_rows, _ = analytics.backtest(closes, initial, monthly)
+
+    def summary(rows):
+        final, put_in = rows[-1]["value"], rows[-1]["put_in"]
+        return {"final": final, "put_in": put_in, "profit": round(final - put_in, 2),
+                "profit_per_100": round(100 * (final / put_in - 1), 2) if put_in else 0.0}
+
+    result = {
+        "rules": {
+            "name": str(rules.get("name") or "My strategy")[:60],
+            "symbol": symbol,
+            "initial": initial,
+            "monthly": monthly,
+            "dip_drop_pct": dip_drop,
+            "dip_extra": dip_extra if dip_drop else None,
+            "stop_loss_pct": stop_loss,
+            "start": closes[0][0],
+            "summary": str(rules.get("summary") or "")[:300],
+            "not_supported": str(rules.get("not_supported") or "")[:300],
+        },
+        "strategy": summary(strategy_rows),
+        "simple": summary(simple_rows),
+        "series": [
+            {"month": s["month"], "strategy": s["value"], "simple": b["value"], "put_in": s["put_in"]}
+            for s, b in zip(strategy_rows, simple_rows)
+        ],
+        "events": events[:40],
+        "event_count": len(events),
+        "disclaimer": DISCLAIMER,
+    }
+    try:
+        verdict = ai.complete([
+            {"role": "system", "content": VERDICT_PROMPT},
+            {"role": "user", "content": json.dumps({k: result[k] for k in ("rules", "strategy", "simple", "event_count")})},
+        ], temperature=0.3).get("content") or ""
+    except Exception:
+        verdict = ""
+    result["verdict"] = verdict
+    return result

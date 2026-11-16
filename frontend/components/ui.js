@@ -4,20 +4,15 @@ import { useEffect, useState } from "react";
 
 // Shared building blocks for the Seedwise look.
 
-export const SERIES_COLORS = ["#3DDC97", "#5AA9F5", "#F5B95A", "#B58CF5", "#F58C8C"];
+export const SERIES_COLORS = ["var(--color-mint)", "var(--color-sky)", "var(--color-gold)", "var(--color-violet)", "var(--color-rose)"];
 
-const AVATAR_COLORS = [
-  ["#133227", "#3DDC97"],
-  ["#13263A", "#5AA9F5"],
-  ["#3A2D14", "#F5B95A"],
-  ["#2A1F3D", "#B58CF5"],
-  ["#3A1A1E", "#F58C8C"],
-  ["#103236", "#4FD1C5"],
-];
+const AVATAR_COLORS = ["var(--color-mint)", "var(--color-sky)", "var(--color-gold)", "var(--color-violet)", "var(--color-rose)", "#2CB5A8"];
 
 export function Avatar({ symbol, size = 44 }) {
   const sum = [...(symbol || "?")].reduce((a, c) => a + c.charCodeAt(0), 0);
-  const [bg, fg] = AVATAR_COLORS[sum % AVATAR_COLORS.length];
+  const tint = AVATAR_COLORS[sum % AVATAR_COLORS.length];
+  const bg = `color-mix(in srgb, ${tint} 16%, var(--color-surface))`;
+  const fg = `color-mix(in srgb, ${tint} 80%, var(--color-fg))`;
   return (
     <span
       aria-hidden="true"

@@ -31,8 +31,8 @@ export default function TickerSearch() {
 
   return (
     <div className="relative z-20">
-      <div className="flex items-center gap-3 rounded-full border border-line bg-surface px-5 py-2 shadow-[0_20px_60px_rgba(0,0,0,0.35)] transition focus-within:border-mint">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9AA7B4" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <div className="flex items-center gap-3 rounded-full border border-line bg-surface px-5 py-2 shadow-lift transition focus-within:border-mint">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-muted)" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <circle cx="11" cy="11" r="7" />
           <path d="M20 20l-3.5-3.5" />
         </svg>
@@ -49,7 +49,7 @@ export default function TickerSearch() {
       </div>
 
       {showList && (
-        <div className="absolute inset-x-0 top-full mt-2 overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_30px_80px_rgba(0,0,0,0.6)]">
+        <div className="absolute inset-x-0 top-full mt-2 overflow-hidden rounded-3xl border border-line bg-surface shadow-float">
           {results.length === 0 && !loading && <p className="px-5 py-4 text-muted">No companies match &ldquo;{query}&rdquo;.</p>}
           <ul className="max-h-80 overflow-y-auto py-2">
             {results.map((r) => (

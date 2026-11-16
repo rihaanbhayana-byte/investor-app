@@ -9,10 +9,10 @@ export default function MultiLineChart({ data, lines, format, height = "h-80" })
       <div className={`${height} w-full`}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="#1A222C" vertical={false} />
-            <XAxis dataKey="month" {...monthAxis(data)} interval={0} tick={{ fill: "#9AA7B4", fontSize: 12 }} tickLine={false} axisLine={{ stroke: "#1F2833" }} />
-            <YAxis width={70} tickFormatter={format} tick={{ fill: "#9AA7B4", fontSize: 12 }} tickLine={false} axisLine={false} />
-            <Tooltip content={<ChartTooltip format={format} labelFormat={monthName} />} cursor={{ stroke: "#2A3542" }} />
+            <CartesianGrid stroke="var(--color-grid)" vertical={false} />
+            <XAxis dataKey="month" {...monthAxis(data)} interval={0} tick={{ fill: "var(--color-muted)", fontSize: 12 }} tickLine={false} axisLine={{ stroke: "var(--color-line)" }} />
+            <YAxis width={70} tickFormatter={format} tick={{ fill: "var(--color-muted)", fontSize: 12 }} tickLine={false} axisLine={false} />
+            <Tooltip content={<ChartTooltip format={format} labelFormat={monthName} />} cursor={{ stroke: "var(--color-line-strong)" }} />
             {lines.map((line, i) => (
               <Line
                 key={line.key}

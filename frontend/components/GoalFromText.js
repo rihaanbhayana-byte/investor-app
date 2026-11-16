@@ -30,9 +30,9 @@ export default function GoalFromText({ onFill }) {
   }
 
   return (
-    <div className="rounded-3xl border border-[#23493A] bg-[radial-gradient(130%_120%_at_0%_0%,#15392B_0%,#10171F_60%)] p-6 sm:p-8">
+    <div className="rounded-3xl border border-mint-line bg-glow p-6 sm:p-8">
       <div className="flex items-center gap-2.5">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3DDC97" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-mint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" />
         </svg>
         <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">Fastest way · AI</span>
@@ -70,7 +70,7 @@ export default function GoalFromText({ onFill }) {
         {loading ? "Reading your goal..." : "Read my goal →"}
       </button>
       {summary && (
-        <p className="mt-4 rounded-xl border border-[#23493A] bg-ink/60 px-4 py-3 text-sm text-slate-700">
+        <p className="mt-4 rounded-xl border border-mint-line bg-ink/60 px-4 py-3 text-sm text-slate-700">
           <span className="font-semibold text-mint">Got it. </span>
           {summary} Check the details below and change anything that&rsquo;s off.
         </p>

@@ -60,8 +60,8 @@ export default function LoginPage() {
   const signup = mode === "signup";
 
   return (
-    <div className="mx-auto grid max-w-5xl overflow-hidden rounded-[32px] border border-line bg-surface shadow-[0_40px_120px_rgba(0,0,0,0.45)] md:grid-cols-2">
-      <div className="relative hidden flex-col justify-between gap-10 overflow-hidden bg-[radial-gradient(120%_120%_at_0%_0%,#17402F_0%,#0E1A15_55%,#0A0E13_100%)] p-10 md:flex">
+    <div className="mx-auto grid max-w-5xl overflow-hidden rounded-[32px] border border-line bg-surface shadow-float md:grid-cols-2">
+      <div className="relative hidden flex-col justify-between gap-10 overflow-hidden bg-glow-hero p-10 md:flex">
         <div className="flex items-center gap-2.5">
           <Logo />
           <span className="font-display text-xl font-bold">Seedwise</span>
@@ -83,12 +83,12 @@ export default function LoginPage() {
             ))}
           </ul>
         </div>
-        <div className="rounded-2xl border border-[#23493A] bg-ink/60 p-5 backdrop-blur">
+        <div className="rounded-2xl border border-mint-line bg-ink/60 p-5 backdrop-blur">
           <div className="text-xs text-muted">Balanced Builder · past average</div>
           <div className="mt-1 flex items-end justify-between gap-4">
             <span className="font-display text-3xl font-bold text-mint">9.1% / yr</span>
             <svg width="120" height="40" viewBox="0 0 120 40" aria-hidden="true">
-              <path d="M0 36 C 30 32, 50 26, 70 18 S 105 6, 120 3" stroke="#3DDC97" strokeWidth="2.5" fill="none" />
+              <path d="M0 36 C 30 32, 50 26, 70 18 S 105 6, 120 3" stroke="var(--color-mint)" strokeWidth="2.5" fill="none" />
             </svg>
           </div>
           <div className="mt-1 text-xs text-slate-500">Based on real prices since 2016. Not a promise of future returns.</div>

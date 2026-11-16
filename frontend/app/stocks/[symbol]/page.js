@@ -147,17 +147,17 @@ export default function StockPage() {
             <div className="mt-6 h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartYears} margin={{ top: 10, right: 8, left: 0, bottom: 0 }} barGap={4}>
-                  <CartesianGrid stroke="#1A222C" vertical={false} />
-                  <XAxis dataKey="year" tick={{ fill: "#9AA7B4", fontSize: 12 }} tickLine={false} axisLine={{ stroke: "#1F2833" }} />
-                  <YAxis tickFormatter={bigMoney} width={70} tick={{ fill: "#9AA7B4", fontSize: 12 }} tickLine={false} axisLine={false} />
-                  <Tooltip content={<ChartTooltip format={bigMoney} />} cursor={{ fill: "#ffffff08" }} />
-                  <Bar dataKey="revenue" name="Revenue" fill="#5AA9F5" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="profit" name="Profit" fill="#3DDC97" radius={[6, 6, 0, 0]} />
+                  <CartesianGrid stroke="var(--color-grid)" vertical={false} />
+                  <XAxis dataKey="year" tick={{ fill: "var(--color-muted)", fontSize: 12 }} tickLine={false} axisLine={{ stroke: "var(--color-line)" }} />
+                  <YAxis tickFormatter={bigMoney} width={70} tick={{ fill: "var(--color-muted)", fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <Tooltip content={<ChartTooltip format={bigMoney} />} cursor={{ fill: "color-mix(in srgb, var(--color-fg) 4%, transparent)" }} />
+                  <Bar dataKey="revenue" name="Revenue" fill="var(--color-sky)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="profit" name="Profit" fill="var(--color-mint)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
             <div className="mt-3 flex gap-5 text-[13px] text-muted">
-              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-[#5AA9F5]" />Revenue (money coming in)</span>
+              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-sky" />Revenue (money coming in)</span>
               <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-mint" />Profit (what&rsquo;s left)</span>
             </div>
             <div className="mt-6 overflow-x-auto rounded-2xl border border-line">

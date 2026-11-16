@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import GrowthChart from "@/components/GrowthChart";
 import { LEVEL_LABELS, money, percent } from "@/lib/format";
 
-const COLORS = ["#3DDC97", "#5AA9F5", "#F5B95A", "#B58CF5", "#F58C8C"];
+const COLORS = ["var(--color-mint)", "var(--color-sky)", "var(--color-gold)", "var(--color-violet)", "var(--color-rose)"];
 
 function useCountUp(target, ms = 1400) {
   const [value, setValue] = useState(0);
@@ -72,7 +72,7 @@ function PersonalityIcon({ level }) {
     aggressive: <><path d="M4 20L20 4" /><path d="M9 4h11v11" /></>,
   };
   return (
-    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#3DDC97" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--color-mint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {paths[level] || paths.moderate}
     </svg>
   );
@@ -101,7 +101,7 @@ export default function PlanResults({ result, goal, years, saved, onStartOver })
       <style>{`@keyframes sw-rise { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: none } }`}</style>
 
       {saved === "saved" && (
-        <p className="rounded-2xl border border-[#23493A] bg-green-50 px-5 py-3 text-sm text-slate-800">
+        <p className="rounded-2xl border border-mint-line bg-green-50 px-5 py-3 text-sm text-slate-800">
           <span className="font-semibold text-mint">Plan saved.</span> Find it any time under My plans.
         </p>
       )}
@@ -113,7 +113,7 @@ export default function PlanResults({ result, goal, years, saved, onStartOver })
 
       <section className="flex flex-wrap gap-6">
         <div
-          className="flex min-w-0 flex-[1_1_320px] flex-col gap-4 rounded-3xl border border-[#23493A] bg-[radial-gradient(130%_120%_at_0%_0%,#17402F_0%,#10171F_60%)] p-8 motion-safe:animate-[sw-rise_0.6s_ease-out_both]"
+          className="flex min-w-0 flex-[1_1_320px] flex-col gap-4 rounded-3xl border border-mint-line bg-glow p-8 motion-safe:animate-[sw-rise_0.6s_ease-out_both]"
         >
           <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">Your investor personality</div>
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-mint/15">

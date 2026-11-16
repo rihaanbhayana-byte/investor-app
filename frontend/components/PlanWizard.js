@@ -195,7 +195,7 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <style>{KEYFRAMES}</style>
-      <div className="relative flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-line bg-surface shadow-[0_40px_120px_rgba(0,0,0,0.6)] motion-safe:animate-[sw-pop_0.4s_cubic-bezier(.2,.9,.3,1.15)_both]">
+      <div className="relative flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-line bg-surface shadow-float motion-safe:animate-[sw-pop_0.4s_cubic-bezier(.2,.9,.3,1.15)_both]">
         <div className="flex items-center gap-4 px-5 pt-5 sm:px-8">
           <button onClick={back} aria-label="Back" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-slate-100 hover:text-fg">
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" {...STROKE}><path d="M15 18l-6-6 6-6" /></svg>
@@ -236,7 +236,7 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
                   ))}
                 </div>
                 {aiSummary ? (
-                  <div className="mt-6 flex items-start gap-3 rounded-2xl border border-[#23493A] bg-green-50 p-4 motion-safe:animate-[sw-pulse_0.5s_ease-out]">
+                  <div className="mt-6 flex items-start gap-3 rounded-2xl border border-mint-line bg-green-50 p-4 motion-safe:animate-[sw-pulse_0.5s_ease-out]">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-mint text-mint-ink">
                       <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" {...STROKE} strokeWidth={3}><path d="M5 12l5 5 9-10" /></svg>
                     </span>
@@ -301,7 +301,7 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
                   <SliderField id="monthly" label="Add each month" value={monthly} setValue={setMonthly} min={0} max={5000} step={10} prefix="$" />
                   <SliderField id="years" label="For how long" value={years} setValue={(v) => setYears(Math.min(50, Math.max(1, v)))} min={1} max={40} step={1} suffix={years === 1 ? "year" : "years"} />
                 </div>
-                <div className="mt-5 rounded-2xl border border-[#23493A] bg-green-50 px-5 py-4 text-slate-800">
+                <div className="mt-5 rounded-2xl border border-mint-line bg-green-50 px-5 py-4 text-slate-800">
                   You&rsquo;ll put in <span className="font-semibold text-mint">{money(initialAmount + monthly * 12 * years)}</span> over {years} {years === 1 ? "year" : "years"}. Next, let&rsquo;s see how it could grow.
                 </div>
                 <button onClick={() => go(1)} className="mt-6 w-full rounded-full bg-mint px-6 py-4 text-base font-semibold text-mint-ink transition hover:bg-mint-light">

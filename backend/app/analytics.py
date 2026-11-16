@@ -93,3 +93,47 @@ def required_monthly(returns, initial, target, years, paths=5000, seed=42):
         "monthly_for_90_percent": round(float(np.percentile(needed, 90)), 2),
         "monthly_without_growth": round(max(0.0, (target - initial) / months), 2),
     }
+
+
+# ---------------------------------------------------------------------
+# Strategy lab: replay a simple rule-based strategy month by month
+# ---------------------------------------------------------------------
+def backtest(closes, initial, monthly, dip_drop=None, dip_extra=0.0, stop_loss=None):
+    """closes = [("YYYY-MM", price), ...]. Returns month-by-month values and the events that fired.
+
+    Rules:
+    - invest `initial` in the first month and `monthly` every month
+    - dip_drop: if the price is at least dip_drop % below its highest price of the last 12 months, invest dip_extra more
+    - stop_loss: if the price falls stop_loss % below its peak since buying, sell everything to cash.
+      Keep adding monthly money to cash, and buy back in once the price climbs back above the sale price.
+    """
+    shares = cash = put_in = 0.0
+    peak = None
+    out_of_market = False
+    sale_price = None
+    rows, events = [], []
+    for i, (month, price) in enumerate(closes):
+        add = (initial if i == 0 else 0.0) + monthly
+        high_12m = max(p for _, p in closes[max(0, i - 12): i + 1])
+        if dip_drop and i > 0 and price <= high_12m * (1 - dip_drop / 100):
+            add += dip_extra
+            if dip_extra:
+                events.append({"month": month, "type": "dip",
+                               "text": f"Price was {round((1 - price / high_12m) * 100)}% below its 12-month high, so ${dip_extra:,.0f} extra went in."})
+        put_in += add
+        if out_of_market:
+            cash += add
+            if price >= sale_price:
+                shares, cash = cash / price, 0.0
+                out_of_market, peak = False, price
+                events.append({"month": month, "type": "buy_back", "text": "Price climbed back above the sale price, so everything was invested again."})
+        else:
+            shares += add / price
+            peak = price if peak is None else max(peak, price)
+            if stop_loss and price <= peak * (1 - stop_loss / 100):
+                cash, shares = cash + shares * price, 0.0
+                out_of_market, sale_price = True, price
+                events.append({"month": month, "type": "stop_loss",
+                               "text": f"Price fell {round((1 - price / peak) * 100)}% from its peak, so everything was sold to cash."})
+        rows.append({"month": month, "value": round(shares * price + cash, 2), "put_in": round(put_in, 2)})
+    return rows, events

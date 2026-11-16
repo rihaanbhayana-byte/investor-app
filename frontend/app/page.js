@@ -13,6 +13,27 @@ const STEPS = [
 
 const FEATURES = [
   {
+    href: "/practice",
+    title: "Practice portfolio",
+    text: "Get $10,000 of play money and invest it at real prices. Learn by doing, with zero risk.",
+    demo: <>Can you beat the S&amp;P 500? <span className="font-semibold text-mint">Start practising →</span></>,
+    icon: <><rect x="3" y="6" width="18" height="14" rx="2" /><path d="M16 13h2" /><path d="M3 10h18" /></>,
+  },
+  {
+    href: "/tools?tab=crash",
+    title: "Crash test",
+    text: "Replay the 2020 COVID crash on your plan, month by month. Would you have panicked?",
+    demo: <>Hold, sell or buy more? <span className="font-semibold text-mint">You decide.</span></>,
+    icon: <><path d="M3 7l6 6 4-4 8 8" /><path d="M21 11v6h-6" /></>,
+  },
+  {
+    href: "/tools?tab=strategy",
+    title: "AI strategy lab",
+    text: "Describe a strategy in plain English. The AI turns it into rules and tests it on real prices since 2016.",
+    demo: <>&ldquo;$200 a month, extra when it drops 10%&rdquo;</>,
+    icon: <><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3" /></>,
+  },
+  {
     href: "/coach",
     title: "AI Coach",
     text: "Ask anything: “What’s an ETF?” “Why is my plan 35% bonds?” It looks up real numbers before it answers.",
@@ -27,22 +48,16 @@ const FEATURES = [
     icon: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
   },
   {
-    href: "/stocks",
-    title: "Explore any US stock",
-    text: "Search thousands of companies. Charts, 10 years of financials and a plain-English AI summary.",
-    icon: <><path d="M3 3v18h18" /><path d="M7 15l4-4 3 3 5-6" /></>,
-  },
-  {
     href: "/learn",
     title: "Learn in 7 lessons",
-    text: "Bite-sized lessons from “what is a stock” to opening your first account.",
+    text: "Bite-sized lessons with quick quizzes, from “what is a stock” to opening your first account.",
     icon: <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z" />,
   },
 ];
 
 function Icon({ children }) {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3DDC97" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-mint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {children}
     </svg>
   );
@@ -83,8 +98,8 @@ export default function Home() {
             <span className="h-2 w-2 rounded-full bg-mint" />
             AI-powered · Real US market data · Free
           </div>
-          <h1 className="mt-6 font-display text-5xl font-bold leading-[1.03] tracking-tight sm:text-6xl">
-            See where your money could be in <span className="text-mint">10 years.</span>
+          <h1 className="mt-6 font-display text-[clamp(2.75rem,6.2vw,4.6rem)] font-bold leading-[1.0] tracking-[-0.04em]">
+            See where your money could be in <span className="text-gradient">10 years.</span>
             <br />
             In 2 minutes.
           </h1>
@@ -103,7 +118,10 @@ export default function Home() {
           <p className="mt-5 text-[13px] text-slate-500">No credit card. Educational only, not financial advice.</p>
         </div>
 
-        <div className="min-w-0 flex-[1_1_440px] rounded-3xl border border-line bg-gradient-to-b from-[#121A23] to-[#0E141B] p-7 shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
+        <div className="relative min-w-0 flex-[1_1_440px]">
+          <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-12 h-56 w-56 rounded-full bg-mint/20 blur-3xl motion-safe:animate-float" />
+          <div aria-hidden="true" className="pointer-events-none absolute -bottom-10 -left-8 h-48 w-48 rounded-full bg-sky/15 blur-3xl motion-safe:animate-float [animation-delay:-3s]" />
+          <div className="relative rounded-3xl border border-line bg-gradient-to-b from-surface to-surface-2 p-7 shadow-float">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-[13px] text-muted">Balanced Builder · Example plan</div>
@@ -113,21 +131,22 @@ export default function Home() {
             <div className="rounded-full bg-mint/10 px-3 py-1.5 text-[13px] font-semibold text-mint">9.1% avg / yr</div>
           </div>
           <svg viewBox="0 0 440 200" className="mt-5 h-auto w-full" role="img" aria-label="Example projection: a range of outcomes widening over time, with the likely path rising above the money put in">
-            <path d="M0 170 C 120 150, 260 110, 440 40 L 440 130 C 260 150, 120 165, 0 170 Z" fill="rgba(61,220,151,0.14)" />
-            <path d="M0 170 C 120 158, 260 132, 440 86" stroke="#3DDC97" strokeWidth="3" fill="none" />
-            <path d="M0 170 L 440 128" stroke="#5B6876" strokeWidth="2" strokeDasharray="6 6" fill="none" />
+            <path d="M0 170 C 120 150, 260 110, 440 40 L 440 130 C 260 150, 120 165, 0 170 Z" fill="color-mix(in srgb, var(--color-mint) 16%, transparent)" />
+            <path d="M0 170 C 120 158, 260 132, 440 86" stroke="var(--color-mint)" strokeWidth="3" fill="none" />
+            <path d="M0 170 L 440 128" stroke="var(--color-dim)" strokeWidth="2" strokeDasharray="6 6" fill="none" />
           </svg>
           <div className="mt-2 flex flex-wrap gap-5 text-[13px] text-muted">
             <span className="flex items-center gap-2"><span className="h-[3px] w-4 bg-mint" />Likely path</span>
             <span className="flex items-center gap-2"><span className="h-2.5 w-4 rounded-sm bg-mint/25" />Range of outcomes</span>
-            <span className="flex items-center gap-2"><span className="w-4 border-t-2 border-dashed border-[#5B6876]" />Money you put in</span>
+            <span className="flex items-center gap-2"><span className="w-4 border-t-2 border-dashed border-dim" />Money you put in</span>
           </div>
+        </div>
         </div>
       </section>
 
       {/* LIVE TICKER */}
       {tickers.length > 0 && (
-        <section aria-label="Market prices and 1-year returns" className="-mt-10 overflow-hidden rounded-2xl border border-line bg-[#0D1218] py-4">
+        <section aria-label="Market prices and 1-year returns" className="-mt-10 overflow-hidden rounded-2xl border border-line bg-surface-2 py-4">
           <div className="flex w-max gap-10 px-6 animate-[seedwise-marquee_70s_linear_infinite] hover:[animation-play-state:paused] motion-reduce:animate-none">
             {[...tickers, ...tickers].map((s, i) => (
               <TickerItem key={i} s={s} />
@@ -138,13 +157,13 @@ export default function Home() {
       )}
 
       {/* HOW IT WORKS */}
-      <section>
+      <section className="reveal">
         <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">How it works</div>
         <h2 className="mt-3 font-display text-4xl font-bold tracking-tight">From “I want to start investing” to a real plan.</h2>
         <div className="mt-10 grid gap-5 md:grid-cols-3">
           {STEPS.map((s) => (
-            <div key={s.n} className="rounded-2xl border border-line bg-surface p-7">
-              <div className="font-display text-[15px] font-semibold text-mint">{s.n}</div>
+            <div key={s.n} className="rounded-3xl border border-line bg-surface p-7 transition hover:-translate-y-1 hover:border-mint/40">
+              <div className="text-gradient font-display text-3xl font-bold">{s.n}</div>
               <h3 className="mt-3.5 text-xl font-semibold">{s.title}</h3>
               <p className="mt-2.5 leading-relaxed text-muted">{s.text}</p>
             </div>
@@ -153,16 +172,16 @@ export default function Home() {
       </section>
 
       {/* FEATURES */}
-      <section>
+      <section className="reveal">
         <h2 className="font-display text-4xl font-bold tracking-tight">Tools that make investing click.</h2>
-        <div className="mt-10 grid gap-5 md:grid-cols-2">
+        <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f) => (
             <Link
               key={f.href}
               href={f.href}
               className="group flex flex-col gap-3.5 rounded-2xl border border-line bg-surface p-8 transition hover:-translate-y-1 hover:border-mint/40"
             >
-              <Icon>{f.icon}</Icon>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-mint/12 transition duration-300 group-hover:scale-110 group-hover:bg-mint/20"><Icon>{f.icon}</Icon></span>
               <h3 className="text-[22px] font-semibold">{f.title}</h3>
               <p className="leading-relaxed text-muted">{f.text}</p>
               {f.demo && (
@@ -175,7 +194,7 @@ export default function Home() {
       </section>
 
       {/* FINAL CTA */}
-      <section className="flex flex-wrap items-center justify-between gap-6 rounded-[28px] border border-[#1F3A2F] bg-[radial-gradient(120%_140%_at_0%_0%,#133227_0%,#0F161E_55%)] p-10 sm:p-14">
+      <section className="reveal flex flex-wrap items-center justify-between gap-6 rounded-[28px] border border-mint-line bg-glow p-10 sm:p-14">
         <div className="min-w-0 flex-[1_1_400px]">
           <h2 className="font-display text-4xl font-bold tracking-tight">Your first plan is 2 minutes away.</h2>
           <p className="mt-2.5 text-lg text-muted">Free, private and built for complete beginners.</p>

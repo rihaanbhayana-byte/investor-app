@@ -1,3 +1,5 @@
+import { supabase } from "@/lib/supabase";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 async function request(path, options = {}) {
@@ -15,6 +17,13 @@ async function request(path, options = {}) {
 
 const post = (path, body) => request(path, { method: "POST", body: JSON.stringify(body) });
 
+// Sends the user's login token so the backend knows whose practice portfolio it is.
+async function withLogin(path, options = {}) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return request(path, { ...options, headers: token ? { Authorization: `Bearer ${token}` } : {} });
+}
+
 export const api = {
   questions: () => request("/questions"),
   riskProfile: (body) => post("/risk-profile", body),
@@ -30,4 +39,9 @@ export const api = {
   search: (q) => request(`/search?q=${encodeURIComponent(q)}`),
   liveStock: (symbol) => request(`/live-stock/${symbol}`),
   compare: (symbols) => request(`/compare?symbols=${symbols.join(",")}`),
+  practice: () => withLogin("/practice"),
+  practiceTrade: (body) => withLogin("/practice/trade", { method: "POST", body: JSON.stringify(body) }),
+  practiceReset: () => withLogin("/practice/reset", { method: "POST" }),
+  crashTest: (event, level, amount) => request(`/crash-test?event=${event}&risk_level=${level}&amount=${amount}`),
+  strategyTest: (text) => post("/strategy-test", { text }),
 };

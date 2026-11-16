@@ -7,9 +7,9 @@ import { money } from "@/lib/format";
 import { RISE } from "@/components/ui";
 
 const PERSONALITY = {
-  conservative: { name: "Steady Saver", color: "#5AA9F5", bg: "bg-[#13263A]" },
-  moderate: { name: "Balanced Builder", color: "#3DDC97", bg: "bg-[#133227]" },
-  aggressive: { name: "Growth Seeker", color: "#F5B95A", bg: "bg-[#3A2D14]" },
+  conservative: { name: "Steady Saver", color: "var(--color-sky)", bg: "bg-sky-soft" },
+  moderate: { name: "Balanced Builder", color: "var(--color-mint)", bg: "bg-mint-soft" },
+  aggressive: { name: "Growth Seeker", color: "var(--color-gold)", bg: "bg-gold-soft" },
 };
 
 const GOAL_ICONS = {
@@ -48,7 +48,7 @@ function PlanCard({ plan, onDelete, index }) {
   return (
     <article
       style={{ animationDelay: `${index * 60}ms` }}
-      className="group flex flex-col gap-5 rounded-3xl border border-line bg-surface p-6 transition duration-200 hover:-translate-y-1 hover:border-slate-300 hover:shadow-[0_24px_60px_rgba(0,0,0,0.4)] motion-safe:animate-[sw-rise_0.4s_ease-out_both]"
+      className="group flex flex-col gap-5 rounded-3xl border border-line bg-surface p-6 transition duration-200 hover:-translate-y-1 hover:border-slate-300 hover:shadow-lift motion-safe:animate-[sw-rise_0.4s_ease-out_both]"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-4">
@@ -60,7 +60,7 @@ function PlanCard({ plan, onDelete, index }) {
             <p className="text-sm text-muted">Saved {new Date(plan.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}</p>
           </div>
         </div>
-        <span className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ color: p.color, borderColor: `${p.color}55` }}>
+        <span className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ color: p.color, borderColor: `color-mix(in srgb, ${p.color} 40%, transparent)` }}>
           {p.name}
         </span>
       </div>

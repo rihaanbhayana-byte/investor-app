@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import MultiLineChart from "@/components/MultiLineChart";
+import CrashTest from "@/components/CrashTest";
+import StrategyLab from "@/components/StrategyLab";
 import { api } from "@/lib/api";
 import { money, percent } from "@/lib/format";
 import { Avatar, PageHeader, RISE, SERIES_COLORS, Segmented, monthName, useCountUp } from "@/components/ui";
@@ -11,6 +13,8 @@ const STROKE = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLin
 
 const TABS = [
   { id: "time", title: "Time Machine", text: "What if you’d invested back then?", icon: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></> },
+  { id: "crash", title: "Crash test", text: "Would you survive a crash?", icon: <><path d="M3 7l6 6 4-4 8 8" /><path d="M21 11v6h-6" /></> },
+  { id: "strategy", title: "Strategy lab", text: "Test an idea with AI.", icon: <path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3" /> },
   { id: "goal", title: "Goal calculator", text: "How much to save each month?", icon: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" /></> },
   { id: "compare", title: "Compare stocks", text: "Race up to 4 side by side.", icon: <><path d="M3 3v18h18" /><path d="M7 15l4-4 3 3 5-6" /></> },
 ];
@@ -76,9 +80,9 @@ export default function ToolsPage() {
   return (
     <div className="flex flex-col gap-8">
       <style>{RISE}</style>
-      <PageHeader eyebrow="Calculators" title="Play with real market data." subtitle="Every number here comes from real US prices since 2016." />
+      <PageHeader eyebrow="Tools" title="Play with real market data." subtitle="Every number here comes from real US prices since 2016." />
 
-      <div role="tablist" aria-label="Calculators" className="grid gap-4 md:grid-cols-3">
+      <div role="tablist" aria-label="Tools" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {TABS.map((t) => {
           const on = tab === t.id;
           return (
@@ -87,8 +91,8 @@ export default function ToolsPage() {
               role="tab"
               aria-selected={on}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-4 rounded-3xl border-2 p-5 text-left transition ${
-                on ? "border-mint bg-[radial-gradient(130%_120%_at_0%_0%,#15392B_0%,#10171F_65%)]" : "border-line bg-surface hover:-translate-y-0.5 hover:border-slate-300"
+              className={`flex flex-col items-start gap-3 rounded-3xl border-2 p-5 text-left transition ${
+                on ? "border-mint bg-glow" : "border-line bg-surface hover:-translate-y-0.5 hover:border-slate-300"
               }`}
             >
               <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${on ? "bg-mint text-mint-ink" : "bg-mint/15 text-mint"}`}>
@@ -107,6 +111,8 @@ export default function ToolsPage() {
         {tab === "time" && <TimeMachine stocks={stocks} startSymbol={startSymbol} />}
         {tab === "goal" && <GoalCalculator />}
         {tab === "compare" && <Compare stocks={stocks} />}
+        {tab === "crash" && <CrashTest />}
+        {tab === "strategy" && <StrategyLab />}
       </div>
     </div>
   );
@@ -193,7 +199,7 @@ function TimeMachine({ stocks, startSymbol }) {
 
       {result && (
         <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
-          <div className={`${card} flex flex-col gap-5 border-[#23493A] bg-[radial-gradient(130%_120%_at_0%_0%,#17402F_0%,#10171F_60%)]`}>
+          <div className={`${card} flex flex-col gap-5 border-mint-line bg-glow`}>
             <div className="flex items-center gap-3">
               <Avatar symbol={result.symbol} />
               <div>
@@ -215,8 +221,8 @@ function TimeMachine({ stocks, startSymbol }) {
               <div className="flex flex-col gap-3 rounded-2xl border border-line bg-ink p-4">
                 <div className="text-sm font-semibold">vs. the whole market (S&amp;P 500)</div>
                 {[
-                  [result.symbol, result.final_value, "#3DDC97"],
-                  ["S&P 500", result.sp500_final_value, "#5B6876"],
+                  [result.symbol, result.final_value, "var(--color-mint)"],
+                  ["S&P 500", result.sp500_final_value, "var(--color-dim)"],
                 ].map(([label, value, color]) => (
                   <div key={label}>
                     <div className="flex justify-between text-sm">
@@ -238,8 +244,8 @@ function TimeMachine({ stocks, startSymbol }) {
               <MultiLineChart
                 data={result.series}
                 lines={[
-                  { key: "value", name: result.symbol, color: "#3DDC97" },
-                  { key: "sp500_value", name: "S&P 500 (VOO)", color: "#5B6876", dashed: true },
+                  { key: "value", name: result.symbol, color: "var(--color-mint)" },
+                  { key: "sp500_value", name: "S&P 500 (VOO)", color: "var(--color-dim)", dashed: true },
                 ]}
                 format={(v) => money(v)}
               />
@@ -302,7 +308,7 @@ function GoalCalculator() {
         </div>
       </div>
 
-      <div className={`${card} flex flex-col gap-5 border-[#23493A] bg-[radial-gradient(130%_120%_at_0%_0%,#17402F_0%,#10171F_60%)]`} aria-live="polite">
+      <div className={`${card} flex flex-col gap-5 border-mint-line bg-glow`} aria-live="polite">
         <div className="flex items-center justify-between gap-3">
           <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">{result?.portfolio_name || "Your answer"}</span>
           {loading && <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-mint" aria-label="Calculating" />}
@@ -324,8 +330,8 @@ function GoalCalculator() {
             </div>
             <div className="flex flex-col gap-3 rounded-2xl border border-line bg-ink p-4">
               {[
-                ["Investing", monthly, "#3DDC97"],
-                ["Just saving cash", cash, "#5B6876"],
+                ["Investing", monthly, "var(--color-mint)"],
+                ["Just saving cash", cash, "var(--color-dim)"],
               ].map(([label, value, color]) => (
                 <div key={label}>
                   <div className="flex justify-between text-sm">

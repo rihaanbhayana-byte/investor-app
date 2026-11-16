@@ -47,9 +47,9 @@ function ChoiceCard({ onClick, featured, icon, title, text, cta }) {
   return (
     <button
       onClick={onClick}
-      className={`group relative flex flex-col gap-4 rounded-3xl border p-8 text-left transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.45)] ${
+      className={`group relative flex flex-col gap-4 rounded-3xl border p-8 text-left transition duration-300 hover:-translate-y-1.5 hover:shadow-float ${
         featured
-          ? "border-[#23493A] bg-[radial-gradient(130%_120%_at_0%_0%,#17402F_0%,#10171F_60%)] hover:border-mint/60"
+          ? "border-mint-line bg-glow hover:border-mint/60"
           : "border-line bg-surface hover:border-slate-300"
       }`}
     >

@@ -27,10 +27,10 @@ function TooltipBox({ active, payload, label }) {
   return (
     <div className="rounded-xl border border-line bg-ink/95 px-4 py-3 text-sm shadow-2xl">
       <div className="mb-1.5 font-semibold">Year {label}</div>
-      <Row color="#7BEBB9" label="Good case" value={d.high} />
-      <Row color="#3DDC97" label="Likely" value={d.median} />
-      <Row color="#2E6B53" label="Bad case" value={d.low} />
-      <Row color="#5B6876" label="You put in" value={d.contributed} dashed />
+      <Row color="var(--color-mint-light)" label="Good case" value={d.high} />
+      <Row color="var(--color-mint)" label="Likely" value={d.median} />
+      <Row color="var(--color-mint-line)" label="Bad case" value={d.low} />
+      <Row color="var(--color-dim)" label="You put in" value={d.contributed} dashed />
     </div>
   );
 }
@@ -45,30 +45,30 @@ export default function GrowthChart({ data }) {
           <ComposedChart data={rows} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="sw-band" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3DDC97" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="#3DDC97" stopOpacity={0.06} />
+                <stop offset="0%" stopColor="var(--color-mint)" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="var(--color-mint)" stopOpacity={0.06} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="#1A222C" vertical={false} />
+            <CartesianGrid stroke="var(--color-grid)" vertical={false} />
             <XAxis
               dataKey="year"
               tickFormatter={(y) => `Yr ${y}`}
-              tick={{ fill: "#9AA7B4", fontSize: 12 }}
+              tick={{ fill: "var(--color-muted)", fontSize: 12 }}
               tickLine={false}
-              axisLine={{ stroke: "#1F2833" }}
+              axisLine={{ stroke: "var(--color-line)" }}
             />
-            <YAxis tickFormatter={axisMoney} width={56} tick={{ fill: "#9AA7B4", fontSize: 12 }} tickLine={false} axisLine={false} />
-            <Tooltip content={<TooltipBox />} cursor={{ stroke: "#2A3542" }} />
+            <YAxis tickFormatter={axisMoney} width={56} tick={{ fill: "var(--color-muted)", fontSize: 12 }} tickLine={false} axisLine={false} />
+            <Tooltip content={<TooltipBox />} cursor={{ stroke: "var(--color-line-strong)" }} />
             <Area type="monotone" dataKey="range" stroke="none" fill="url(#sw-band)" animationDuration={1400} />
-            <Line type="monotone" dataKey="contributed" stroke="#5B6876" strokeWidth={2} strokeDasharray="6 6" dot={false} animationDuration={1400} />
-            <Line type="monotone" dataKey="median" stroke="#3DDC97" strokeWidth={3} dot={false} activeDot={{ r: 5 }} animationDuration={1800} />
+            <Line type="monotone" dataKey="contributed" stroke="var(--color-dim)" strokeWidth={2} strokeDasharray="6 6" dot={false} animationDuration={1400} />
+            <Line type="monotone" dataKey="median" stroke="var(--color-mint)" strokeWidth={3} dot={false} activeDot={{ r: 5 }} animationDuration={1800} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
       <div className="mt-3 flex flex-wrap gap-5 text-[13px] text-muted">
         <span className="flex items-center gap-2"><span className="h-[3px] w-4 bg-mint" />Likely path</span>
         <span className="flex items-center gap-2"><span className="h-2.5 w-4 rounded-sm bg-mint/25" />Range (bad case to good case)</span>
-        <span className="flex items-center gap-2"><span className="w-4 border-t-2 border-dashed border-[#5B6876]" />Money you put in</span>
+        <span className="flex items-center gap-2"><span className="w-4 border-t-2 border-dashed border-dim" />Money you put in</span>
       </div>
     </div>
   );

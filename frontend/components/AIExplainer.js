@@ -22,7 +22,7 @@ export default function AIExplainer({ symbol }) {
   }
 
   return (
-    <section className="rounded-3xl border border-[#23493A] bg-[radial-gradient(130%_120%_at_0%_0%,#15392B_0%,#10171F_60%)] p-7">
+    <section className="rounded-3xl border border-mint-line bg-glow p-7">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-mint/15 text-mint">
