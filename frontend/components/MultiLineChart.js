@@ -1,24 +1,46 @@
 "use client";
 
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartTooltip, SERIES_COLORS, monthName, monthAxis } from "@/components/ui";
 
-const COLORS = ["#2563eb", "#059669", "#f59e0b", "#db2777"];
-
-export default function MultiLineChart({ data, lines, format }) {
+export default function MultiLineChart({ data, lines, format, height = "h-80" }) {
   return (
-    <div className="h-80 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="month" minTickGap={40} />
-          <YAxis width={70} tickFormatter={format} />
-          <Tooltip formatter={(value) => format(value)} />
-          <Legend />
-          {lines.map((line, i) => (
-            <Line key={line.key} type="monotone" dataKey={line.key} name={line.name} stroke={COLORS[i % COLORS.length]} strokeWidth={2} dot={false} />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+    <div>
+      <div className={`${height} w-full`}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="#1A222C" vertical={false} />
+            <XAxis dataKey="month" {...monthAxis(data)} interval={0} tick={{ fill: "#9AA7B4", fontSize: 12 }} tickLine={false} axisLine={{ stroke: "#1F2833" }} />
+            <YAxis width={70} tickFormatter={format} tick={{ fill: "#9AA7B4", fontSize: 12 }} tickLine={false} axisLine={false} />
+            <Tooltip content={<ChartTooltip format={format} labelFormat={monthName} />} cursor={{ stroke: "#2A3542" }} />
+            {lines.map((line, i) => (
+              <Line
+                key={line.key}
+                type="monotone"
+                dataKey={line.key}
+                name={line.name}
+                stroke={line.color || SERIES_COLORS[i % SERIES_COLORS.length]}
+                strokeWidth={line.dashed ? 2 : 2.5}
+                strokeDasharray={line.dashed ? "6 6" : undefined}
+                dot={false}
+                activeDot={{ r: 4 }}
+                animationDuration={1400}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-5 text-[13px] text-muted">
+        {lines.map((line, i) => (
+          <span key={line.key} className="flex items-center gap-2">
+            <span
+              className={line.dashed ? "w-4 border-t-2 border-dashed" : "h-[3px] w-4"}
+              style={line.dashed ? { borderColor: line.color } : { background: line.color || SERIES_COLORS[i % SERIES_COLORS.length] }}
+            />
+            {line.name}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

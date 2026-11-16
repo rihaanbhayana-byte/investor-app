@@ -4,12 +4,62 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import TickerSearch from "@/components/TickerSearch";
+import { Avatar, PageHeader, ReturnPill, RISE, Segmented, Select } from "@/components/ui";
 import { percent, price } from "@/lib/format";
+
+const SORTS = [
+  ["az", "A to Z"],
+  ["best", "Best 1-year return"],
+  ["worst", "Worst 1-year return"],
+  ["price", "Highest price"],
+];
+
+function sortList(list, by) {
+  const copy = [...list];
+  if (by === "best") return copy.sort((a, b) => (b.return_1y ?? -9) - (a.return_1y ?? -9));
+  if (by === "worst") return copy.sort((a, b) => (a.return_1y ?? 9) - (b.return_1y ?? 9));
+  if (by === "price") return copy.sort((a, b) => (b.latest_price ?? 0) - (a.latest_price ?? 0));
+  return copy.sort((a, b) => a.symbol.localeCompare(b.symbol));
+}
+
+function StockCard({ s, index }) {
+  return (
+    <Link
+      href={`/stocks/${s.symbol}`}
+      style={{ animationDelay: `${Math.min(index, 20) * 25}ms` }}
+      className="group flex flex-col gap-4 rounded-3xl border border-line bg-surface p-5 transition duration-200 hover:-translate-y-1 hover:border-mint/40 hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] motion-safe:animate-[sw-rise_0.4s_ease-out_both]"
+    >
+      <div className="flex items-center gap-3">
+        <Avatar symbol={s.symbol} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">{s.symbol}</span>
+            {s.asset_type === "etf" && <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold text-mint">FUND</span>}
+          </div>
+          <div className="truncate text-sm text-muted">{s.name}</div>
+        </div>
+      </div>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <div className="text-xs text-muted">Price</div>
+          <div className="font-display text-2xl font-bold tabular-nums">{price(s.latest_price)}</div>
+        </div>
+        <div className="text-right">
+          <div className="mb-1 text-xs text-muted">1 year</div>
+          <ReturnPill value={s.return_1y}>{percent(Math.abs(s.return_1y ?? 0))}</ReturnPill>
+        </div>
+      </div>
+      <div className="text-xs text-slate-500">{s.sector}</div>
+    </Link>
+  );
+}
 
 export default function StocksPage() {
   const [stocks, setStocks] = useState([]);
   const [search, setSearch] = useState("");
   const [type, setType] = useState("all");
+  const [sector, setSector] = useState("all");
+  const [sort, setSort] = useState("az");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -20,70 +70,135 @@ export default function StocksPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const sectors = [...new Set(stocks.filter((s) => s.asset_type === "stock").map((s) => s.sector).filter(Boolean))].sort();
   const term = search.trim().toLowerCase();
-  const shown = stocks.filter(
-    (s) =>
-      (type === "all" || s.asset_type === type) &&
-      (s.symbol.toLowerCase().includes(term) || s.name.toLowerCase().includes(term) || (s.sector || "").toLowerCase().includes(term))
+  const shown = sortList(
+    stocks.filter(
+      (s) =>
+        (type === "all" || s.asset_type === type) &&
+        (sector === "all" || s.sector === sector) &&
+        (s.symbol.toLowerCase().includes(term) || s.name.toLowerCase().includes(term) || (s.sector || "").toLowerCase().includes(term))
+    ),
+    sort
   );
+  const ranked = stocks.filter((s) => s.return_1y != null);
+  const best = [...ranked].sort((a, b) => b.return_1y - a.return_1y).slice(0, 3);
+  const worst = [...ranked].sort((a, b) => a.return_1y - b.return_1y)[0];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Explore stocks and funds</h1>
-        <p className="mt-1 text-slate-600">Search any US company, or browse our 36 beginner-friendly picks below.</p>
-      </div>
+    <div className="flex flex-col gap-10">
+      <style>{RISE}</style>
+      <PageHeader eyebrow="Markets" title="Explore stocks & funds" subtitle="Search any US company, or browse 36 beginner-friendly picks with real prices." />
 
       <TickerSearch />
 
-      <div className="flex flex-wrap gap-3">
-        <input
-          placeholder="Search by name, ticker or sector..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="min-w-64 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2"
-        />
-        <select value={type} onChange={(e) => setType(e.target.value)} className="rounded-lg border border-slate-300 bg-white px-3 py-2">
-          <option value="all">Stocks and funds</option>
-          <option value="stock">Stocks only</option>
-          <option value="etf">Funds (ETFs) only</option>
-        </select>
-      </div>
-
-      {error && <p className="rounded-lg bg-red-50 p-3 text-red-700">{error}</p>}
-      {loading && <p className="text-slate-600">Loading...</p>}
-
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="w-full text-left">
-          <thead className="bg-slate-50 text-sm text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Ticker</th>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Sector</th>
-              <th className="px-4 py-3 text-right">Price</th>
-              <th className="px-4 py-3 text-right">1-year return</th>
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map((s) => (
-              <tr key={s.symbol} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="px-4 py-3 font-semibold">
-                  <Link href={`/stocks/${s.symbol}`} className="text-emerald-700 hover:underline">{s.symbol}</Link>
-                </td>
-                <td className="px-4 py-3">
-                  <Link href={`/stocks/${s.symbol}`} className="hover:underline">{s.name}</Link>
-                  {s.asset_type === "etf" && <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700">ETF</span>}
-                </td>
-                <td className="px-4 py-3 text-slate-600">{s.sector}</td>
-                <td className="px-4 py-3 text-right">{price(s.latest_price)}</td>
-                <td className={`px-4 py-3 text-right font-semibold ${s.return_1y >= 0 ? "text-emerald-700" : "text-red-600"}`}>
-                  {percent(s.return_1y)}
-                </td>
-              </tr>
+      {best.length > 0 && (
+        <section>
+          <h2 className="font-display text-xl font-bold">Biggest movers this year</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {best.map((s, i) => (
+              <Link
+                key={s.symbol}
+                href={`/stocks/${s.symbol}`}
+                className="relative overflow-hidden rounded-3xl border border-[#23493A] bg-[radial-gradient(130%_120%_at_0%_0%,#15392B_0%,#10171F_65%)] p-5 transition hover:-translate-y-1 hover:border-mint/60"
+              >
+                <div className="flex items-center justify-between">
+                  <Avatar symbol={s.symbol} size={40} />
+                  <span className="font-display text-sm font-bold text-mint">#{i + 1}</span>
+                </div>
+                <div className="mt-4 font-semibold">{s.name}</div>
+                <div className="mt-1 font-display text-3xl font-bold text-mint">+{percent(s.return_1y)}</div>
+                <div className="text-xs text-muted">over the last 12 months</div>
+              </Link>
             ))}
-          </tbody>
-        </table>
-      </div>
+            {worst && (
+              <Link
+                href={`/stocks/${worst.symbol}`}
+                className="rounded-3xl border border-red-200 bg-[radial-gradient(130%_120%_at_0%_0%,#3A1A1E_0%,#10171F_65%)] p-5 transition hover:-translate-y-1"
+              >
+                <div className="flex items-center justify-between">
+                  <Avatar symbol={worst.symbol} size={40} />
+                  <span className="text-xs font-semibold text-red-600">Biggest drop</span>
+                </div>
+                <div className="mt-4 font-semibold">{worst.name}</div>
+                <div className="mt-1 font-display text-3xl font-bold text-red-600">{percent(worst.return_1y)}</div>
+                <div className="text-xs text-muted">over the last 12 months</div>
+              </Link>
+            )}
+          </div>
+        </section>
+      )}
+
+      <section className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h2 className="font-display text-xl font-bold">Our beginner-friendly list</h2>
+          <Segmented
+            label="Type"
+            value={type}
+            onChange={(v) => {
+              setType(v);
+              setSector("all");
+            }}
+            options={[["all", "All"], ["stock", "Stocks"], ["etf", "Funds (ETFs)"]]}
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <div className="relative min-w-64 flex-1">
+            <svg className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9AA7B4" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M20 20l-3.5-3.5" />
+            </svg>
+            <input
+              aria-label="Filter the list"
+              placeholder="Filter by name, ticker or sector..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-2xl border border-line bg-ink py-3.5 pl-11 pr-4 text-fg placeholder:text-slate-500 focus:border-mint focus:outline-none"
+            />
+          </div>
+          <Select label="Sort by" value={sort} onChange={setSort} className="w-56">
+            {SORTS.map(([id, label]) => (
+              <option key={id} value={id}>{label}</option>
+            ))}
+          </Select>
+        </div>
+
+        {type !== "etf" && sectors.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {["all", ...sectors].map((sec) => (
+              <button
+                key={sec}
+                onClick={() => setSector(sec)}
+                aria-pressed={sector === sec}
+                className={`rounded-full px-3.5 py-2 text-sm transition ${
+                  sector === sec ? "bg-fg text-ink" : "border border-line text-muted hover:border-slate-300 hover:text-fg"
+                }`}
+              >
+                {sec === "all" ? "All sectors" : sec}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {error && <p className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-red-700">{error}</p>}
+
+        {loading ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div key={i} className="h-44 animate-pulse rounded-3xl border border-line bg-surface" />
+            ))}
+          </div>
+        ) : shown.length === 0 ? (
+          <p className="rounded-3xl border border-line bg-surface p-8 text-center text-muted">Nothing matches. Try another word, or search all companies above.</p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {shown.map((s, i) => (
+              <StockCard key={s.symbol} s={s} index={i} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

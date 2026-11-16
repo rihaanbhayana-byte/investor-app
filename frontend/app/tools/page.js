@@ -3,76 +3,130 @@
 import { useEffect, useState } from "react";
 import MultiLineChart from "@/components/MultiLineChart";
 import { api } from "@/lib/api";
-import { LEVEL_LABELS, money, percent } from "@/lib/format";
+import { money, percent } from "@/lib/format";
+import { Avatar, PageHeader, RISE, SERIES_COLORS, Segmented, monthName, useCountUp } from "@/components/ui";
 
-const card = "rounded-xl border border-slate-200 bg-white p-6";
-const input = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2";
-const primary = "rounded-lg bg-emerald-600 px-5 py-2.5 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50";
 const YEARS = Array.from({ length: 10 }, (_, i) => 2016 + i);
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const monthName = (m) => `${MONTHS[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}`;
+const STROKE = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" };
 
 const TABS = [
-  ["time", "⏳ Time machine"],
-  ["goal", "🎯 Goal calculator"],
-  ["compare", "📈 Compare stocks"],
+  { id: "time", title: "Time Machine", text: "What if you’d invested back then?", icon: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></> },
+  { id: "goal", title: "Goal calculator", text: "How much to save each month?", icon: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" /></> },
+  { id: "compare", title: "Compare stocks", text: "Race up to 4 side by side.", icon: <><path d="M3 3v18h18" /><path d="M7 15l4-4 3 3 5-6" /></> },
 ];
 
-export default function ToolsPage() {
-  const [tab, setTab] = useState("time");
-  const [stocks, setStocks] = useState([]);
+const card = "rounded-3xl border border-line bg-surface p-7";
+const primary = "rounded-full bg-mint px-7 py-3.5 font-semibold text-mint-ink transition hover:bg-mint-light disabled:opacity-40";
 
+function useDebounced(value, ms = 450) {
+  const [v, setV] = useState(value);
   useEffect(() => {
-    api.stocks().then(setStocks).catch(() => {});
-  }, []);
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
 
+function InlineSelect({ value, onChange, children, label }) {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Calculators</h1>
-        <p className="mt-1 text-slate-600">Play with real market data since 2016.</p>
+    <span className="relative inline-flex">
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="cursor-pointer appearance-none rounded-2xl border-2 border-mint/40 bg-ink py-1 pl-4 pr-10 font-display font-bold text-mint transition hover:border-mint focus:border-mint focus:outline-none"
+      >
+        {children}
+      </select>
+      <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-mint" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...STROKE}>
+        <path d="M6 9l6 6 6-6" />
+      </svg>
+    </span>
+  );
+}
+
+function Slider({ id, label, value, setValue, min, max, step, display }) {
+  return (
+    <div className="rounded-2xl border border-line bg-ink p-5">
+      <div className="flex items-center justify-between gap-4">
+        <label htmlFor={id} className="text-sm font-medium text-slate-700">{label}</label>
+        <span className="font-display text-2xl font-bold tabular-nums">{display(value)}</span>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {TABS.map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`rounded-full px-4 py-2 font-medium ${tab === id ? "bg-emerald-600 text-white" : "border border-slate-300 bg-white hover:bg-slate-50"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {tab === "time" && <TimeMachine stocks={stocks} />}
-      {tab === "goal" && <GoalCalculator />}
-      {tab === "compare" && <Compare stocks={stocks} />}
+      <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={(e) => setValue(Number(e.target.value))} className="mt-4 w-full cursor-pointer accent-mint" />
     </div>
   );
 }
 
-function StockSelect({ stocks, value, onChange, allowNone }) {
+function ErrorBox({ children }) {
+  return <p className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-red-700">{children}</p>;
+}
+
+export default function ToolsPage() {
+  const [tab, setTab] = useState("time");
+  const [startSymbol, setStartSymbol] = useState("NVDA");
+  const [stocks, setStocks] = useState([]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (TABS.some((t) => t.id === params.get("tab"))) setTab(params.get("tab"));
+    if (params.get("symbol")) setStartSymbol(params.get("symbol").toUpperCase());
+    api.stocks().then(setStocks).catch(() => {});
+  }, []);
+
   return (
-    <select className={input} value={value} onChange={(e) => onChange(e.target.value)}>
-      {allowNone && <option value="">(none)</option>}
-      {stocks.map((s) => (
-        <option key={s.symbol} value={s.symbol}>
-          {s.symbol}: {s.name}
-        </option>
-      ))}
-    </select>
+    <div className="flex flex-col gap-8">
+      <style>{RISE}</style>
+      <PageHeader eyebrow="Calculators" title="Play with real market data." subtitle="Every number here comes from real US prices since 2016." />
+
+      <div role="tablist" aria-label="Calculators" className="grid gap-4 md:grid-cols-3">
+        {TABS.map((t) => {
+          const on = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={on}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-4 rounded-3xl border-2 p-5 text-left transition ${
+                on ? "border-mint bg-[radial-gradient(130%_120%_at_0%_0%,#15392B_0%,#10171F_65%)]" : "border-line bg-surface hover:-translate-y-0.5 hover:border-slate-300"
+              }`}
+            >
+              <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${on ? "bg-mint text-mint-ink" : "bg-mint/15 text-mint"}`}>
+                <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" {...STROKE}>{t.icon}</svg>
+              </span>
+              <span>
+                <span className="block font-display text-lg font-bold">{t.title}</span>
+                <span className="block text-sm text-muted">{t.text}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div key={tab} className="motion-safe:animate-[sw-rise_0.35s_ease-out_both]">
+        {tab === "time" && <TimeMachine stocks={stocks} startSymbol={startSymbol} />}
+        {tab === "goal" && <GoalCalculator />}
+        {tab === "compare" && <Compare stocks={stocks} />}
+      </div>
+    </div>
   );
 }
 
-function TimeMachine({ stocks }) {
-  const [symbol, setSymbol] = useState("NVDA");
+/* ---------------- Time Machine ---------------- */
+
+function TimeMachine({ stocks, startSymbol }) {
+  const [symbol, setSymbol] = useState(startSymbol);
   const [amount, setAmount] = useState(1000);
   const [year, setYear] = useState(2016);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const shown = useCountUp(result?.final_value ?? null, 1400);
+
+  useEffect(() => setSymbol(startSymbol), [startSymbol]);
 
   async function run(e) {
-    e.preventDefault();
+    e?.preventDefault();
     setLoading(true);
     setError("");
     try {
@@ -83,208 +137,365 @@ function TimeMachine({ stocks }) {
     setLoading(false);
   }
 
+  const options = stocks.length ? stocks : [{ symbol, name: symbol }];
+  const maxBar = result ? Math.max(result.final_value, result.sp500_final_value || 0) : 1;
+
   return (
-    <div className="space-y-4">
-      <form onSubmit={run} className={`${card} grid gap-4 md:grid-cols-4 md:items-end`}>
-        <label className="block md:col-span-2">
-          <span className="font-medium">If I had invested in</span>
-          <StockSelect stocks={stocks} value={symbol} onChange={setSymbol} />
-        </label>
-        <label className="block">
-          <span className="font-medium">Amount ($)</span>
-          <input type="number" min={1} className={input} value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
-        </label>
-        <label className="block">
-          <span className="font-medium">In January of</span>
-          <select className={input} value={year} onChange={(e) => setYear(Number(e.target.value))}>
+    <div className="flex flex-col gap-6">
+      <form onSubmit={run} className={`${card} flex flex-col gap-6`}>
+        <p className="font-display text-2xl font-bold leading-[2.4] sm:text-3xl sm:leading-[2.2]">
+          If I had invested{" "}
+          <span className="inline-flex items-baseline rounded-2xl border-2 border-mint/40 bg-ink px-3 text-mint focus-within:border-mint">
+            $
+            <input
+              type="number"
+              min={1}
+              aria-label="Amount"
+              value={amount}
+              onChange={(e) => setAmount(Math.max(1, Number(e.target.value)))}
+              style={{ width: `${String(amount).length + 0.8}ch` }}
+              className="bg-transparent [appearance:textfield] focus:outline-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </span>{" "}
+          in{" "}
+          <InlineSelect label="Stock" value={symbol} onChange={setSymbol}>
+            {options.map((s) => (
+              <option key={s.symbol} value={s.symbol}>{s.symbol}</option>
+            ))}
+          </InlineSelect>{" "}
+          in January{" "}
+          <InlineSelect label="Year" value={year} onChange={(v) => setYear(Number(v))}>
             {YEARS.map((y) => (
               <option key={y}>{y}</option>
             ))}
-          </select>
-        </label>
-        <button className={`${primary} md:col-span-4 md:w-fit`} disabled={loading}>
-          {loading ? "Travelling..." : "Show me"}
-        </button>
-      </form>
-      {error && <p className="rounded-lg bg-red-50 p-3 text-red-700">{error}</p>}
-      {result && (
-        <div className={card}>
-          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Result</p>
-          <h2 className="mt-1 text-2xl font-bold">
-            {money(result.amount)} in {result.symbol} in {monthName(result.start_month)} would be worth {money(result.final_value)} today
-          </h2>
-          <p className="mt-2 text-slate-600">
-            That&rsquo;s a {result.gain >= 0 ? "gain" : "loss"} of {money(Math.abs(result.gain))} ({percent(result.total_return)}), or about{" "}
-            {percent(result.annual_return)} a year.
-            {result.sp500_final_value != null && <> The same money in the S&amp;P 500 (VOO) would be worth {money(result.sp500_final_value)}.</>}
-          </p>
-          <div className="mt-4">
-            <MultiLineChart
-              data={result.series}
-              lines={[
-                { key: "value", name: result.symbol },
-                { key: "sp500_value", name: "S&P 500 (VOO)" },
-              ]}
-              format={(v) => money(v)}
-            />
+          </InlineSelect>
+          ...
+        </p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted">Quick picks:</span>
+            {["NVDA", "AAPL", "TSLA", "KO", "VOO"].map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSymbol(s)}
+                className={`rounded-full px-3.5 py-1.5 text-sm transition ${symbol === s ? "bg-fg text-ink" : "border border-line text-muted hover:border-slate-300 hover:text-fg"}`}
+              >
+                {s}
+              </button>
+            ))}
           </div>
-          <p className="mt-2 text-xs text-slate-500">Past results only. Picking one winning stock in hindsight is much easier than in real life.</p>
+          <button className={primary} disabled={loading}>{loading ? "Travelling back in time..." : "Take me back →"}</button>
+        </div>
+      </form>
+
+      {error && <ErrorBox>{error}</ErrorBox>}
+
+      {result && (
+        <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
+          <div className={`${card} flex flex-col gap-5 border-[#23493A] bg-[radial-gradient(130%_120%_at_0%_0%,#17402F_0%,#10171F_60%)]`}>
+            <div className="flex items-center gap-3">
+              <Avatar symbol={result.symbol} />
+              <div>
+                <div className="font-semibold">{result.name}</div>
+                <div className="text-sm text-muted">{money(result.amount)} in {monthName(result.start_month)}</div>
+              </div>
+            </div>
+            <div>
+              <div className="text-muted">would be worth today</div>
+              <div className="font-display text-6xl font-bold tracking-tight tabular-nums">{money(shown)}</div>
+            </div>
+            <div className="flex flex-wrap gap-2 text-sm">
+              <span className={`rounded-full px-3 py-1.5 font-semibold ${result.gain >= 0 ? "bg-mint/10 text-mint" : "bg-red-50 text-red-600"}`}>
+                {result.gain >= 0 ? "+" : "−"}{money(Math.abs(result.gain))} ({percent(result.total_return)})
+              </span>
+              <span className="rounded-full border border-slate-300 px-3 py-1.5 text-slate-700">≈ {percent(result.annual_return)} a year</span>
+            </div>
+            {result.sp500_final_value != null && (
+              <div className="flex flex-col gap-3 rounded-2xl border border-line bg-ink p-4">
+                <div className="text-sm font-semibold">vs. the whole market (S&amp;P 500)</div>
+                {[
+                  [result.symbol, result.final_value, "#3DDC97"],
+                  ["S&P 500", result.sp500_final_value, "#5B6876"],
+                ].map(([label, value, color]) => (
+                  <div key={label}>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted">{label}</span>
+                      <span className="font-semibold">{money(value)}</span>
+                    </div>
+                    <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-slate-100">
+                      <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${(value / maxBar) * 100}%`, background: color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className={card}>
+            <h3 className="font-display text-xl font-bold">The journey</h3>
+            <p className="mt-1 text-sm text-muted">Month by month, from {monthName(result.start_month)} to {monthName(result.end_month)}.</p>
+            <div className="mt-5">
+              <MultiLineChart
+                data={result.series}
+                lines={[
+                  { key: "value", name: result.symbol, color: "#3DDC97" },
+                  { key: "sp500_value", name: "S&P 500 (VOO)", color: "#5B6876", dashed: true },
+                ]}
+                format={(v) => money(v)}
+              />
+            </div>
+            <p className="mt-4 text-xs text-slate-500">Picking one winner in hindsight is much easier than in real life. That&rsquo;s why most plans use funds.</p>
+          </div>
         </div>
       )}
     </div>
   );
 }
+
+/* ---------------- Goal calculator ---------------- */
 
 function GoalCalculator() {
   const [target, setTarget] = useState(50000);
   const [years, setYears] = useState(8);
   const [initial, setInitial] = useState(0);
   const [level, setLevel] = useState("moderate");
+  const [chance, setChance] = useState("50");
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function run(e) {
-    e.preventDefault();
+  const inputs = useDebounced(JSON.stringify({ target, years, initial_amount: initial, risk_level: level }));
+
+  useEffect(() => {
+    let alive = true;
     setLoading(true);
     setError("");
-    try {
-      setResult(await api.goalCalculator({ target, years, initial_amount: initial, risk_level: level }));
-    } catch (err) {
-      setError(err.message);
-    }
-    setLoading(false);
-  }
+    api.goalCalculator(JSON.parse(inputs))
+      .then((r) => alive && setResult(r))
+      .catch((e) => alive && setError(e.message))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, [inputs]);
+
+  const monthly = result ? result[`monthly_for_${chance}_percent`] : null;
+  const shown = useCountUp(monthly, 700);
+  const cash = result?.monthly_without_growth ?? 0;
+  const saved = result ? Math.max(0, cash - monthly) : 0;
 
   return (
-    <div className="space-y-4">
-      <form onSubmit={run} className={`${card} grid gap-4 md:grid-cols-4 md:items-end`}>
-        <label className="block">
-          <span className="font-medium">I want to have ($)</span>
-          <input type="number" min={1} className={input} value={target} onChange={(e) => setTarget(Number(e.target.value))} />
-        </label>
-        <label className="block">
-          <span className="font-medium">In how many years</span>
-          <input type="number" min={1} max={50} className={input} value={years} onChange={(e) => setYears(Number(e.target.value))} />
-        </label>
-        <label className="block">
-          <span className="font-medium">Starting with ($)</span>
-          <input type="number" min={0} className={input} value={initial} onChange={(e) => setInitial(Number(e.target.value))} />
-        </label>
-        <label className="block">
-          <span className="font-medium">Portfolio</span>
-          <select className={input} value={level} onChange={(e) => setLevel(e.target.value)}>
-            {Object.entries(LEVEL_LABELS).map(([id, label]) => (
-              <option key={id} value={id}>{label}</option>
-            ))}
-          </select>
-        </label>
-        <button className={`${primary} md:col-span-4 md:w-fit`} disabled={loading}>
-          {loading ? "Calculating..." : "How much per month?"}
-        </button>
-      </form>
-      {error && <p className="rounded-lg bg-red-50 p-3 text-red-700">{error}</p>}
-      {result && (
-        <div className={card}>
-          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">{result.portfolio_name}</p>
-          <h2 className="mt-1 text-2xl font-bold">
-            Save about {money(result.monthly_for_50_percent)} a month for a 50/50 chance of reaching {money(target)}
-          </h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-4">
-            <Box label="50% chance" value={`${money(result.monthly_for_50_percent)}/mo`} />
-            <Box label="75% chance" value={`${money(result.monthly_for_75_percent)}/mo`} />
-            <Box label="90% chance" value={`${money(result.monthly_for_90_percent)}/mo`} />
-            <Box label="With no growth at all" value={`${money(result.monthly_without_growth)}/mo`} />
-          </div>
-          <p className="mt-3 text-slate-600">
-            Investing could save you about {money(result.monthly_without_growth - result.monthly_for_50_percent)} a month compared with just
-            saving cash. Want more certainty? Save the 75% or 90% amount.
-          </p>
-          <p className="mt-2 text-xs text-slate-500">{result.disclaimer}</p>
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className={`${card} flex flex-col gap-4`}>
+        <h3 className="font-display text-xl font-bold">Your goal</h3>
+        <Slider id="target" label="I want to have" value={target} setValue={setTarget} min={1000} max={500000} step={1000} display={money} />
+        <Slider id="years" label="In" value={years} setValue={setYears} min={1} max={40} step={1} display={(v) => `${v} ${v === 1 ? "year" : "years"}`} />
+        <Slider id="initial" label="Starting with" value={initial} setValue={setInitial} min={0} max={100000} step={500} display={money} />
+        <div>
+          <div className="mb-2 text-sm font-medium text-slate-700">Invested like a...</div>
+          <Segmented
+            label="Portfolio"
+            value={level}
+            onChange={setLevel}
+            options={[["conservative", "Steady Saver"], ["moderate", "Balanced Builder"], ["aggressive", "Growth Seeker"]]}
+          />
         </div>
-      )}
+      </div>
+
+      <div className={`${card} flex flex-col gap-5 border-[#23493A] bg-[radial-gradient(130%_120%_at_0%_0%,#17402F_0%,#10171F_60%)]`} aria-live="polite">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">{result?.portfolio_name || "Your answer"}</span>
+          {loading && <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-mint" aria-label="Calculating" />}
+        </div>
+        {error && <ErrorBox>{error}</ErrorBox>}
+        {result && (
+          <>
+            <div>
+              <div className="text-muted">Save about</div>
+              <div className="font-display text-6xl font-bold tracking-tight tabular-nums">
+                {money(shown)}
+                <span className="text-2xl text-muted"> / month</span>
+              </div>
+              <div className="mt-1 text-muted">to reach {money(target)} in {years} {years === 1 ? "year" : "years"}.</div>
+            </div>
+            <div>
+              <div className="mb-2 text-sm text-slate-700">How sure do you want to be?</div>
+              <Segmented label="Certainty" value={chance} onChange={setChance} options={[["50", "50% chance"], ["75", "75% chance"], ["90", "90% chance"]]} />
+            </div>
+            <div className="flex flex-col gap-3 rounded-2xl border border-line bg-ink p-4">
+              {[
+                ["Investing", monthly, "#3DDC97"],
+                ["Just saving cash", cash, "#5B6876"],
+              ].map(([label, value, color]) => (
+                <div key={label}>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted">{label}</span>
+                    <span className="font-semibold">{money(value)} / month</span>
+                  </div>
+                  <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${cash ? Math.min(100, (value / cash) * 100) : 0}%`, background: color }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            {saved > 0 && (
+              <p className="text-slate-700">
+                Investing could save you about <span className="font-semibold text-mint">{money(saved)} a month</span> compared with keeping it in cash.
+              </p>
+            )}
+            <p className="text-xs text-slate-500">{result.disclaimer}</p>
+          </>
+        )}
+      </div>
     </div>
   );
 }
+
+/* ---------------- Compare ---------------- */
+
+const PRESETS = [
+  ["Big Tech", ["AAPL", "MSFT", "GOOGL", "NVDA"]],
+  ["Funds", ["VOO", "QQQ", "BND"]],
+  ["Drinks", ["KO", "PEP"]],
+  ["Banks & cards", ["JPM", "V", "MA"]],
+];
 
 function Compare({ stocks }) {
-  const [picks, setPicks] = useState(["AAPL", "MSFT", "VOO", ""]);
+  const [picks, setPicks] = useState(["AAPL", "MSFT", "VOO"]);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const key = useDebounced(picks.join(","), 350);
 
-  async function run(e) {
-    e.preventDefault();
+  useEffect(() => {
+    const list = key.split(",").filter(Boolean);
+    if (list.length < 2) {
+      setResult(null);
+      return;
+    }
+    let alive = true;
     setLoading(true);
     setError("");
-    try {
-      setResult(await api.compare(picks.filter(Boolean)));
-    } catch (err) {
-      setError(err.message);
-    }
-    setLoading(false);
-  }
+    api.compare(list)
+      .then((r) => alive && setResult(r))
+      .catch((e) => alive && setError(e.message))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, [key]);
+
+  const ranked = result ? [...result.symbols].sort((a, b) => result.series.at(-1)[b] - result.series.at(-1)[a]) : [];
+  const colorOf = (s) => SERIES_COLORS[picks.indexOf(s) % SERIES_COLORS.length];
 
   return (
-    <div className="space-y-4">
-      <form onSubmit={run} className={`${card} space-y-4`}>
-        <div className="grid gap-3 md:grid-cols-4">
-          {picks.map((value, i) => (
-            <StockSelect
-              key={i}
-              stocks={stocks}
-              value={value}
-              allowNone={i >= 2}
-              onChange={(v) => setPicks(picks.map((p, j) => (j === i ? v : p)))}
-            />
+    <div className="flex flex-col gap-6">
+      <div className={`${card} flex flex-col gap-5`}>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {picks.map((s, i) => (
+            <span key={s} className="flex items-center gap-2 rounded-full border border-line bg-ink py-1.5 pl-3 pr-1.5">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }} />
+              <span className="font-semibold">{s}</span>
+              <button
+                onClick={() => setPicks(picks.filter((p) => p !== s))}
+                aria-label={`Remove ${s}`}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition hover:bg-slate-100 hover:text-fg"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" {...STROKE}><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </span>
+          ))}
+          {picks.length < 4 && (
+            <span className="relative">
+              <select
+                aria-label="Add a stock"
+                value=""
+                onChange={(e) => e.target.value && setPicks([...picks, e.target.value])}
+                className="cursor-pointer appearance-none rounded-full border-2 border-dashed border-slate-300 bg-transparent py-1.5 pl-4 pr-4 text-sm text-muted transition hover:border-mint hover:text-mint focus:outline-none"
+              >
+                <option value="">+ Add a stock</option>
+                {stocks.filter((s) => !picks.includes(s.symbol)).map((s) => (
+                  <option key={s.symbol} value={s.symbol}>{s.symbol}: {s.name}</option>
+                ))}
+              </select>
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted">Try a matchup:</span>
+          {PRESETS.map(([label, list]) => (
+            <button key={label} onClick={() => setPicks(list)} className="rounded-full border border-line px-3.5 py-1.5 text-sm text-muted transition hover:border-slate-300 hover:text-fg">
+              {label}
+            </button>
           ))}
         </div>
-        <button className={primary} disabled={loading}>{loading ? "Comparing..." : "Compare"}</button>
-      </form>
-      {error && <p className="rounded-lg bg-red-50 p-3 text-red-700">{error}</p>}
+        {picks.length < 2 && <p className="text-sm text-muted">Pick at least two to start the race.</p>}
+      </div>
+
+      {error && <ErrorBox>{error}</ErrorBox>}
+
       {result && (
-        <div className={card}>
-          <h2 className="text-xl font-bold">Growth of $100 since {monthName(result.series[0].month)}</h2>
-          <MultiLineChart data={result.series} lines={result.symbols.map((s) => ({ key: s, name: s }))} format={(v) => money(v)} />
-          <table className="mt-4 w-full text-left text-sm">
-            <thead className="text-slate-500">
-              <tr>
-                <th className="py-2">Ticker</th>
-                <th className="text-right">$100 became</th>
-                <th className="text-right">Avg yearly return</th>
-                <th className="text-right">Volatility</th>
-                <th className="text-right">Biggest drop</th>
-                <th className="text-right">Worst 12 months</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.symbols.map((s) => {
-                const st = result.stats[s];
-                return (
-                  <tr key={s} className="border-t border-slate-100">
-                    <td className="py-2 font-semibold">{s}</td>
-                    <td className="text-right">{money(result.series.at(-1)[s])}</td>
-                    <td className="text-right">{percent(st.annual_return)}</td>
-                    <td className="text-right">{percent(st.annual_volatility)}</td>
-                    <td className="text-right">{percent(st.max_drawdown)}</td>
-                    <td className="text-right">{percent(st.worst_12_months)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <p className="mt-2 text-xs text-slate-500">{result.disclaimer}</p>
+        <div className={`flex flex-col gap-6 transition-opacity ${loading ? "opacity-60" : ""}`}>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {ranked.map((s, i) => (
+              <div
+                key={s}
+                style={{ animationDelay: `${i * 70}ms` }}
+                className={`rounded-3xl border p-5 motion-safe:animate-[sw-rise_0.4s_ease-out_both] ${i === 0 ? "border-mint bg-mint/5" : "border-line bg-surface"}`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full" style={{ background: colorOf(s) }} />
+                    <span className="font-semibold">{s}</span>
+                  </span>
+                  <span className={`font-display text-sm font-bold ${i === 0 ? "text-mint" : "text-muted"}`}>{i === 0 ? "Winner" : `#${i + 1}`}</span>
+                </div>
+                <div className="mt-3 text-xs text-muted">$100 became</div>
+                <div className="font-display text-3xl font-bold tabular-nums">{money(result.series.at(-1)[s])}</div>
+                <div className="mt-1 text-sm text-muted">{percent(result.stats[s].annual_return)} a year</div>
+              </div>
+            ))}
+          </div>
+
+          <div className={card}>
+            <h3 className="font-display text-xl font-bold">Growth of $100 since {monthName(result.series[0].month)}</h3>
+            <div className="mt-5">
+              <MultiLineChart data={result.series} lines={result.symbols.map((s) => ({ key: s, name: s, color: colorOf(s) }))} format={(v) => money(v)} />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-3xl border border-line bg-surface">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="bg-ink text-muted">
+                <tr>
+                  <th className="px-5 py-3.5 font-medium">Ticker</th>
+                  <th className="px-5 py-3.5 text-right font-medium">Avg yearly return</th>
+                  <th className="px-5 py-3.5 text-right font-medium">Volatility (swings)</th>
+                  <th className="px-5 py-3.5 text-right font-medium">Biggest drop</th>
+                  <th className="px-5 py-3.5 text-right font-medium">Worst 12 months</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ranked.map((s) => {
+                  const st = result.stats[s];
+                  return (
+                    <tr key={s} className="border-t border-line">
+                      <td className="px-5 py-3.5 font-semibold">
+                        <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: colorOf(s) }} />{s}</span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">{percent(st.annual_return)}</td>
+                      <td className="px-5 py-3.5 text-right">{percent(st.annual_volatility)}</td>
+                      <td className="px-5 py-3.5 text-right text-red-600">{percent(st.max_drawdown)}</td>
+                      <td className="px-5 py-3.5 text-right">{percent(st.worst_12_months)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-slate-500">{result.disclaimer}</p>
         </div>
       )}
-    </div>
-  );
-}
-
-function Box({ label, value }) {
-  return (
-    <div className="rounded-lg bg-slate-50 p-3">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className="text-lg font-semibold">{value}</div>
     </div>
   );
 }

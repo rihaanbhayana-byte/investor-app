@@ -1,19 +1,27 @@
 "use client";
 
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { price } from "@/lib/format";
+import { ChartTooltip, monthName, monthAxis } from "@/components/ui";
 
-export default function PriceChart({ data }) {
+export default function PriceChart({ data, up = true }) {
+  const color = up ? "#3DDC97" : "#F87171";
   return (
     <div className="h-72 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="month" minTickGap={40} />
-          <YAxis tickFormatter={(v) => `$${Math.round(v)}`} width={60} domain={["auto", "auto"]} />
-          <Tooltip formatter={(value) => price(value)} />
-          <Line type="monotone" dataKey="close" name="Price" stroke="#059669" strokeWidth={2} dot={false} />
-        </LineChart>
+        <AreaChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="sw-price" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+              <stop offset="100%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid stroke="#1A222C" vertical={false} />
+          <XAxis dataKey="month" {...monthAxis(data)} interval={0} tick={{ fill: "#9AA7B4", fontSize: 12 }} tickLine={false} axisLine={{ stroke: "#1F2833" }} />
+          <YAxis tickFormatter={(v) => `$${Math.round(v)}`} width={60} domain={["auto", "auto"]} tick={{ fill: "#9AA7B4", fontSize: 12 }} tickLine={false} axisLine={false} />
+          <Tooltip content={<ChartTooltip format={price} labelFormat={monthName} />} cursor={{ stroke: "#2A3542" }} />
+          <Area type="monotone" dataKey="close" name="Price" stroke={color} strokeWidth={2.5} fill="url(#sw-price)" animationDuration={1200} />
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );

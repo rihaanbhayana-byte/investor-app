@@ -3,15 +3,35 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import PriceChart from "@/components/PriceChart";
 import AIExplainer from "@/components/AIExplainer";
+import { Avatar, ChartTooltip, ReturnPill, RISE, Segmented, monthName } from "@/components/ui";
 import { api } from "@/lib/api";
 import { bigMoney, percent, price } from "@/lib/format";
+
+const RANGES = [
+  ["12", "1Y"],
+  ["36", "3Y"],
+  ["60", "5Y"],
+  ["all", "All"],
+];
+
+function Stat({ label, value, hint, tone }) {
+  return (
+    <div className="rounded-3xl border border-line bg-surface p-5">
+      <div className="text-xs text-muted">{label}</div>
+      <div className={`mt-1 font-display text-2xl font-bold ${tone === "up" ? "text-mint" : tone === "down" ? "text-red-600" : ""}`}>{value}</div>
+      <div className="mt-1.5 text-xs leading-relaxed text-slate-500">{hint}</div>
+    </div>
+  );
+}
 
 export default function StockPage() {
   const { symbol } = useParams();
   const [stock, setStock] = useState(null);
   const [error, setError] = useState("");
+  const [range, setRange] = useState("all");
 
   useEffect(() => {
     api.stock(symbol)
@@ -19,101 +39,179 @@ export default function StockPage() {
       .catch(() => api.liveStock(symbol).then(setStock).catch((e) => setError(e.message)));
   }, [symbol]);
 
-  if (error) return <p className="rounded-lg bg-red-50 p-3 text-red-700">{error}</p>;
-  if (!stock) return <p className="text-slate-600">Loading...</p>;
+  if (error)
+    return (
+      <div className="rounded-3xl border border-line bg-surface p-10 text-center">
+        <h1 className="font-display text-2xl font-bold">We couldn&rsquo;t load {String(symbol).toUpperCase()}</h1>
+        <p className="mt-2 text-muted">{error}</p>
+        <Link href="/stocks" className="mt-6 inline-block rounded-full bg-mint px-6 py-3 font-semibold text-mint-ink">Back to stocks</Link>
+      </div>
+    );
 
+  if (!stock)
+    return (
+      <div className="flex flex-col gap-6" aria-busy="true">
+        <div className="h-24 animate-pulse rounded-3xl border border-line bg-surface" />
+        <div className="h-96 animate-pulse rounded-3xl border border-line bg-surface" />
+        <div className="h-32 animate-pulse rounded-3xl border border-line bg-surface" />
+      </div>
+    );
+
+  const prices = range === "all" ? stock.prices : stock.prices.slice(-Number(range) - 1);
   const latest = stock.prices.at(-1);
+  const first = prices[0];
+  const change = latest && first ? latest.close / first.close - 1 : null;
+  const yearAgo = stock.prices.at(-13);
+  const oneYear = latest && yearAgo ? latest.close / yearAgo.close - 1 : null;
   const stats = stock.stats;
   const years = [...stock.fundamentals].reverse();
+  const chartYears = [...stock.fundamentals]
+    .sort((a, b) => a.fiscal_year - b.fiscal_year)
+    .slice(-6)
+    .map((y) => ({ year: String(y.fiscal_year), revenue: y.revenue, profit: y.net_income }));
 
   return (
-    <div className="space-y-6">
-      <Link href="/stocks" className="text-sm text-emerald-700 hover:underline">← All stocks</Link>
+    <div className="flex flex-col gap-6">
+      <style>{RISE}</style>
+      <Link href="/stocks" className="self-start text-sm text-muted transition hover:text-mint">← All stocks</Link>
 
-      {stock.live && (
-        <p className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
-          This company isn&rsquo;t in our saved list, so we fetched its data live from Alpaca and SEC EDGAR.
-        </p>
-      )}
-
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">{stock.name}</h1>
-          <p className="text-slate-600">
-            {stock.symbol} · {stock.sector} · {stock.asset_type === "etf" ? "Fund (ETF)" : "Stock"}
-          </p>
+      <section className="flex flex-wrap items-center justify-between gap-6 rounded-3xl border border-line bg-surface p-7 motion-safe:animate-[sw-rise_0.4s_ease-out_both]">
+        <div className="flex min-w-0 items-center gap-5">
+          <Avatar symbol={stock.symbol} size={64} />
+          <div className="min-w-0">
+            <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{stock.name}</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+              <span className="rounded-full border border-slate-300 px-2.5 py-1 font-semibold">{stock.symbol}</span>
+              <span className="rounded-full border border-line px-2.5 py-1 text-muted">{stock.asset_type === "etf" ? "Fund (ETF)" : "Stock"}</span>
+              {stock.sector && stock.sector !== "Live data" && <span className="rounded-full border border-line px-2.5 py-1 text-muted">{stock.sector}</span>}
+              {stock.live && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-mint">Live data</span>}
+            </div>
+          </div>
         </div>
         {latest && (
           <div className="text-right">
-            <div className="text-3xl font-bold">{price(latest.close)}</div>
-            <div className="text-sm text-slate-500">Latest close ({latest.month})</div>
+            <div className="font-display text-4xl font-bold tabular-nums">{price(latest.close)}</div>
+            <div className="mt-1.5 flex items-center justify-end gap-2 text-sm text-muted">
+              {oneYear != null && <ReturnPill value={oneYear}>{percent(Math.abs(oneYear))}</ReturnPill>}
+              <span>1 year · {monthName(latest.month)}</span>
+            </div>
           </div>
         )}
-      </div>
+      </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6">
-        <h2 className="text-lg font-semibold">Price since 2016</h2>
-        <PriceChart data={stock.prices} />
+      {stock.live && (
+        <p className="rounded-2xl border border-line bg-surface px-5 py-3 text-sm text-muted">
+          {stock.symbol} isn&rsquo;t in our saved list, so we fetched its data live from Alpaca and SEC EDGAR.
+        </p>
+      )}
+
+      <section className="rounded-3xl border border-line bg-surface p-7 motion-safe:animate-[sw-rise_0.4s_ease-out_0.08s_both]">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="font-display text-xl font-bold">Price history</h2>
+            {change != null && first && (
+              <p className="mt-1 text-sm text-muted">
+                <span className={change >= 0 ? "font-semibold text-mint" : "font-semibold text-red-600"}>
+                  {change >= 0 ? "+" : ""}
+                  {percent(change)}
+                </span>{" "}
+                since {monthName(first.month)}
+              </p>
+            )}
+          </div>
+          <Segmented label="Time range" value={range} onChange={setRange} options={RANGES} />
+        </div>
+        <div className="mt-5">
+          <PriceChart data={prices} up={change == null || change >= 0} />
+        </div>
       </section>
 
       <AIExplainer symbol={stock.symbol} />
 
       {stats && (
-        <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <Stat label="Average yearly return" value={percent(stats.annual_return)} hint="Growth per year, on average" />
-          <Stat label="Volatility" value={percent(stats.annual_volatility)} hint="How much it swings in a year" />
-          <Stat label="Biggest drop" value={percent(stats.max_drawdown)} hint="Largest fall from a peak" />
+        <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <Stat label="Average yearly return" value={percent(stats.annual_return)} hint="How much it grew per year, on average." tone={stats.annual_return >= 0 ? "up" : "down"} />
+          <Stat label="Volatility" value={percent(stats.annual_volatility)} hint="How much it swings up and down in a typical year." />
+          <Stat label="Biggest drop" value={percent(stats.max_drawdown)} hint="The largest fall from a high point." tone="down" />
           <Stat label="Worst 12 months" value={percent(stats.worst_12_months)} hint={`Best 12 months: ${percent(stats.best_12_months)}`} />
         </section>
       )}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6">
-        <h2 className="text-lg font-semibold">Company financials (from SEC filings)</h2>
+      <section className="rounded-3xl border border-line bg-surface p-7">
+        <h2 className="font-display text-xl font-bold">Company financials</h2>
+        <p className="mt-1 text-sm text-muted">From the company&rsquo;s yearly SEC filings.</p>
         {years.length === 0 ? (
-          <p className="mt-2 text-slate-600">Funds like ETFs hold many companies, so they don&rsquo;t report company financials.</p>
+          <p className="mt-4 text-muted">Funds like ETFs hold many companies, so they don&rsquo;t report company financials.</p>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-slate-500">
-                <tr>
-                  <th className="py-2">Year</th>
-                  <th className="text-right">Revenue</th>
-                  <th className="text-right">Profit</th>
-                  <th className="text-right">Profit margin</th>
-                  <th className="text-right">Assets</th>
-                  <th className="text-right">Debts</th>
-                  <th className="text-right">Earnings per share</th>
-                </tr>
-              </thead>
-              <tbody>
-                {years.map((y) => (
-                  <tr key={y.fiscal_year} className="border-t border-slate-100">
-                    <td className="py-2 font-semibold">{y.fiscal_year}</td>
-                    <td className="text-right">{bigMoney(y.revenue)}</td>
-                    <td className="text-right">{bigMoney(y.net_income)}</td>
-                    <td className="text-right">{y.revenue && y.net_income != null ? percent(y.net_income / y.revenue) : "–"}</td>
-                    <td className="text-right">{bigMoney(y.total_assets)}</td>
-                    <td className="text-right">{bigMoney(y.total_liabilities)}</td>
-                    <td className="text-right">{y.eps != null ? price(y.eps) : "–"}</td>
+          <>
+            <div className="mt-6 h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartYears} margin={{ top: 10, right: 8, left: 0, bottom: 0 }} barGap={4}>
+                  <CartesianGrid stroke="#1A222C" vertical={false} />
+                  <XAxis dataKey="year" tick={{ fill: "#9AA7B4", fontSize: 12 }} tickLine={false} axisLine={{ stroke: "#1F2833" }} />
+                  <YAxis tickFormatter={bigMoney} width={70} tick={{ fill: "#9AA7B4", fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <Tooltip content={<ChartTooltip format={bigMoney} />} cursor={{ fill: "#ffffff08" }} />
+                  <Bar dataKey="revenue" name="Revenue" fill="#5AA9F5" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="profit" name="Profit" fill="#3DDC97" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-3 flex gap-5 text-[13px] text-muted">
+              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-[#5AA9F5]" />Revenue (money coming in)</span>
+              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-mint" />Profit (what&rsquo;s left)</span>
+            </div>
+            <div className="mt-6 overflow-x-auto rounded-2xl border border-line">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead className="bg-ink text-muted">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">Year</th>
+                    <th className="px-4 py-3 text-right font-medium">Revenue</th>
+                    <th className="px-4 py-3 text-right font-medium">Profit</th>
+                    <th className="px-4 py-3 text-right font-medium">Margin</th>
+                    <th className="px-4 py-3 text-right font-medium">Assets</th>
+                    <th className="px-4 py-3 text-right font-medium">Debts</th>
+                    <th className="px-4 py-3 text-right font-medium">EPS</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {years.map((y) => (
+                    <tr key={y.fiscal_year} className="border-t border-line">
+                      <td className="px-4 py-3 font-semibold">{y.fiscal_year}</td>
+                      <td className="px-4 py-3 text-right">{bigMoney(y.revenue)}</td>
+                      <td className={`px-4 py-3 text-right ${y.net_income < 0 ? "text-red-600" : ""}`}>{bigMoney(y.net_income)}</td>
+                      <td className="px-4 py-3 text-right">{y.revenue && y.net_income != null ? percent(y.net_income / y.revenue) : "–"}</td>
+                      <td className="px-4 py-3 text-right">{bigMoney(y.total_assets)}</td>
+                      <td className="px-4 py-3 text-right">{bigMoney(y.total_liabilities)}</td>
+                      <td className="px-4 py-3 text-right">{y.eps != null ? price(y.eps) : "–"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <Link href="/coach" className="flex items-center justify-between rounded-3xl border border-line bg-surface p-6 transition hover:-translate-y-0.5 hover:border-mint/40">
+          <span>
+            <span className="block font-semibold">Ask the AI Coach</span>
+            <span className="text-sm text-muted">&ldquo;Is {stock.symbol} a good fit for a beginner?&rdquo;</span>
+          </span>
+          <span className="text-mint">→</span>
+        </Link>
+        {!stock.live && (
+          <Link href={`/tools?tab=time&symbol=${stock.symbol}`} className="flex items-center justify-between rounded-3xl border border-line bg-surface p-6 transition hover:-translate-y-0.5 hover:border-mint/40">
+            <span>
+              <span className="block font-semibold">Time Machine</span>
+              <span className="text-sm text-muted">What if I&rsquo;d bought {stock.symbol} in 2016?</span>
+            </span>
+            <span className="text-mint">→</span>
+          </Link>
         )}
       </section>
 
       <p className="text-xs text-slate-500">{stock.disclaimer}</p>
-    </div>
-  );
-}
-
-function Stat({ label, value, hint }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className="text-xl font-semibold">{value}</div>
-      <div className="mt-1 text-xs text-slate-500">{hint}</div>
     </div>
   );
 }
