@@ -1,19 +1,23 @@
+import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import Nav from "@/components/Nav";
+import Nav from "../components/Nav";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const grotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-grotesk" });
 
 export const metadata = {
-  title: "Investor App",
-  description: "Build a beginner-friendly investment plan using real US market data.",
+  title: "Seedwise · Investing for beginners",
+  description: "Turn your goal into a beginner-friendly investing plan, with real US market data and an AI coach.",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+    <html lang="en" className={`${inter.variable} ${grotesk.variable}`}>
+      <body className="min-h-screen bg-ink font-sans text-fg antialiased">
         <Nav />
-        <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
-        <footer className="mx-auto max-w-5xl px-4 pb-10 text-xs text-slate-500">
-          For education only. Not financial advice. Past performance does not guarantee future results.
+        <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
+        <footer className="border-t border-line px-6 py-8 text-center text-sm text-muted">
+          Seedwise is an educational capstone project. Not financial advice. Past performance does not guarantee future results.
         </footer>
       </body>
     </html>

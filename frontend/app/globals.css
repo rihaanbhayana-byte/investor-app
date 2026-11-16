@@ -1,10 +1,90 @@
 @import "tailwindcss";
 
-/* Formatting for AI answers */
-.md p { margin: 0.35rem 0; }
-.md ul { list-style: disc; padding-left: 1.25rem; margin: 0.35rem 0; }
-.md ol { list-style: decimal; padding-left: 1.25rem; margin: 0.35rem 0; }
-.md strong { font-weight: 600; }
-.md table { margin: 0.5rem 0; border-collapse: collapse; font-size: 0.875rem; }
-.md th, .md td { border: 1px solid #cbd5e1; padding: 0.25rem 0.5rem; text-align: left; }
-.md a { text-decoration: underline; }
+/* Fonts (loaded in layout.js) */
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-grotesk), ui-sans-serif, sans-serif;
+}
+
+@theme {
+  /* Seedwise brand colours */
+  --color-ink: #0A0E13;        /* page background */
+  --color-surface: #11171F;    /* cards */
+  --color-line: #1F2833;       /* borders */
+  --color-fg: #E6EDF3;         /* main text */
+  --color-muted: #9AA7B4;      /* secondary text */
+  --color-mint: #3DDC97;       /* accent */
+  --color-mint-light: #7BEBB9;
+  --color-mint-ink: #06281A;   /* text on mint buttons */
+
+  /* Dark remap: old light classes become dark automatically */
+  --color-white: #11171F;
+  --color-slate-50: #0E141B;
+  --color-slate-100: #161E27;
+  --color-slate-200: #1F2833;
+  --color-slate-300: #2A3542;
+  --color-slate-400: #6B7886;
+  --color-slate-500: #8492A0;
+  --color-slate-600: #9AA7B4;
+  --color-slate-700: #B6C2CE;
+  --color-slate-800: #D3DCE4;
+  --color-slate-900: #E6EDF3;
+  --color-slate-950: #F4F7FA;
+
+  --color-blue-50: #0F2A22;
+  --color-blue-100: #133227;
+  --color-blue-200: #1F4A3A;
+  --color-blue-300: #2E6B53;
+  --color-blue-400: #5FE3AA;
+  --color-blue-500: #3DDC97;
+  --color-blue-600: #3DDC97;
+  --color-blue-700: #7BEBB9;
+  --color-blue-800: #9FF0CB;
+  --color-blue-900: #C5F6DF;
+
+  --color-green-50: #0F2A22;
+  --color-green-100: #133227;
+  --color-green-200: #1F4A3A;
+  --color-green-600: #3DDC97;
+  --color-green-700: #5FE3AA;
+  --color-green-800: #7BEBB9;
+  --color-emerald-50: #0F2A22;
+  --color-emerald-100: #133227;
+  --color-emerald-600: #3DDC97;
+  --color-emerald-700: #5FE3AA;
+
+  --color-red-50: #2A1215;
+  --color-red-100: #3A1A1E;
+  --color-red-200: #5A2328;
+  --color-red-600: #F87171;
+  --color-red-700: #FCA5A5;
+  --color-red-800: #FECACA;
+
+  --color-amber-50: #2A2110;
+  --color-amber-100: #3A2D14;
+  --color-amber-200: #5A4520;
+  --color-amber-600: #F5B95A;
+  --color-amber-700: #F5B95A;
+  --color-amber-800: #FAD48F;
+}
+
+@layer base {
+  html { color-scheme: dark; }
+  body { background: var(--color-ink); color: var(--color-fg); }
+  h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
+  ::selection { background: #3DDC9755; }
+}
+
+/* Markdown (AI answers) */
+.md p { margin: 0 0 0.6em; }
+.md p:last-child { margin-bottom: 0; }
+.md ul { list-style: disc; padding-left: 1.25rem; margin: 0 0 0.6em; }
+.md ol { list-style: decimal; padding-left: 1.25rem; margin: 0 0 0.6em; }
+.md li { margin: 0.2em 0; }
+.md strong { font-weight: 600; color: var(--color-fg); }
+.md h1, .md h2, .md h3 { font-weight: 600; margin: 0.8em 0 0.4em; }
+.md a { color: var(--color-mint); text-decoration: underline; }
+.md code { background: #0A0E13; border: 1px solid var(--color-line); border-radius: 6px; padding: 0 4px; }
+.md table { border-collapse: collapse; margin: 0.6em 0; font-size: 0.9em; }
+.md th, .md td { border: 1px solid var(--color-line); padding: 0.35rem 0.6rem; text-align: left; }
+.md th { background: #0E141B; }
