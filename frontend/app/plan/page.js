@@ -72,6 +72,17 @@ export default function PlanPage() {
         }),
       ]);
       setResult({ risk, portfolio, projection });
+      localStorage.setItem("lastPlan", JSON.stringify({
+        goal: plan.goal,
+        years: plan.years,
+        initial_amount: plan.initialAmount,
+        monthly_contribution: plan.monthly,
+        risk_level: risk.risk_level,
+        risk_score: risk.score,
+        portfolio: portfolio.name,
+        holdings: portfolio.holdings.map((h) => ({ symbol: h.symbol, weight: h.weight })),
+        projected_final: projection.final,
+      }));
       setStep("results");
       if (save) await savePlan(plan, risk);
     } catch (e) {
@@ -267,7 +278,8 @@ function Results({ result, saved, startOver, goal }) {
       </section>
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/learn" className={primary}>How do I actually invest?</Link>
+        <Link href="/coach" className={primary}>Ask the AI Coach about my plan</Link>
+        <Link href="/learn" className={secondary}>How do I actually invest?</Link>
         <button onClick={startOver} className={secondary}>Start over</button>
       </div>
     </div>

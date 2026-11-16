@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 
 const LINKS = [
   { href: "/plan", label: "Build my plan" },
+  { href: "/coach", label: "AI Coach" },
   { href: "/dashboard", label: "My plans" },
   { href: "/stocks", label: "Stocks" },
   { href: "/learn", label: "How to invest" },

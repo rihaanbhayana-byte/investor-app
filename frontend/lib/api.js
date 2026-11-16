@@ -13,11 +13,14 @@ async function request(path, options = {}) {
   return response.json();
 }
 
+const post = (path, body) => request(path, { method: "POST", body: JSON.stringify(body) });
+
 export const api = {
   questions: () => request("/questions"),
-  riskProfile: (body) => request("/risk-profile", { method: "POST", body: JSON.stringify(body) }),
+  riskProfile: (body) => post("/risk-profile", body),
   portfolio: (level) => request(`/portfolios/${level}`),
-  projection: (body) => request("/projection", { method: "POST", body: JSON.stringify(body) }),
+  projection: (body) => post("/projection", body),
   stocks: () => request("/stocks"),
   stock: (symbol) => request(`/stocks/${symbol}`),
+  chat: (body) => post("/chat", body),
 };

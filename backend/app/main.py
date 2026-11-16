@@ -132,3 +132,112 @@ def get_stock(symbol: str):
         "fundamentals": fundamentals,
         "disclaimer": DISCLAIMER,
     }
+
+
+# =====================================================================
+# AI Coach
+# =====================================================================
+import json  # noqa: E402
+
+from . import ai  # noqa: E402
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=4000)
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage] = Field(min_length=1, max_length=30)
+    plan: dict | None = None
+
+
+def tool_list_stocks():
+    keys = ("symbol", "name", "asset_type", "sector", "latest_price", "return_1y")
+    return [{k: s[k] for k in keys} for s in get_stocks()]
+
+
+def tool_get_stock(symbol):
+    data = get_stock(symbol)
+    prices = data["prices"]
+    return {
+        "symbol": data["symbol"],
+        "name": data["name"],
+        "type": data["asset_type"],
+        "sector": data["sector"],
+        "latest_price": prices[-1] if prices else None,
+        "price_1_year_ago": prices[-13] if len(prices) >= 13 else None,
+        "first_price_in_data": prices[0] if prices else None,
+        "stats_since_2016": data["stats"],
+        "financials_last_4_years": data["fundamentals"][-4:],
+    }
+
+
+def tool_get_portfolio(risk_level):
+    p = get_portfolio(risk_level)
+    return {k: p[k] for k in ("name", "description", "holdings", "stats", "history_from", "history_to")}
+
+
+def tool_run_projection(risk_level, initial_amount, monthly_contribution, years):
+    result = get_projection(ProjectionRequest(
+        risk_level=risk_level,
+        initial_amount=initial_amount,
+        monthly_contribution=monthly_contribution,
+        years=years,
+    ))
+    return {
+        "portfolio": result["portfolio_name"],
+        "final_year": result["final"],
+        "method": "5,000 simulations replaying monthly returns since 2016. low = 10th percentile, high = 90th percentile.",
+    }
+
+
+TOOL_FUNCTIONS = {
+    "list_stocks": tool_list_stocks,
+    "get_stock": tool_get_stock,
+    "get_portfolio": tool_get_portfolio,
+    "run_projection": tool_run_projection,
+}
+
+LEVELS = ["conservative", "moderate", "aggressive"]
+
+TOOL_SPECS = [
+    {"type": "function", "function": {
+        "name": "list_stocks",
+        "description": "List every stock and fund in the app with its latest price and 1-year return.",
+        "parameters": {"type": "object", "properties": {}},
+    }},
+    {"type": "function", "function": {
+        "name": "get_stock",
+        "description": "Get one ticker's stats since 2016 (average yearly return, volatility, biggest drop, best and worst 12 months) and its last 4 years of company financials.",
+        "parameters": {"type": "object", "properties": {"symbol": {"type": "string", "description": "Ticker, e.g. AAPL"}}, "required": ["symbol"]},
+    }},
+    {"type": "function", "function": {
+        "name": "get_portfolio",
+        "description": "Get a model portfolio's holdings and historical stats.",
+        "parameters": {"type": "object", "properties": {"risk_level": {"type": "string", "enum": LEVELS}}, "required": ["risk_level"]},
+    }},
+    {"type": "function", "function": {
+        "name": "run_projection",
+        "description": "Simulate how money could grow in a model portfolio. Returns low, median and high final values and total money put in.",
+        "parameters": {"type": "object", "properties": {
+            "risk_level": {"type": "string", "enum": LEVELS},
+            "initial_amount": {"type": "number"},
+            "monthly_contribution": {"type": "number"},
+            "years": {"type": "integer", "minimum": 1, "maximum": 50},
+        }, "required": ["risk_level", "initial_amount", "monthly_contribution", "years"]},
+    }},
+]
+
+
+@app.post("/chat")
+def chat(request: ChatRequest):
+    system = ai.COACH_PROMPT
+    if request.plan:
+        system += "\n\nThe user's current plan: " + json.dumps(request.plan)[:2000]
+    messages = [{"role": "system", "content": system}] + [m.model_dump() for m in request.messages]
+    try:
+        reply = ai.run_with_tools(messages, TOOL_SPECS, TOOL_FUNCTIONS)
+    except Exception as error:
+        raise HTTPException(503, f"The AI coach is unavailable right now: {error}")
+    return {"reply": reply}
