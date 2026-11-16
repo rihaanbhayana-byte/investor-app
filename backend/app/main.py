@@ -405,3 +405,81 @@ def compare(symbols: str):
         for s in wanted
     }
     return {"symbols": wanted, "series": rows, "stats": stats, "disclaimer": DISCLAIMER}
+
+
+# =====================================================================
+# Any US stock: search and live data
+# =====================================================================
+from . import live  # noqa: E402
+
+_live_cache = {}
+
+
+def live_stock_data(symbol):
+    symbol = clean_symbol(symbol.replace("-", "."))
+    key = (symbol, date.today().isoformat())
+    if key in _live_cache:
+        return _live_cache[key]
+    match = live.find(symbol)
+    try:
+        closes = live.monthly_prices(symbol)
+    except Exception as error:
+        raise HTTPException(502, f"Could not fetch prices for {symbol}: {error}")
+    if len(closes) < 2:
+        raise HTTPException(404, f"No price data found for {symbol}")
+    returns = analytics.returns_from_closes(closes)
+    data = {
+        "symbol": symbol,
+        "name": match["name"].title() if match else symbol,
+        "asset_type": "stock",
+        "sector": "Live data",
+        "prices": [{"month": m, "close": c} for m, c in closes],
+        "stats": analytics.summarize(returns) if len(returns) >= 12 else None,
+        "fundamentals": live.fundamentals(match["cik"]) if match else [],
+        "disclaimer": DISCLAIMER,
+        "live": True,
+    }
+    _live_cache[key] = data
+    return data
+
+
+@app.get("/search")
+def search_stocks(q: str = Query(min_length=1, max_length=30)):
+    try:
+        results = live.search(q)
+    except Exception as error:
+        raise HTTPException(502, f"Search is unavailable right now: {error}")
+    ours = {s["symbol"] for s in db.select("securities", {"select": "symbol"})}
+    return [{**r, "in_app": r["symbol"] in ours} for r in results]
+
+
+@app.get("/live-stock/{symbol}")
+def get_live_stock(symbol: str):
+    return live_stock_data(symbol)
+
+
+# Let the AI Coach and "Explain it" use live data for stocks outside our list
+_stored_stock = tool_get_stock
+
+
+def tool_get_stock(symbol):
+    try:
+        return _stored_stock(symbol)
+    except HTTPException as error:
+        if error.status_code != 404:
+            raise
+    data = live_stock_data(symbol)
+    prices = data["prices"]
+    return {
+        "symbol": data["symbol"],
+        "name": data["name"],
+        "type": "stock (live data, not in our saved list)",
+        "latest_price": prices[-1],
+        "price_1_year_ago": prices[-13] if len(prices) >= 13 else None,
+        "first_price_in_data": prices[0],
+        "stats_since_2016": data["stats"],
+        "financials_last_4_years": data["fundamentals"][-4:],
+    }
+
+
+TOOL_FUNCTIONS["get_stock"] = tool_get_stock

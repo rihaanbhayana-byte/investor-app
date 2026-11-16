@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import TickerSearch from "@/components/TickerSearch";
 import { percent, price } from "@/lib/format";
 
 export default function StocksPage() {
@@ -30,8 +31,10 @@ export default function StocksPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Explore stocks and funds</h1>
-        <p className="mt-1 text-slate-600">Click any name to see its price history and company financials.</p>
+        <p className="mt-1 text-slate-600">Search any US company, or browse our 36 beginner-friendly picks below.</p>
       </div>
+
+      <TickerSearch />
 
       <div className="flex flex-wrap gap-3">
         <input

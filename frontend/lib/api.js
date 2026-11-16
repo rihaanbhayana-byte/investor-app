@@ -27,5 +27,7 @@ export const api = {
   explainStock: (symbol) => request(`/explain-stock/${symbol}`),
   timeMachine: (symbol, amount, start) => request(`/time-machine?symbol=${symbol}&amount=${amount}&start=${start}`),
   goalCalculator: (body) => post("/goal-calculator", body),
+  search: (q) => request(`/search?q=${encodeURIComponent(q)}`),
+  liveStock: (symbol) => request(`/live-stock/${symbol}`),
   compare: (symbols) => request(`/compare?symbols=${symbols.join(",")}`),
 };

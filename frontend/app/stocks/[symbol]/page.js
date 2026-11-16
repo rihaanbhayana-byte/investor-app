@@ -14,7 +14,9 @@ export default function StockPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api.stock(symbol).then(setStock).catch((e) => setError(e.message));
+    api.stock(symbol)
+      .then(setStock)
+      .catch(() => api.liveStock(symbol).then(setStock).catch((e) => setError(e.message)));
   }, [symbol]);
 
   if (error) return <p className="rounded-lg bg-red-50 p-3 text-red-700">{error}</p>;
@@ -27,6 +29,12 @@ export default function StockPage() {
   return (
     <div className="space-y-6">
       <Link href="/stocks" className="text-sm text-emerald-700 hover:underline">← All stocks</Link>
+
+      {stock.live && (
+        <p className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
+          This company isn&rsquo;t in our saved list, so we fetched its data live from Alpaca and SEC EDGAR.
+        </p>
+      )}
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
