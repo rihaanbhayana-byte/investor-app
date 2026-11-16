@@ -53,7 +53,13 @@ def admin(method, table, params=None, json=None, prefer=None):
         headers={"Prefer": prefer} if prefer else {},
         timeout=30,
     )
-    response.raise_for_status()
+    if not response.ok:
+        hint = ""
+        if "practice_" in table and response.status_code == 404:
+            hint = " The practice tables are missing: run database/practice.sql in the Supabase SQL Editor."
+        elif response.status_code in (401, 403):
+            hint = " Check SUPABASE_SECRET_KEY in the .env file."
+        raise RuntimeError(f"Supabase said {response.status_code}: {response.text[:200]}.{hint}")
     return response.json() if response.content else None
 
 

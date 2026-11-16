@@ -3,11 +3,26 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from . import analytics, db, risk
 
 app = FastAPI(title="Investor App API", version="1.0.0")
+
+
+# Turn unexpected crashes into a readable error. This must be added BEFORE the CORS
+# middleware, so the browser still receives the CORS header and can show the message
+# (otherwise it only says "Failed to fetch").
+@app.middleware("http")
+async def readable_errors(request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as error:  # noqa: BLE001
+        print(f"ERROR on {request.url.path}: {error!r}")
+        return JSONResponse(status_code=500, content={"detail": f"Server error: {error}"})
+
+
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 DISCLAIMER = (
