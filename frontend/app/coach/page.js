@@ -62,6 +62,7 @@ export default function CoachPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState(null);
+  const [shield, setShield] = useState(null);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -85,8 +86,8 @@ export default function CoachPage() {
     setInput("");
     setLoading(true);
     try {
-      const { reply } = await api.chat({ messages: next.slice(-12), plan });
-      setMessages([...next, { role: "assistant", content: reply }]);
+      const result = await api.chat({ messages: next.slice(-12).map(({ role, content }) => ({ role, content })), plan });
+      setMessages([...next, { role: "assistant", content: result.reply, guardrail: result.guardrail, notices: result.notices || [] }]);
     } catch (e) {
       setMessages([...next, { role: "assistant", content: `Sorry, something went wrong: ${e.message}`, error: true }]);
     }
@@ -153,6 +154,33 @@ export default function CoachPage() {
               </p>
             </div>
           </div>
+          <div className="relative ml-auto mr-2">
+            <button
+              onClick={() => (shield ? setShield(null) : api.guardrails().then(setShield).catch(() => setShield({ layers: [] })))}
+              aria-expanded={Boolean(shield)}
+              className="flex items-center gap-1.5 rounded-full border border-mint-line bg-mint-soft px-3 py-1.5 text-xs font-semibold text-mint transition hover:border-mint"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M9 12l2 2 4-4" />
+              </svg>
+              Guardrails on
+            </button>
+            {shield && (
+              <div className="absolute right-0 top-full z-30 mt-2 w-80 rounded-2xl border border-line bg-surface p-4 shadow-float motion-safe:animate-page-in">
+                <div className="text-sm font-semibold">How this coach stays safe</div>
+                <ul className="mt-2.5 flex flex-col gap-2.5">
+                  {shield.layers.map((l) => (
+                    <li key={l.name} className="flex gap-2.5 text-xs">
+                      <span className="mt-0.5 text-mint">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>
+                      </span>
+                      <span><span className="font-semibold text-fg">{l.name}.</span> <span className="text-muted">{l.detail}</span></span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
           {!empty && (
             <button onClick={() => setMessages([])} className="rounded-full border border-line px-3.5 py-2 text-sm text-muted transition hover:border-slate-300 hover:text-fg">
               New chat
@@ -195,8 +223,24 @@ export default function CoachPage() {
                 ) : (
                   <div key={i} className="flex items-start gap-3 motion-safe:animate-[sw-rise_0.3s_ease-out_both]">
                     <CoachAvatar />
-                    <div className={`md min-w-0 max-w-[85%] rounded-2xl rounded-tl-md border px-4 py-3 leading-relaxed ${m.error ? "border-red-200 bg-red-50" : "border-line bg-ink"}`}>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                    <div className="flex min-w-0 max-w-[85%] flex-col gap-2">
+                      {m.notices?.map((n) => (
+                        <div key={n} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-slate-800">
+                          <svg className="mt-0.5 shrink-0 text-gold" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                          </svg>
+                          {n}
+                        </div>
+                      ))}
+                      <div className={`md rounded-2xl rounded-tl-md border px-4 py-3 leading-relaxed ${m.error ? "border-red-200 bg-red-50" : m.guardrail ? "border-mint-line bg-mint-soft" : "border-line bg-ink"}`}>
+                        {m.guardrail && (
+                          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-mint">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /></svg>
+                            {{ off_topic: "Guardrail: staying on money topics", harmful: "Guardrail: harmful request", injection: "Guardrail: rules can't be changed", crisis: "Support resources" }[m.guardrail] || "Guardrail"}
+                          </div>
+                        )}
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                      </div>
                     </div>
                   </div>
                 )

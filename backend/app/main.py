@@ -1,12 +1,12 @@
 """Investor App API. Run locally from the backend folder:  uvicorn app.main:app --reload"""
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from . import analytics, db, risk
+from . import analytics, db, guardrails, risk
 
 app = FastAPI(title="Investor App API", version="1.0.0")
 
@@ -24,6 +24,27 @@ async def readable_errors(request, call_next):
 
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+
+def ai_rate_limit(request: Request):
+    """Guardrail layer 1: every AI endpoint uses this, so one visitor can't use up the free AI quota."""
+    message = guardrails.rate_limited(guardrails.client_ip(request))
+    if message:
+        raise HTTPException(429, message)
+
+
+def screen_or_reject(text, check_topic=True):
+    """For single-text AI features: clean the text, and reject it with a friendly 400 if a guardrail blocks it."""
+    clean, notices, blocked = guardrails.screen_input(text, check_topic=check_topic)
+    if blocked:
+        messages = {
+            "off_topic": "That doesn't look like an investing question. Try describing a money goal or strategy.",
+            "harmful": "Sorry, I can't help with that.",
+            "injection": "That request can't be processed. Please describe your goal in plain words.",
+            "crisis": guardrails.CANNED["crisis"],
+        }
+        raise HTTPException(400, messages[blocked["type"]])
+    return clean
 
 DISCLAIMER = (
     "Educational estimates based on past prices since 2016, a strong period for stocks. "
@@ -246,16 +267,28 @@ TOOL_SPECS = [
 
 
 @app.post("/chat")
-def chat(request: ChatRequest):
+def chat(request: ChatRequest, _: None = Depends(ai_rate_limit)):
+    history = [m.model_dump() for m in request.messages]
+    if history[-1]["role"] != "user":
+        raise HTTPException(400, "The last message must come from the user.")
+    for m in history[:-1]:
+        if m["role"] == "user":
+            m["content"] = guardrails.redact(m["content"])[0]
+    context = next((m["content"] for m in reversed(history[:-1]) if m["role"] == "assistant"), "")
+    clean, notices, blocked = guardrails.screen_input(history[-1]["content"], context=context)
+    if blocked:
+        return {"reply": blocked["reply"], "guardrail": blocked["type"], "notices": notices}
+    history[-1]["content"] = clean
+
     system = ai.COACH_PROMPT
     if request.plan:
         system += "\n\nThe user's current plan: " + json.dumps(request.plan)[:2000]
-    messages = [{"role": "system", "content": system}] + [m.model_dump() for m in request.messages]
+    messages = [{"role": "system", "content": system}] + history
     try:
         reply = ai.run_with_tools(messages, TOOL_SPECS, TOOL_FUNCTIONS)
     except Exception as error:
         raise HTTPException(503, f"The AI coach is unavailable right now: {error}")
-    return {"reply": reply}
+    return {"reply": guardrails.check_output(reply), "guardrail": None, "notices": notices}
 
 
 # =====================================================================
@@ -286,8 +319,9 @@ def _number(value, default=0.0):
 
 
 @app.post("/parse-goal")
-def parse_goal(request: GoalText):
-    messages = [{"role": "system", "content": GOAL_PROMPT}, {"role": "user", "content": request.text}]
+def parse_goal(request: GoalText, _: None = Depends(ai_rate_limit)):
+    text = screen_or_reject(request.text)
+    messages = [{"role": "system", "content": GOAL_PROMPT}, {"role": "user", "content": text}]
     try:
         try:
             reply = ai.complete(messages, temperature=0, json_mode=True)
@@ -319,7 +353,7 @@ _explain_cache = {}
 
 
 @app.get("/explain-stock/{symbol}")
-def explain_stock(symbol: str):
+def explain_stock(symbol: str, _: None = Depends(ai_rate_limit)):
     key = (symbol.upper(), date.today().isoformat())
     if key in _explain_cache:
         return {"explanation": _explain_cache[key]}
@@ -828,11 +862,12 @@ def _optional_number(value, low, high):
 
 
 @app.post("/strategy-test")
-def strategy_test(request: StrategyRequest):
+def strategy_test(request: StrategyRequest, _: None = Depends(ai_rate_limit)):
+    text = screen_or_reject(request.text)
     allowed = [s["symbol"] for s in db.select("securities", {"select": "symbol", "order": "symbol"})]
     messages = [
         {"role": "system", "content": STRATEGY_PROMPT + json.dumps(allowed)},
-        {"role": "user", "content": request.text},
+        {"role": "user", "content": text},
     ]
     try:
         try:
@@ -966,12 +1001,13 @@ class MatchRequest(BaseModel):
 
 
 @app.post("/match-interests")
-def match_interests(request: MatchRequest):
+def match_interests(request: MatchRequest, _: None = Depends(ai_rate_limit)):
+    text = screen_or_reject(request.text, check_topic=False)
     stocks = get_stocks()
     listing = [{"symbol": s["symbol"], "name": s["name"], "sector": s["sector"]} for s in stocks]
     messages = [
         {"role": "system", "content": MATCH_PROMPT + json.dumps(listing)},
-        {"role": "user", "content": request.text},
+        {"role": "user", "content": text},
     ]
     try:
         try:
@@ -1015,7 +1051,7 @@ class DoctorRequest(BaseModel):
 
 
 @app.post("/practice/doctor")
-def practice_doctor(request: DoctorRequest, user_id: str = Depends(current_user)):
+def practice_doctor(request: DoctorRequest, user_id: str = Depends(current_user), _: None = Depends(ai_rate_limit)):
     state = practice_state(user_id)
     total = state["total"]
     holdings = state["holdings"]
@@ -1122,3 +1158,23 @@ def practice_doctor(request: DoctorRequest, user_id: str = Depends(current_user)
         tips = [c["detail"] for c in checks if c["status"] != "good"][:3]
 
     return {**facts, "headline": headline, "tips": tips, "disclaimer": "Practice only. Educational, not financial advice."}
+
+
+
+# =====================================================================
+# Guardrails panel: what protects the AI, and how often each layer fired
+# =====================================================================
+@app.get("/guardrails")
+def guardrail_info():
+    return {
+        "layers": [
+            {"name": "Rate limit", "detail": "Each visitor can make 15 AI requests a minute and 300 a day."},
+            {"name": "Personal data filter", "detail": "Card numbers, SSNs, emails, phone numbers and passwords are removed before the AI sees them."},
+            {"name": "Prompt-injection block", "detail": "Attempts to override or reveal the AI's instructions are refused."},
+            {"name": "Topic check", "detail": "A fast AI classifier keeps the coach on investing and money, and refuses harmful requests."},
+            {"name": "Crisis support", "detail": "Messages about self-harm get support resources instead of an answer."},
+            {"name": "Grounded answers", "detail": "The AI must look up real data with tools before quoting any number."},
+            {"name": "Output check", "detail": "Answers that sound like promises or buy/sell orders get a caution note."},
+        ],
+        "counts_since_restart": dict(guardrails.stats),
+    }
