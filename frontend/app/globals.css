@@ -371,3 +371,6 @@ html[data-layout="marketing"] .app-content { max-width: 72rem; padding: 2.5rem 1
 
 /* menu items: keyboard focus ring sits inside the pill, never a heavy box */
 .app-sidebar a:focus-visible, .app-sidebar button:focus-visible { outline-offset: -2px; }
+
+/* a mouse click never leaves a focus box behind; keyboard users still get a clear ring */
+html:not(.kbd) :focus-visible:not(input):not(textarea):not(select) { outline: none; }

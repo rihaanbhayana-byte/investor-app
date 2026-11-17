@@ -9,25 +9,11 @@ import { supabase } from "@/lib/supabase";
 import { money, percent, price } from "@/lib/format";
 import PortfolioDoctor from "@/components/PortfolioDoctor";
 import { PlanTracker } from "@/components/PlanPractice";
+import { Kpi, Pill } from "@/components/dashboard/parts";
 import { Avatar, ReturnPill, RISE, SERIES_COLORS, Segmented, useCountUp } from "@/components/ui";
 
 const QUICK = [100, 500, 1000];
 
-function Badge({ done, title, text, icon }) {
-  return (
-    <div className={`flex items-center gap-3 rounded-2xl border p-4 transition ${done ? "border-brand-line bg-brand-soft" : "border-line bg-surface opacity-60"}`}>
-      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${done ? "bg-brand text-brand-ink" : "bg-slate-100 text-muted"}`}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          {done ? <path d="M5 12l5 5 9-10" /> : icon}
-        </svg>
-      </span>
-      <span className="min-w-0">
-        <span className="block text-sm font-semibold">{title}</span>
-        <span className="block text-xs text-muted">{text}</span>
-      </span>
-    </div>
-  );
-}
 
 function LoggedOut() {
   return (
@@ -123,15 +109,7 @@ export default function PracticePage() {
   const tooMuch = !sellAll && amount > maxDollars + 0.005;
   const shares = livePrice ? amount / livePrice : 0;
   const ahead = state.sp500_value != null ? state.total - state.sp500_value : null;
-  const etfs = new Set([...stocks, ...Object.values(quotes)].filter((s) => s.asset_type === "etf").map((s) => s.symbol));
 
-  const badges = [
-    { title: "First trade", text: "Make your first investment", done: state.trade_count > 0, icon: <path d="M12 5v14M5 12h14" /> },
-    { title: "Fund fan", text: "Own an ETF (a whole basket)", done: state.holdings.some((h) => etfs.has(h.symbol)), icon: <><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></> },
-    { title: "Diversified", text: "Hold 5 or more investments", done: state.holdings.length >= 5, icon: <><circle cx="12" cy="12" r="9" /><path d="M12 3v9l6 6" /></> },
-    { title: "Fully invested", text: "Less than 5% left in cash", done: state.trade_count > 0 && state.cash < state.total * 0.05, icon: <path d="M3 17l6-6 4 4 8-8" /> },
-    { title: "Beat the market", text: "Ahead of the S&P 500", done: state.trade_count > 0 && ahead > 0, icon: <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" /> },
-  ];
 
   async function trade(e) {
     e.preventDefault();
@@ -195,62 +173,18 @@ export default function PracticePage() {
         )}
       </div>
 
-      <section className="grid grid-cols-1 gap-6 rounded-3xl border border-brand-line bg-glow p-5 sm:p-7 lg:grid-cols-[1.3fr_1fr] [&>*]:min-w-0">
-        <div>
-          <div className="text-muted">Your portfolio is worth</div>
-          <div className="mt-1 font-display text-5xl font-bold tracking-tight tabular-nums sm:text-6xl">{money(total)}</div>
-          <div className="mt-3 flex flex-wrap gap-2.5 text-sm">
-            <ReturnPill value={state.gain}>
-              {money(Math.abs(state.gain))} ({percent(Math.abs(state.gain_pct))})
-            </ReturnPill>
-            <span className="rounded-xl border border-slate-300 px-3 py-1 text-slate-700">Cash {money(state.cash)}</span>
-            <span className="rounded-xl border border-slate-300 px-3 py-1 text-slate-700">Invested {money(state.invested)}</span>
-          </div>
-          <p className="mt-4 text-xs text-slate-500">
-            Started {startDate} · Prices as of {state.prices_as_of || "the latest close"} · They update once a day after the market closes.
-          </p>
-        </div>
-        <div className="flex flex-col justify-center gap-3 rounded-2xl border border-line bg-ink/70 p-5">
-          <div className="text-sm font-semibold">You vs. the S&amp;P 500</div>
-          {state.sp500_value != null ? (
-            <>
-              {[
-                ["You", state.total, "var(--color-brand)"],
-                ["S&P 500", state.sp500_value, "var(--color-dim)"],
-              ].map(([label, value, color]) => (
-                <div key={label}>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted">{label}</span>
-                    <span className="font-semibold">{money(value)}</span>
-                  </div>
-                  <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(value / Math.max(state.total, state.sp500_value)) * 100}%`, background: color }} />
-                  </div>
-                </div>
-              ))}
-              <p className="text-sm">
-                {state.trade_count === 0 ? (
-                  <span className="text-muted">Make a trade to start the race.</span>
-                ) : Math.abs(ahead) < 0.5 ? (
-                  <span className="text-muted">You&rsquo;re even with the S&amp;P 500 so far.</span>
-                ) : ahead > 0 ? (
-                  <span className="font-semibold text-gain">You&rsquo;re ahead by {money(ahead)}!</span>
-                ) : (
-                  <span className="text-muted">You&rsquo;re {money(-ahead)} behind. Most pros are too!</span>
-                )}
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-muted">The comparison appears after the next price update.</p>
-          )}
-        </div>
-      </section>
-
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-        {badges.map((b) => (
-          <Badge key={b.title} {...b} />
-        ))}
-      </section>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Kpi label="Portfolio value" value={money(total)} sub={`${state.gain >= 0 ? "+" : "−"}${money(Math.abs(state.gain))} since ${startDate}`} pill={<Pill kind={state.gain >= 0 ? "gain" : "loss"}>{state.gain >= 0 ? "+" : "−"}{percent(Math.abs(state.gain_pct))}</Pill>} />
+        <Kpi
+          label="vs the S&P 500"
+          value={ahead == null || state.trade_count === 0 ? "–" : `${ahead >= 0 ? "+" : "−"}${money(Math.abs(ahead))}`}
+          sub={ahead == null ? "Comparing after the next price update" : state.trade_count === 0 ? "Make a trade to start the race" : `S&P 500 would be ${money(state.sp500_value)}`}
+          pill={ahead == null || state.trade_count === 0 ? null : Math.abs(ahead) < 0.5 ? <Pill kind="brand">Even</Pill> : <Pill kind={ahead > 0 ? "gain" : "loss"}>{ahead > 0 ? "Ahead" : "Behind"}</Pill>}
+        />
+        <Kpi label="Cash to invest" value={money(state.cash)} sub={state.cash > total * 0.25 ? "Uninvested money doesn't grow" : "Most of your money is invested"} pill={<Pill kind={state.cash > total * 0.25 ? "loss" : "gain"}>{Math.round((state.cash / (total || 1)) * 100)}%</Pill>} />
+        <Kpi label="Invested" value={money(state.invested)} sub={`${state.holdings.length} investment${state.holdings.length === 1 ? "" : "s"} · ${state.trade_count} trade${state.trade_count === 1 ? "" : "s"}`} />
+      </div>
+      <p className="-mt-2 text-xs text-muted">Prices as of {state.prices_as_of || "the latest close"}. They update once a day after the market closes.</p>
 
       <PlanTracker state={state} onChange={(s) => s && setState(s)} />
 

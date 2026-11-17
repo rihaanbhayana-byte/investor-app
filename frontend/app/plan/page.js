@@ -44,6 +44,64 @@ function Loading() {
   );
 }
 
+const GOAL_EXAMPLES = [
+  "A house deposit in 6 years: I have $2,000 and can save $250 a month",
+  "I'm 17, I have $500 and can add $50 a month for 10 years",
+  "Retire comfortably. I'm 25 and can invest $300 a month",
+];
+
+// Type your goal straight away. The AI reads it and opens your numbers to check.
+function GoalComposer({ onSubmit, onManual }) {
+  const [text, setText] = useState("");
+  const ready = text.trim().length >= 5;
+  return (
+    <div className="flex w-full max-w-2xl flex-col items-center gap-4">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (ready) onSubmit(text.trim());
+        }}
+        className="w-full rounded-2xl border border-line bg-surface p-2 text-left shadow-float focus-within:border-brand"
+      >
+        <label htmlFor="goal-text" className="sr-only">Your money goal, in your own words</label>
+        <textarea
+          id="goal-text"
+          rows={3}
+          value={text}
+          autoFocus
+          maxLength={1000}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (ready) onSubmit(text.trim());
+            }
+          }}
+          placeholder="Tell me your money goal: what you're saving for, how much you have, how much you can add, and when."
+          className="w-full resize-none bg-transparent px-3 py-3 text-base text-fg placeholder:text-slate-500 focus:outline-none"
+        />
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-2 pt-2">
+          <span className="flex items-center gap-1.5 px-1 text-xs font-semibold text-brand">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" /></svg>
+            AI reads it and fills in your plan
+          </span>
+          <button disabled={!ready} className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-brand-ink transition hover:bg-brand-light disabled:opacity-50">Build my plan →</button>
+        </div>
+      </form>
+      <div className="flex flex-wrap justify-center gap-2">
+        {GOAL_EXAMPLES.map((g) => (
+          <button key={g} type="button" onClick={() => setText(g)} className="max-w-full truncate rounded-full border border-line bg-surface px-3 py-1.5 text-xs text-muted transition hover:border-brand hover:text-brand">
+            {g}
+          </button>
+        ))}
+      </div>
+      <button type="button" onClick={onManual} className="text-sm font-semibold text-muted underline-offset-4 hover:text-fg hover:underline">
+        Rather answer step by step →
+      </button>
+    </div>
+  );
+}
+
 function ChoiceCard({ onClick, featured, icon, title, text, cta }) {
   return (
     <button
@@ -255,23 +313,13 @@ export default function PlanPage() {
             <p className="mt-1.5 text-[15px] text-muted">About 2 minutes. No jargon. You can change anything later.</p>
           </div>
 
-          <div className="grid w-full max-w-4xl gap-5 md:grid-cols-2">
-            <ChoiceCard
-              featured
-              onClick={() => setWizardMode("ai")}
-              icon={<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" /></svg>}
-              title="Describe it in my own words"
-              text="Type one sentence like “a house deposit in 6 years, $250 a month” and our AI fills in everything for you."
-              cta="Start with AI"
-            />
-            <ChoiceCard
-              onClick={() => setWizardMode("manual")}
-              icon={<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11" /><path d="M4 6h.01M4 12h.01M4 18h.01" /></svg>}
-              title="Answer step by step"
-              text="Pick your goal, set your numbers with sliders, then answer a few quick questions about you."
-              cta="Start"
-            />
-          </div>
+          <GoalComposer
+            onSubmit={(text) => {
+              setGoalText(text);
+              setWizardMode("ai");
+            }}
+            onManual={() => setWizardMode("manual")}
+          />
 
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-muted">
             <span>About 2 minutes</span>

@@ -111,6 +111,7 @@ export default function DashboardPage() {
     "first-trade": (practice?.trade_count ?? 0) > 0,
     watcher: watch.items.length > 0,
     diversified: (practice?.holdings?.length ?? 0) >= 5,
+    beat: (practice?.trade_count ?? 0) > 0 && practice?.sp500_value != null && practice.total > practice.sp500_value,
     ...flags,
   };
 

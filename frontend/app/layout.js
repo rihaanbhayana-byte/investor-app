@@ -20,6 +20,8 @@ export const metadata = {
 // Light by default; dark if the person chose it, or (until they choose) if their device is in dark mode.
 // Before the first paint: landing page and login use the top menu layout (see lib/layoutMode.js).
 const LAYOUT_SCRIPT = `try{var p=location.pathname.replace(/\\/+$/,"")||"/";if(p==="/"||p==="/login")document.documentElement.dataset.layout="marketing"}catch(e){}`;
+// Show focus rings only while someone is using the keyboard, never after a mouse click.
+const KEYBOARD_SCRIPT = `try{var d=document.documentElement;addEventListener("keydown",function(e){if(e.key==="Tab")d.classList.add("kbd")},true);addEventListener("mousedown",function(){d.classList.remove("kbd")},true)}catch(e){}`;
 const THEME_SCRIPT = `try{var t=localStorage.getItem("seedwise-theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(e){}`;
 
 const FOOTER_LINKS = [
@@ -35,7 +37,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT + LAYOUT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT + LAYOUT_SCRIPT + KEYBOARD_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-ink font-sans text-fg antialiased">
         <a href="#content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-xl focus:bg-brand focus:px-4 focus:py-2 focus:text-brand-ink">

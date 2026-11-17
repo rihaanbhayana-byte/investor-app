@@ -19,7 +19,7 @@ export const card = "rounded-2xl border border-line bg-surface";
 const signed = (x, digits = 1) => `${x >= 0 ? "+" : "−"}${(Math.abs(x) * 100).toFixed(digits)}%`;
 const tone = (x) => (x >= 0 ? "text-gain" : "text-loss");
 
-function Pill({ children, kind = "gain" }) {
+export function Pill({ children, kind = "gain" }) {
   const cls = {
     gain: "bg-gain-soft text-gain",
     loss: "bg-red-50 text-loss",
@@ -184,7 +184,7 @@ export function portfolioSeries(practice, quotes) {
   return Array.from({ length: n }, (_, i) => practice.cash + practice.holdings.reduce((sum, h, k) => sum + h.shares * sparks[k][sparks[k].length - n + i], 0));
 }
 
-function Kpi({ label, value, sub, pill, children }) {
+export function Kpi({ label, value, sub, pill, children }) {
   return (
     <div className={`${card} flex min-w-0 flex-col gap-1 p-4`}>
       <div className="flex items-center justify-between gap-2">
@@ -208,6 +208,7 @@ export const BADGES = [
   { id: "checkup", name: "Check-up", how: "Run the Portfolio Doctor", href: "/practice" },
   { id: "student", name: "Student", how: "Finish a Learn lesson", href: "/learn" },
   { id: "curious", name: "Curious", how: "Ask the AI a question", ask: true },
+  { id: "beat", name: "Beat the market", how: "Get ahead of the S&P 500 in Practice", href: "/practice" },
 ];
 
 function BadgesKpi({ earned }) {
