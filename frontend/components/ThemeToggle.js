@@ -5,17 +5,17 @@ import { useEffect, useState } from "react";
 export const THEME_KEY = "seedwise-theme";
 
 function apply(theme) {
-  document.documentElement.classList.toggle("light", theme === "light");
+  document.documentElement.classList.toggle("dark", theme === "dark");
   try {
     localStorage.setItem(THEME_KEY, theme);
   } catch {}
 }
 
 export default function ThemeToggle({ className = "" }) {
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState("light");
 
   useEffect(() => {
-    setTheme(document.documentElement.classList.contains("light") ? "light" : "dark");
+    setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
   }, []);
 
   function toggle(event) {

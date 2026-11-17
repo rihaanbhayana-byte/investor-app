@@ -107,9 +107,9 @@ export default function CrashTest() {
               key={e.id}
               onClick={() => setEvent(e.id)}
               aria-pressed={event === e.id}
-              className={`rounded-2xl border-2 p-5 text-left transition ${event === e.id ? "border-mint bg-mint/10" : "border-line bg-ink hover:border-slate-300"}`}
+              className={`rounded-2xl border-2 p-5 text-left transition ${event === e.id ? "border-brand bg-brand/10" : "border-line bg-ink hover:border-slate-300"}`}
             >
-              <div className="font-display text-sm font-bold text-mint">{e.when}</div>
+              <div className="font-display text-sm font-bold text-brand">{e.when}</div>
               <div className="mt-1 font-display text-lg font-bold">{e.title}</div>
               <div className="mt-1 text-sm text-muted">{e.text}</div>
             </button>
@@ -126,7 +126,7 @@ export default function CrashTest() {
           </div>
         </div>
         {error && <p className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-red-700">{error}</p>}
-        <button onClick={start} disabled={loading} className="self-start rounded-full bg-mint px-7 py-3.5 font-semibold text-mint-ink transition hover:bg-mint-light disabled:opacity-40">
+        <button onClick={start} disabled={loading} className="self-start rounded-xl bg-brand px-7 py-3.5 font-semibold text-brand-ink transition hover:bg-brand-light disabled:opacity-40">
           {loading ? "Loading the history..." : "Start the replay →"}
         </button>
       </div>
@@ -145,7 +145,7 @@ export default function CrashTest() {
   const { domain, ticks: yTicks } = niceAxis(Math.min(...all), Math.max(...all));
   const yearTicks = data.series.filter((r) => r.month.endsWith("-01") || r.month.endsWith("-07")).map((r) => r.month);
   const lines = [
-    { key: "stayed", name: "Held on", color: "var(--color-mint)" },
+    { key: "stayed", name: "Held on", color: "var(--color-brand)" },
     ...(choice === "panic" || phase === "done" ? [{ key: "panic", name: "Sold at the bottom", color: "var(--color-loss)" }] : []),
     ...(choice === "buy_more" || phase === "done" ? [{ key: "buy_more", name: `Bought ${money(data.extra)} more`, color: "var(--color-sky)" }] : []),
   ];
@@ -155,17 +155,17 @@ export default function CrashTest() {
       <div className="rounded-3xl border border-line bg-surface p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">{data.title} · {data.portfolio_name}</div>
+            <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">{data.title} · {data.portfolio_name}</div>
             <div className="mt-2 font-display text-5xl font-bold tabular-nums">{money(value)}</div>
-            <div className={`mt-1 font-semibold ${change >= 0 ? "text-mint" : "text-red-600"}`}>
+            <div className={`mt-1 font-semibold ${change >= 0 ? "text-gain" : "text-loss"}`}>
               {change >= 0 ? "+" : ""}{percent(change)} on the {money(putIn)} you put in · {monthName(current.month)}
             </div>
           </div>
           <div className="flex gap-2">
             {phase === "playing" && (
-              <button onClick={skip} className="rounded-full border border-line px-4 py-2.5 text-sm text-muted transition hover:border-slate-300 hover:text-fg">Skip ahead</button>
+              <button onClick={skip} className="rounded-xl border border-line px-4 py-2.5 text-sm text-muted transition hover:border-slate-300 hover:text-fg">Skip ahead</button>
             )}
-            <button onClick={() => { clearInterval(timer.current); setPhase("setup"); }} className="rounded-full border border-line px-4 py-2.5 text-sm text-muted transition hover:border-slate-300 hover:text-fg">
+            <button onClick={() => { clearInterval(timer.current); setPhase("setup"); }} className="rounded-xl border border-line px-4 py-2.5 text-sm text-muted transition hover:border-slate-300 hover:text-fg">
               Try another
             </button>
           </div>
@@ -232,10 +232,10 @@ export default function CrashTest() {
         <div className="flex flex-col gap-4 motion-safe:animate-[sw-rise_0.4s_ease-out_both]">
           <div className="grid gap-4 md:grid-cols-3">
             {Object.entries(CHOICES).map(([id, c]) => (
-              <div key={id} className={`rounded-3xl border-2 p-6 ${choice === id ? "border-mint bg-mint/5" : "border-line bg-surface"}`}>
+              <div key={id} className={`rounded-3xl border-2 p-6 ${choice === id ? "border-brand bg-brand/5" : "border-line bg-surface"}`}>
                 <div className="flex items-center justify-between">
                   <span className="font-semibold">{c.label}</span>
-                  {choice === id && <span className="rounded-full bg-mint px-2.5 py-0.5 text-xs font-bold text-mint-ink">Your choice</span>}
+                  {choice === id && <span className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-bold text-brand-ink">Your choice</span>}
                 </div>
                 <div className="mt-3 font-display text-3xl font-bold tabular-nums">{money(data.final[id])}</div>
                 <div className="text-sm text-muted">

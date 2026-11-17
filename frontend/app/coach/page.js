@@ -38,7 +38,7 @@ function Sparkle({ size = 20 }) {
 
 function CoachAvatar() {
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-mint text-mint-ink">
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-ink">
       <Sparkle size={18} />
     </span>
   );
@@ -56,7 +56,7 @@ function Typing() {
       <div className="flex items-center gap-3 rounded-2xl rounded-bl-md border border-line bg-surface px-4 py-3">
         <span className="flex gap-1" aria-hidden="true">
           {[0, 1, 2].map((d) => (
-            <span key={d} className="h-2 w-2 rounded-full bg-mint motion-safe:animate-bounce" style={{ animationDelay: `${d * 0.15}s` }} />
+            <span key={d} className="h-2 w-2 rounded-full bg-brand motion-safe:animate-bounce" style={{ animationDelay: `${d * 0.15}s` }} />
           ))}
         </span>
         <span className="text-sm text-muted">{THINKING[i]}</span>
@@ -107,6 +107,7 @@ export default function CoachPage() {
     setMessages(next);
     setInput("");
     setLoading(true);
+    try { localStorage.setItem("seedwise-coach-used", "true"); } catch {}
     try {
       const result = await api.chat({ messages: next.slice(-12).map(({ role, content }) => ({ role, content })), plan });
       setMessages([...next, { role: "assistant", content: result.reply, guardrail: result.guardrail, notices: result.notices || [], insight: result.insight }]);
@@ -125,7 +126,7 @@ export default function CoachPage() {
 
       <aside className="flex flex-col gap-4 lg:w-80 lg:shrink-0">
         <div className="rounded-3xl border border-line bg-surface p-6">
-          <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">What the coach knows</div>
+          <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">What the coach knows</div>
           {plan ? (
             <>
               <h2 className="mt-3 font-display text-xl font-bold">Your latest plan</h2>
@@ -148,7 +149,7 @@ export default function CoachPage() {
             <>
               <h2 className="mt-3 font-display text-xl font-bold">No plan yet</h2>
               <p className="mt-2 text-sm text-muted">Build a plan and the coach can answer questions about your numbers.</p>
-              <Link href="/plan" className="mt-4 inline-block rounded-full bg-mint px-5 py-2.5 text-sm font-semibold text-mint-ink">Build my plan</Link>
+              <Link href="/plan" className="mt-4 inline-block rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-brand-ink">Build my plan</Link>
             </>
           )}
         </div>
@@ -156,7 +157,7 @@ export default function CoachPage() {
           <h2 className="font-semibold">More ideas</h2>
           <div className="mt-3 flex flex-col gap-2">
             {MORE.map((q) => (
-              <button key={q} onClick={() => send(q)} disabled={loading} className="rounded-xl border border-line px-3.5 py-2.5 text-left text-sm text-slate-700 transition hover:border-mint/40 hover:text-fg">
+              <button key={q} onClick={() => send(q)} disabled={loading} className="rounded-xl border border-line px-3.5 py-2.5 text-left text-sm text-slate-700 transition hover:border-brand/40 hover:text-fg">
                 {q}
               </button>
             ))}
@@ -171,7 +172,7 @@ export default function CoachPage() {
             <div>
               <h1 className="font-display text-lg font-bold">Seedwise Coach</h1>
               <p className="flex items-center gap-1.5 text-xs text-muted">
-                <span className="h-2 w-2 rounded-full bg-mint" />
+                <span className="h-2 w-2 rounded-full bg-brand" />
                 Looks up real market data before answering
               </p>
             </div>
@@ -180,7 +181,7 @@ export default function CoachPage() {
             <button
               onClick={() => (shield ? setShield(null) : api.guardrails().then(setShield).catch(() => setShield({ layers: [] })))}
               aria-expanded={Boolean(shield)}
-              className="flex items-center gap-1.5 rounded-full border border-mint-line bg-mint-soft px-3 py-1.5 text-xs font-semibold text-mint transition hover:border-mint"
+              className="flex items-center gap-1.5 rounded-full border border-brand-line bg-brand-soft px-3 py-1.5 text-xs font-semibold text-brand transition hover:border-brand"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M9 12l2 2 4-4" />
@@ -193,7 +194,7 @@ export default function CoachPage() {
                 <ul className="mt-2.5 flex flex-col gap-2.5">
                   {shield.layers.map((l) => (
                     <li key={l.name} className="flex gap-2.5 text-xs">
-                      <span className="mt-0.5 text-mint">
+                      <span className="mt-0.5 text-brand">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>
                       </span>
                       <span><span className="font-semibold text-fg">{l.name}.</span> <span className="text-muted">{l.detail}</span></span>
@@ -214,7 +215,7 @@ export default function CoachPage() {
           {empty ? (
             <div className="mx-auto flex h-full max-w-2xl flex-col justify-center gap-8 motion-safe:animate-[sw-rise_0.4s_ease-out_both]">
               <div className="text-center">
-                <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-mint text-mint-ink">
+                <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand text-brand-ink">
                   <Sparkle size={30} />
                 </span>
                 <h2 className="mt-5 font-display text-3xl font-bold">Hi! What would you like to know?</h2>
@@ -225,9 +226,9 @@ export default function CoachPage() {
                   <button
                     key={s.text}
                     onClick={() => send(s.text)}
-                    className="flex items-start gap-3 rounded-2xl border border-line bg-ink p-4 text-left transition hover:-translate-y-0.5 hover:border-mint/40"
+                    className="flex items-start gap-3 rounded-2xl border border-line bg-ink p-4 text-left transition hover:-translate-y-0.5 hover:border-brand/40"
                   >
-                    <span className="mt-0.5 text-mint">
+                    <span className="mt-0.5 text-brand">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{s.icon}</svg>
                     </span>
                     <span className="text-[15px]">{s.text}</span>
@@ -240,7 +241,7 @@ export default function CoachPage() {
               {messages.map((m, i) =>
                 m.role === "user" ? (
                   <div key={i} className="flex justify-end motion-safe:animate-[sw-rise_0.25s_ease-out_both]">
-                    <div className="max-w-[80%] rounded-2xl rounded-br-md bg-mint px-4 py-3 font-medium text-mint-ink">{mask(m.content)}</div>
+                    <div className="max-w-[80%] rounded-2xl rounded-br-md bg-brand px-4 py-3 font-medium text-brand-ink">{mask(m.content)}</div>
                   </div>
                 ) : (
                   <div key={i} className="flex items-start gap-3 motion-safe:animate-[sw-rise_0.3s_ease-out_both]">
@@ -254,9 +255,9 @@ export default function CoachPage() {
                           {n}
                         </div>
                       ))}
-                      <div className={`md rounded-2xl rounded-tl-md border px-4 py-3 leading-relaxed ${m.error ? "border-red-200 bg-red-50" : m.guardrail ? "border-mint-line bg-mint-soft" : "border-line bg-ink"}`}>
+                      <div className={`md rounded-2xl rounded-tl-md border px-4 py-3 leading-relaxed ${m.error ? "border-red-200 bg-red-50" : m.guardrail ? "border-brand-line bg-brand-soft" : "border-line bg-ink"}`}>
                         {m.guardrail && (
-                          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-mint">
+                          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-brand">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /></svg>
                             {{ off_topic: "Guardrail: staying on money topics", harmful: "Guardrail: harmful request", injection: "Guardrail: rules can't be changed", crisis: "Support resources" }[m.guardrail] || "Guardrail"}
                           </div>
@@ -272,7 +273,7 @@ export default function CoachPage() {
                               type="button"
                               onClick={() => send("Please check that answer against real data from the app and show the numbers you used.")}
                               disabled={loading}
-                              className="rounded-full border border-mint-line px-2.5 py-1 font-semibold text-mint transition hover:bg-mint-soft disabled:opacity-50"
+                              className="rounded-full border border-brand-line px-2.5 py-1 font-semibold text-brand transition hover:bg-brand-soft disabled:opacity-50"
                             >
                               Check it with real data
                             </button>
@@ -296,7 +297,7 @@ export default function CoachPage() {
           }}
           className="border-t border-line p-4"
         >
-          <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-full border border-line bg-ink py-1.5 pl-5 pr-1.5 transition focus-within:border-mint">
+          <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-full border border-line bg-ink py-1.5 pl-5 pr-1.5 transition focus-within:border-brand">
             <input
               ref={inputRef}
               value={input}
@@ -308,7 +309,7 @@ export default function CoachPage() {
             <button
               disabled={loading || !input.trim()}
               aria-label="Send"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-mint text-mint-ink transition hover:bg-mint-light disabled:opacity-30"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-brand text-brand-ink transition hover:bg-brand-light disabled:opacity-30"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M12 19V5M5 12l7-7 7 7" />

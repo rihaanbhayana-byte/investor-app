@@ -56,8 +56,8 @@ function KeyBadge({ n }) {
 }
 
 const TAG_STYLE = {
-  said_it: "border-mint-line bg-mint-soft text-mint",
-  worked_out: "border-mint-line bg-mint-soft text-mint",
+  said_it: "border-brand-line bg-brand-soft text-brand",
+  worked_out: "border-brand-line bg-brand-soft text-brand",
   not_said: "border-line text-muted",
   ai_guess: "border-amber-200 bg-amber-50 text-gold",
   you: "border-line bg-slate-100 text-fg",
@@ -94,7 +94,7 @@ function SliderField({ id, label, value, setValue, min, max, cap = max, step, pr
         step={step}
         value={Math.min(value, max)}
         onChange={(e) => setValue(Number(e.target.value))}
-        className="mt-4 w-full cursor-pointer accent-mint"
+        className="mt-4 w-full cursor-pointer accent-brand"
       />
       {cap !== max && value >= cap && (
         <p className="mt-2 text-xs text-muted">That&rsquo;s the most this calculator handles ({prefix}{cap.toLocaleString()}{suffix && ` ${suffix}`}).</p>
@@ -103,7 +103,7 @@ function SliderField({ id, label, value, setValue, min, max, cap = max, step, pr
   );
 }
 
-export default function PlanWizard({ questions, startMode, initial, onClose, onFinish }) {
+export default function PlanWizard({ questions, startMode, initial, initialText = "", onClose, onFinish }) {
   const [mode, setMode] = useState(startMode);
   const [index, setIndex] = useState(0);
   const [dir, setDir] = useState(1);
@@ -113,7 +113,7 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
   const [years, setYears] = useState(initial.years);
   const [answers, setAnswers] = useState({});
   const [picked, setPicked] = useState(null);
-  const [aiText, setAiText] = useState("");
+  const [aiText, setAiText] = useState(initialText);
   const [aiSummary, setAiSummary] = useState("");
   const [aiCheck, setAiCheck] = useState(null); // where each number came from: the person's words, or an AI guess
   const [touched, setTouched] = useState({});
@@ -170,6 +170,15 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
     }, 380);
   }
 
+  // A goal typed on the home page: read it straight away, so the person lands on their numbers.
+  const autoRead = useRef(Boolean(initialText));
+  useEffect(() => {
+    if (autoRead.current) {
+      autoRead.current = false;
+      readGoal();
+    }
+  });
+
   async function readGoal() {
     setAiLoading(true);
     setAiError("");
@@ -217,7 +226,7 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
   }, []);
 
   const slide = dir > 0 ? "motion-safe:animate-[sw-right_0.35s_ease-out_both]" : "motion-safe:animate-[sw-left_0.35s_ease-out_both]";
-  const eyebrow = "text-[13px] font-semibold uppercase tracking-[0.14em] text-mint";
+  const eyebrow = "text-[13px] font-semibold uppercase tracking-[0.14em] text-brand";
   const title = "mt-3 font-display text-3xl font-bold leading-tight tracking-tight sm:text-4xl";
 
   return (
@@ -237,7 +246,7 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
           <div className="flex flex-1 gap-1.5" aria-label={`Step ${index + 1} of ${screens.length}`}>
             {screens.map((s, i) => (
               <div key={s} className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
-                <div className={`h-full rounded-full bg-mint transition-all duration-500 ${i <= index ? "w-full" : "w-0"}`} />
+                <div className={`h-full rounded-full bg-brand transition-all duration-500 ${i <= index ? "w-full" : "w-0"}`} />
               </div>
             ))}
           </div>
@@ -252,8 +261,8 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
               <h3 id="leave-title" className="font-display text-2xl font-bold">Leave your plan?</h3>
               <p className="mt-2 text-muted">You&rsquo;ll lose the answers you&rsquo;ve given so far.</p>
               <div className="mt-6 flex justify-center gap-3">
-                <button autoFocus onClick={() => setConfirmClose(false)} className="rounded-full bg-mint px-6 py-3 font-semibold text-mint-ink transition hover:bg-mint-light">Keep going</button>
-                <button onClick={onClose} className="rounded-full border border-line px-6 py-3 text-muted transition hover:border-slate-300 hover:text-fg">Leave</button>
+                <button autoFocus onClick={() => setConfirmClose(false)} className="rounded-xl bg-brand px-6 py-3 font-semibold text-brand-ink transition hover:bg-brand-light">Keep going</button>
+                <button onClick={onClose} className="rounded-xl border border-line px-6 py-3 text-muted transition hover:border-slate-300 hover:text-fg">Leave</button>
               </div>
             </div>
           </div>
@@ -272,29 +281,29 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
                   value={aiText}
                   onChange={(e) => setAiText(e.target.value)}
                   placeholder={EXAMPLES[0][1]}
-                  className="mt-6 w-full resize-none rounded-2xl border border-line bg-ink px-5 py-4 text-lg text-fg placeholder:text-slate-500 focus:border-mint focus:outline-none"
+                  className="mt-6 w-full resize-none rounded-2xl border border-line bg-ink px-5 py-4 text-lg text-fg placeholder:text-slate-500 focus:border-brand focus:outline-none"
                 />
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span className="text-[13px] text-muted">Try:</span>
                   {EXAMPLES.map(([label, text]) => (
-                    <button key={label} type="button" onClick={() => setAiText(text)} className="rounded-full border border-slate-300 px-3 py-1.5 text-[13px] text-slate-700 transition hover:border-mint hover:text-mint">
+                    <button key={label} type="button" onClick={() => setAiText(text)} className="rounded-xl border border-slate-300 px-3 py-1.5 text-[13px] text-slate-700 transition hover:border-brand hover:text-brand">
                       {label}
                     </button>
                   ))}
                 </div>
                 {aiSummary ? (
-                  <div className="mt-6 flex items-start gap-3 rounded-2xl border border-mint-line bg-green-50 p-4 motion-safe:animate-[sw-pulse_0.5s_ease-out]">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-mint text-mint-ink">
+                  <div className="mt-6 flex items-start gap-3 rounded-2xl border border-brand-line bg-green-50 p-4 motion-safe:animate-[sw-pulse_0.5s_ease-out]">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-brand-ink">
                       <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" {...STROKE} strokeWidth={3}><path d="M5 12l5 5 9-10" /></svg>
                     </span>
-                    <p className="text-slate-800"><span className="font-semibold text-mint">Got it! </span>{aiSummary}</p>
+                    <p className="text-slate-800"><span className="font-semibold text-brand">Got it! </span>{aiSummary}</p>
                   </div>
                 ) : (
                   <button
                     type="button"
                     onClick={readGoal}
                     disabled={aiLoading || aiText.trim().length < 5}
-                    className="mt-6 w-full rounded-full bg-mint px-6 py-4 text-base font-semibold text-mint-ink transition hover:bg-mint-light disabled:cursor-not-allowed disabled:opacity-40"
+                    className="mt-6 w-full rounded-xl bg-brand px-6 py-4 text-base font-semibold text-brand-ink transition hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {aiLoading ? "Reading your goal..." : "Read my goal →"}
                   </button>
@@ -321,10 +330,10 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
                         onClick={() => pickGoal(g)}
                         style={{ animationDelay: `${i * 50}ms` }}
                         className={`flex items-center gap-4 rounded-2xl border-2 p-4 text-left text-[17px] font-medium transition motion-safe:animate-[sw-stagger_0.35s_ease-out_both] ${
-                          on ? "border-mint bg-mint/10" : "border-line bg-ink hover:-translate-y-0.5 hover:border-slate-300"
+                          on ? "border-brand bg-brand/10" : "border-line bg-ink hover:-translate-y-0.5 hover:border-slate-300"
                         } ${picked === g ? "motion-safe:animate-[sw-pulse_0.35s_ease-out]!" : ""}`}
                       >
-                        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${on ? "bg-mint text-mint-ink" : "bg-slate-100 text-mint"}`}>
+                        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${on ? "bg-brand text-brand-ink" : "bg-slate-100 text-brand"}`}>
                           <Icon name={g} />
                         </span>
                         <span className="flex-1">{g}</span>
@@ -356,11 +365,11 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
                     Add a starting amount or a monthly amount (even $10 counts) so there&rsquo;s something to grow.
                   </div>
                 ) : (
-                  <div className="mt-5 rounded-2xl border border-mint-line bg-green-50 px-5 py-4 text-slate-800">
-                    You&rsquo;ll put in <span className="font-semibold text-mint">{money(initialAmount + monthly * 12 * years)}</span> over {years} {years === 1 ? "year" : "years"}. Next, let&rsquo;s see how it could grow.
+                  <div className="mt-5 rounded-2xl border border-brand-line bg-green-50 px-5 py-4 text-slate-800">
+                    You&rsquo;ll put in <span className="font-semibold text-brand">{money(initialAmount + monthly * 12 * years)}</span> over {years} {years === 1 ? "year" : "years"}. Next, let&rsquo;s see how it could grow.
                   </div>
                 )}
-                <button onClick={() => go(1)} disabled={nothingToInvest} className="mt-6 w-full rounded-full bg-mint px-6 py-4 text-base font-semibold text-mint-ink transition hover:bg-mint-light disabled:cursor-not-allowed disabled:opacity-40">
+                <button onClick={() => go(1)} disabled={nothingToInvest} className="mt-6 w-full rounded-xl bg-brand px-6 py-4 text-base font-semibold text-brand-ink transition hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-40">
                   Continue →
                 </button>
               </div>
@@ -369,7 +378,7 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
             {question && (
               <div>
                 <div className={eyebrow}>Investor personality · {qNumber} of {questions.length}</div>
-                <div className="mt-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-mint/15 text-mint">
+                <div className="mt-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/15 text-brand">
                   <Icon name={question.id} size={28} />
                 </div>
                 <h2 id="wizard-title" className={title}>{question.text}</h2>
@@ -386,12 +395,12 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
                         onClick={() => pickOption(question, o.id)}
                         style={{ animationDelay: `${i * 60}ms` }}
                         className={`flex items-center gap-4 rounded-2xl border-2 px-5 py-4 text-left text-[17px] font-medium transition motion-safe:animate-[sw-stagger_0.35s_ease-out_both] ${
-                          on ? "border-mint bg-mint/10" : "border-line bg-ink hover:-translate-y-0.5 hover:border-slate-300"
+                          on ? "border-brand bg-brand/10" : "border-line bg-ink hover:-translate-y-0.5 hover:border-slate-300"
                         } ${picked === o.id ? "motion-safe:animate-[sw-pulse_0.35s_ease-out]!" : ""}`}
                       >
                         <KeyBadge n={i + 1} />
                         <span className="flex-1">{o.text}</span>
-                        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${on ? "border-mint bg-mint text-mint-ink" : "border-slate-300"}`}>
+                        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${on ? "border-brand bg-brand text-brand-ink" : "border-slate-300"}`}>
                           {on && <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" {...STROKE} strokeWidth={4}><path d="M5 12l5 5 9-10" /></svg>}
                         </span>
                       </button>

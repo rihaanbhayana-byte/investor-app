@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import PlanWizard, { GOALS } from "@/components/PlanWizard";
 import PlanResults from "@/components/PlanResults";
 import { api } from "@/lib/api";
+import { setPageContext } from "@/lib/coach";
 import { supabase } from "@/lib/supabase";
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -28,7 +29,7 @@ function Loading() {
         {[0, 1, 2, 3, 4, 5, 6].map((b) => (
           <div
             key={b}
-            className="h-full w-3 origin-bottom rounded-full bg-mint motion-safe:animate-[sw-bar_1s_ease-in-out_infinite]"
+            className="h-full w-3 origin-bottom rounded-full bg-brand motion-safe:animate-[sw-bar_1s_ease-in-out_infinite]"
             style={{ animationDelay: `${b * 0.12}s`, opacity: 0.4 + b * 0.09 }}
           />
         ))}
@@ -49,15 +50,15 @@ function ChoiceCard({ onClick, featured, icon, title, text, cta }) {
       onClick={onClick}
       className={`group relative flex flex-col gap-4 rounded-3xl border p-8 text-left transition duration-300 hover:-translate-y-1.5 hover:shadow-float ${
         featured
-          ? "border-mint-line bg-glow hover:border-mint/60"
+          ? "border-brand-line bg-glow hover:border-brand/60"
           : "border-line bg-surface hover:border-slate-300"
       }`}
     >
-      {featured && <span className="absolute right-6 top-6 rounded-full bg-mint px-3 py-1 text-xs font-semibold text-mint-ink">Recommended</span>}
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-mint/15 text-mint">{icon}</span>
+      {featured && <span className="absolute right-6 top-6 rounded-xl bg-brand px-3 py-1 text-xs font-semibold text-brand-ink">Recommended</span>}
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/15 text-brand">{icon}</span>
       <span className="font-display text-2xl font-bold">{title}</span>
       <span className="leading-relaxed text-muted">{text}</span>
-      <span className="mt-2 font-semibold text-mint">
+      <span className="mt-2 font-semibold text-brand">
         {cta} <span className="inline-block transition group-hover:translate-x-1">→</span>
       </span>
     </button>
@@ -67,6 +68,7 @@ function ChoiceCard({ onClick, featured, icon, title, text, cta }) {
 export default function PlanPage() {
   const [phase, setPhase] = useState("intro"); // intro | loading | results
   const [wizardMode, setWizardMode] = useState(null); // null (closed) | "ai" | "manual"
+  const [goalText, setGoalText] = useState(""); // a goal typed on the home page, read by the AI straight away
   const [questions, setQuestions] = useState([]);
   const [plan, setPlan] = useState({ goal: GOALS[0], initialAmount: 1000, monthly: 100, years: 10, answers: {} });
   const [result, setResult] = useState(null);
@@ -76,9 +78,23 @@ export default function PlanPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    setPageContext("Plan builder: their goal, investor personality and projection");
+    return () => setPageContext("");
+  }, []);
+
+  useEffect(() => {
     api.questions().then(setQuestions).catch((e) => setError(e.message));
-    const id = new URLSearchParams(window.location.search).get("id");
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
     if (id) openSavedPlan(id);
+    const typed = (params.get("goal") || "").trim();
+    if (!id && typed.length >= 5) {
+      setGoalText(typed.slice(0, 1000));
+      setWizardMode("ai");
+    } else if (!id && params.get("mode") === "manual") {
+      setWizardMode("manual");
+    }
+    if (typed || params.get("mode")) window.history.replaceState(null, "", "/plan");
   }, []);
 
   // "Not quite me": the person can override the quiz's personality; the plan recalculates and re-saves.
@@ -220,7 +236,7 @@ export default function PlanPage() {
       {phase === "intro" && (
         <section className="flex flex-col items-center gap-10 pt-6 text-center">
           <div className="max-w-2xl">
-            <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">Build my plan</div>
+            <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">Build my plan</div>
             <h1 className="mt-4 font-display text-5xl font-bold tracking-tight sm:text-6xl">Let&rsquo;s build your plan.</h1>
             <p className="mt-4 text-lg text-muted">About 2 minutes. No jargon. You can change anything later.</p>
           </div>
@@ -262,7 +278,11 @@ export default function PlanPage() {
           questions={questions}
           startMode={wizardMode}
           initial={plan}
-          onClose={() => setWizardMode(null)}
+          initialText={wizardMode === "ai" ? goalText : ""}
+          onClose={() => {
+            setWizardMode(null);
+            setGoalText("");
+          }}
           onFinish={(p) => buildResults(p, true)}
         />
       )}

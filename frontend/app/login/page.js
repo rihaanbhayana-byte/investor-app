@@ -15,7 +15,7 @@ function Field({ id, label, icon, children }) {
   return (
     <label htmlFor={id} className="block">
       <span className="text-sm font-medium text-slate-700">{label}</span>
-      <span className="mt-2 flex items-center gap-3 rounded-2xl border border-line bg-ink px-4 transition focus-within:border-mint">
+      <span className="mt-2 flex items-center gap-3 rounded-2xl border border-line bg-ink px-4 transition focus-within:border-brand">
         <svg className="shrink-0 text-muted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           {icon}
         </svg>
@@ -97,7 +97,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="mx-auto grid max-w-5xl overflow-hidden rounded-[32px] border border-line bg-surface shadow-float md:grid-cols-2">
+    <div className="mx-auto grid max-w-5xl overflow-hidden rounded-[32px] border border-line bg-surface shadow-float md:grid-cols-2" data-layout="marketing">
       <div className="relative hidden flex-col justify-between gap-10 overflow-hidden bg-glow-hero p-10 md:flex">
         <div className="flex items-center gap-2.5">
           <Logo />
@@ -105,12 +105,12 @@ export default function LoginPage() {
         </div>
         <div>
           <h2 className="font-display text-4xl font-bold leading-tight tracking-tight">
-            Your money&rsquo;s future, <span className="text-mint">made simple.</span>
+            Your money&rsquo;s future, <span className="text-brand">made simple.</span>
           </h2>
           <ul className="mt-8 flex flex-col gap-4">
             {BENEFITS.map((b) => (
               <li key={b} className="flex items-center gap-3 text-slate-800">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-mint/15 text-mint">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/15 text-brand">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M5 12l5 5 9-10" />
                   </svg>
@@ -120,17 +120,17 @@ export default function LoginPage() {
             ))}
           </ul>
         </div>
-        <div className="rounded-2xl border border-mint-line bg-ink/60 p-5 backdrop-blur">
+        <div className="rounded-2xl border border-brand-line bg-ink/60 p-5 backdrop-blur">
           <div className="text-xs text-muted">Balanced Builder · past average</div>
           <div className="mt-1 flex items-end justify-between gap-4">
-            <span className="font-display text-3xl font-bold text-mint">9.1% / yr</span>
+            <span className="font-display text-3xl font-bold text-brand">9.1% / yr</span>
             <svg width="120" height="40" viewBox="0 0 120 40" aria-hidden="true">
-              <path d="M0 36 C 30 32, 50 26, 70 18 S 105 6, 120 3" stroke="var(--color-mint)" strokeWidth="2.5" fill="none" />
+              <path d="M0 36 C 30 32, 50 26, 70 18 S 105 6, 120 3" stroke="var(--color-brand)" strokeWidth="2.5" fill="none" />
             </svg>
           </div>
           <div className="mt-1 text-xs text-slate-500">Based on real prices since 2016. Not a promise of future returns.</div>
         </div>
-        <div className="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-mint/10 blur-3xl" aria-hidden="true" />
+        <div className="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-brand/10 blur-3xl" aria-hidden="true" />
       </div>
 
       <div className="p-8 sm:p-12">
@@ -144,7 +144,7 @@ export default function LoginPage() {
               role="tab"
               aria-selected={mode === id}
               onClick={() => switchMode(id)}
-              className={`rounded-full px-5 py-2 text-sm font-medium transition ${mode === id ? "bg-mint text-mint-ink" : "text-muted hover:text-fg"}`}
+              className={`rounded-full px-5 py-2 text-sm font-medium transition ${mode === id ? "bg-brand text-brand-ink" : "text-muted hover:text-fg"}`}
             >
               {label}
             </button>
@@ -180,30 +180,30 @@ export default function LoginPage() {
             </button>
           </Field>}
           {mode === "login" && (
-            <button type="button" onClick={() => switchMode("forgot")} className="-mt-2 self-end text-sm font-medium text-muted hover:text-mint">
+            <button type="button" onClick={() => switchMode("forgot")} className="-mt-2 self-end text-sm font-medium text-muted hover:text-brand">
               Forgot password?
             </button>
           )}
 
           {error && <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-          {info && <p role="status" className="rounded-2xl border border-mint-line bg-mint-soft px-4 py-3 text-sm text-slate-800">{info}</p>}
+          {info && <p role="status" className="rounded-2xl border border-brand-line bg-brand-soft px-4 py-3 text-sm text-slate-800">{info}</p>}
 
           <button
             disabled={loading}
-            className="mt-2 flex items-center justify-center gap-2 rounded-full bg-mint py-4 font-semibold text-mint-ink transition hover:bg-mint-light disabled:opacity-50"
+            className="mt-2 flex items-center justify-center gap-2 rounded-full bg-brand py-4 font-semibold text-brand-ink transition hover:bg-brand-light disabled:opacity-50"
           >
-            {loading && <span className="h-4 w-4 animate-spin rounded-full border-2 border-mint-ink/30 border-t-mint-ink" />}
+            {loading && <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-ink/30 border-t-brand-ink" />}
             {loading ? "Please wait..." : { login: "Log in →", signup: "Create my account →", forgot: "Send reset link →", reset: "Save new password →" }[mode]}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted">
           {mode === "forgot" || mode === "reset" ? (
-            <button onClick={() => switchMode("login")} className="font-semibold text-mint hover:text-mint-light">← Back to log in</button>
+            <button onClick={() => switchMode("login")} className="font-semibold text-brand hover:text-brand-light">← Back to log in</button>
           ) : (
             <>
               {signup ? "Already have an account?" : "New to Seedwise?"}{" "}
-              <button onClick={() => switchMode(signup ? "login" : "signup")} className="font-semibold text-mint hover:text-mint-light">
+              <button onClick={() => switchMode(signup ? "login" : "signup")} className="font-semibold text-brand hover:text-brand-light">
                 {signup ? "Log in" : "Create a free account"}
               </button>
             </>

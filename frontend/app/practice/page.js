@@ -4,6 +4,7 @@ import SymbolSearch from "@/components/SymbolSearch";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { setPageContext } from "@/lib/coach";
 import { supabase } from "@/lib/supabase";
 import { money, percent, price } from "@/lib/format";
 import PortfolioDoctor from "@/components/PortfolioDoctor";
@@ -13,8 +14,8 @@ const QUICK = [100, 500, 1000];
 
 function Badge({ done, title, text, icon }) {
   return (
-    <div className={`flex items-center gap-3 rounded-2xl border p-4 transition ${done ? "border-mint-line bg-mint-soft" : "border-line bg-surface opacity-60"}`}>
-      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${done ? "bg-mint text-mint-ink" : "bg-slate-100 text-muted"}`}>
+    <div className={`flex items-center gap-3 rounded-2xl border p-4 transition ${done ? "border-brand-line bg-brand-soft" : "border-line bg-surface opacity-60"}`}>
+      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${done ? "bg-brand text-brand-ink" : "bg-slate-100 text-muted"}`}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           {done ? <path d="M5 12l5 5 9-10" /> : icon}
         </svg>
@@ -30,7 +31,7 @@ function Badge({ done, title, text, icon }) {
 function LoggedOut() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col items-center gap-5 rounded-[28px] border border-line bg-surface p-12 text-center">
-      <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-mint/15 text-mint">
+      <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand/15 text-brand">
         <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <rect x="3" y="6" width="18" height="14" rx="2" /><path d="M16 13h2" /><path d="M3 10h18" />
         </svg>
@@ -39,14 +40,19 @@ function LoggedOut() {
       <p className="max-w-md text-lg text-muted">Buy and sell real stocks and funds at real prices, with zero risk. Can you beat the S&amp;P 500?</p>
       <p className="text-sm text-muted">Log in so we can keep your practice portfolio safe.</p>
       <div className="flex flex-wrap justify-center gap-3">
-        <Link href="/login?mode=signup" className="rounded-full bg-mint px-6 py-3 font-semibold text-mint-ink transition hover:bg-mint-light">Create a free account</Link>
-        <Link href="/login" className="rounded-full border border-slate-300 px-6 py-3 font-medium transition hover:border-mint hover:text-mint">Log in</Link>
+        <Link href="/login?mode=signup" className="rounded-xl bg-brand px-6 py-3 font-semibold text-brand-ink transition hover:bg-brand-light">Create a free account</Link>
+        <Link href="/login" className="rounded-xl border border-slate-300 px-6 py-3 font-medium transition hover:border-brand hover:text-brand">Log in</Link>
       </div>
     </div>
   );
 }
 
 export default function PracticePage() {
+  const [tradedSinceCheck, setTradedSinceCheck] = useState(false);
+  useEffect(() => {
+    setPageContext("Practice portfolio (play money)");
+    return () => setPageContext("");
+  }, []);
   const [loggedIn, setLoggedIn] = useState(null);
   const [state, setState] = useState(null);
   const [stocks, setStocks] = useState([]);
@@ -130,6 +136,7 @@ export default function PracticePage() {
     try {
       const result = await api.practiceTrade({ symbol, side, dollars: Math.round(amount * 100) / 100, sell_all: side === "sell" && sellAll });
       setState(result);
+      setTradedSinceCheck(true);
       setToast(result.message);
       setSellAll(false);
     } catch (err) {
@@ -157,8 +164,8 @@ export default function PracticePage() {
       <style>{RISE}</style>
 
       {toast && (
-        <div role="status" className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border border-mint-line bg-mint-soft px-5 py-3 shadow-2xl motion-safe:animate-[sw-rise_0.3s_ease-out_both]">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-mint text-mint-ink">
+        <div role="status" className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border border-brand-line bg-brand-soft px-5 py-3 shadow-2xl motion-safe:animate-[sw-rise_0.3s_ease-out_both]">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-brand-ink">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>
           </span>
           <span className="text-sm font-medium">{toast}</span>
@@ -167,7 +174,7 @@ export default function PracticePage() {
 
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div className="max-w-2xl">
-          <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">Practice portfolio</div>
+          <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">Practice portfolio</div>
           <h1 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl">Play money. Real prices.</h1>
           <p className="mt-3 text-lg text-muted">Practice investing with $10,000 of pretend money. Nothing here is real, so mistakes are free lessons.</p>
         </div>
@@ -175,16 +182,16 @@ export default function PracticePage() {
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted">Start over with $10,000?</span>
             <button onClick={reset} disabled={busy} className="rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-ink">Reset</button>
-            <button onClick={() => setConfirmReset(false)} className="rounded-full border border-slate-300 px-4 py-2.5 text-sm">Cancel</button>
+            <button onClick={() => setConfirmReset(false)} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm">Cancel</button>
           </div>
         ) : (
-          <button onClick={() => setConfirmReset(true)} className="rounded-full border border-line px-5 py-2.5 text-sm text-muted transition hover:border-slate-300 hover:text-fg">
+          <button onClick={() => setConfirmReset(true)} className="rounded-xl border border-line px-5 py-2.5 text-sm text-muted transition hover:border-slate-300 hover:text-fg">
             Reset portfolio
           </button>
         )}
       </div>
 
-      <section className="grid grid-cols-1 gap-6 rounded-3xl border border-mint-line bg-glow p-5 sm:p-7 lg:grid-cols-[1.3fr_1fr] [&>*]:min-w-0">
+      <section className="grid grid-cols-1 gap-6 rounded-3xl border border-brand-line bg-glow p-5 sm:p-7 lg:grid-cols-[1.3fr_1fr] [&>*]:min-w-0">
         <div>
           <div className="text-muted">Your portfolio is worth</div>
           <div className="mt-1 font-display text-5xl font-bold tracking-tight tabular-nums sm:text-6xl">{money(total)}</div>
@@ -192,8 +199,8 @@ export default function PracticePage() {
             <ReturnPill value={state.gain}>
               {money(Math.abs(state.gain))} ({percent(Math.abs(state.gain_pct))})
             </ReturnPill>
-            <span className="rounded-full border border-slate-300 px-3 py-1 text-slate-700">Cash {money(state.cash)}</span>
-            <span className="rounded-full border border-slate-300 px-3 py-1 text-slate-700">Invested {money(state.invested)}</span>
+            <span className="rounded-xl border border-slate-300 px-3 py-1 text-slate-700">Cash {money(state.cash)}</span>
+            <span className="rounded-xl border border-slate-300 px-3 py-1 text-slate-700">Invested {money(state.invested)}</span>
           </div>
           <p className="mt-4 text-xs text-slate-500">
             Started {startDate} · Prices as of {state.prices_as_of || "the latest close"} · They update once a day after the market closes.
@@ -204,7 +211,7 @@ export default function PracticePage() {
           {state.sp500_value != null ? (
             <>
               {[
-                ["You", state.total, "var(--color-mint)"],
+                ["You", state.total, "var(--color-brand)"],
                 ["S&P 500", state.sp500_value, "var(--color-dim)"],
               ].map(([label, value, color]) => (
                 <div key={label}>
@@ -223,7 +230,7 @@ export default function PracticePage() {
                 ) : Math.abs(ahead) < 0.5 ? (
                   <span className="text-muted">You&rsquo;re even with the S&amp;P 500 so far.</span>
                 ) : ahead > 0 ? (
-                  <span className="font-semibold text-mint">You&rsquo;re ahead by {money(ahead)}!</span>
+                  <span className="font-semibold text-gain">You&rsquo;re ahead by {money(ahead)}!</span>
                 ) : (
                   <span className="text-muted">You&rsquo;re {money(-ahead)} behind. Most pros are too!</span>
                 )}
@@ -240,8 +247,6 @@ export default function PracticePage() {
           <Badge key={b.title} {...b} />
         ))}
       </section>
-
-      <PortfolioDoctor hasHoldings={state.holdings.length > 0} />
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[380px_minmax(0,1fr)] [&>*]:min-w-0">
         <form onSubmit={trade} className="flex flex-col gap-5 rounded-3xl border border-line bg-surface p-5 sm:p-6 lg:sticky lg:top-24">
@@ -275,7 +280,7 @@ export default function PracticePage() {
           )}
           {quote?.loading ? (
             <div className="flex items-center gap-3 rounded-2xl border border-line bg-ink p-4 text-sm text-muted" role="status">
-              <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-slate-300 border-t-mint" aria-hidden="true" />
+              <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-slate-300 border-t-brand" aria-hidden="true" />
               Loading {symbol}&rsquo;s prices. The first time takes a few seconds.
             </div>
           ) : quote?.error ? (
@@ -301,7 +306,7 @@ export default function PracticePage() {
           )}
           <div>
             <label htmlFor="amount" className="text-sm font-medium text-slate-700">Amount</label>
-            <div className={`mt-2 flex items-baseline gap-1 rounded-2xl border bg-ink px-4 py-3 ${tooMuch ? "border-red-400" : "border-line focus-within:border-mint"}`}>
+            <div className={`mt-2 flex items-baseline gap-1 rounded-2xl border bg-ink px-4 py-3 ${tooMuch ? "border-red-400" : "border-line focus-within:border-brand"}`}>
               <span className="font-display text-2xl font-bold text-muted">$</span>
               <input
                 id="amount"
@@ -350,7 +355,7 @@ export default function PracticePage() {
           {error && <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
           <button
             disabled={busy || !amount || amount <= 0 || tooMuch || !livePrice}
-            className={`rounded-full py-4 font-semibold transition disabled:opacity-40 ${side === "buy" ? "bg-mint text-mint-ink hover:bg-mint-light" : "bg-gold text-gold-ink hover:opacity-90"}`}
+            className={`rounded-full py-4 font-semibold transition disabled:opacity-40 ${side === "buy" ? "bg-brand text-brand-ink hover:bg-brand-light" : "bg-gold text-gold-ink hover:opacity-90"}`}
           >
             {busy ? "Placing order..." : `${side === "buy" ? "Buy" : "Sell"} ${money(amount)} of ${symbol}`}
           </button>
@@ -390,7 +395,7 @@ export default function PracticePage() {
                     </span>
                     <span className="shrink-0 text-right">
                       <span className="block font-semibold tabular-nums">{money(h.value)}</span>
-                      <span className={`block text-xs font-semibold ${h.gain >= 0 ? "text-mint" : "text-red-600"}`}>
+                      <span className={`block text-xs font-semibold ${h.gain >= 0 ? "text-gain" : "text-loss"}`}>
                         {h.gain >= 0 ? "+" : "−"}{money(Math.abs(h.gain))} ({percent(Math.abs(h.gain_pct))})
                       </span>
                     </span>
@@ -405,6 +410,8 @@ export default function PracticePage() {
             )}
           </section>
 
+          <PortfolioDoctor hasHoldings={state.holdings.length > 0} stale={tradedSinceCheck} onResult={() => setTradedSinceCheck(false)} />
+
           <section className="rounded-3xl border border-line bg-surface p-6">
             <h2 className="font-display text-xl font-bold">Trade history</h2>
             {state.trades.length === 0 ? (
@@ -413,7 +420,7 @@ export default function PracticePage() {
               <ul className="mt-4 flex flex-col divide-y divide-line">
                 {state.trades.map((t) => (
                   <li key={t.id} className="flex items-center gap-3 py-3 text-sm">
-                    <span className={`rounded-md px-2 py-0.5 text-xs font-bold uppercase ${t.side === "buy" ? "bg-mint/10 text-mint" : "bg-gold-soft text-gold"}`}>{t.side}</span>
+                    <span className={`rounded-md px-2 py-0.5 text-xs font-bold uppercase ${t.side === "buy" ? "bg-brand/10 text-brand" : "bg-gold-soft text-gold"}`}>{t.side}</span>
                     <span className="font-semibold">{t.symbol}</span>
                     <span className="flex-1 truncate text-muted">{t.shares.toFixed(4)} shares at {price(t.price)}</span>
                     <span className="font-semibold tabular-nums">{money(t.shares * t.price)}</span>

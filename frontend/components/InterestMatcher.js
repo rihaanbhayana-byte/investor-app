@@ -66,8 +66,8 @@ export default function InterestMatcher() {
   }
 
   return (
-    <section className="reveal rounded-3xl border border-mint-line bg-glow p-6 sm:p-8">
-      <div className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">
+    <section className="reveal rounded-3xl border border-brand-line bg-glow p-6 sm:p-8">
+      <div className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" />
         </svg>
@@ -88,15 +88,15 @@ export default function InterestMatcher() {
           onChange={(e) => setText(e.target.value)}
           aria-label="Your interests"
           placeholder="e.g. I love gaming, sneakers and watching movies"
-          className="min-w-64 flex-1 rounded-full border border-line bg-ink px-5 py-3.5 text-fg placeholder:text-slate-500 focus:border-mint focus:outline-none"
+          className="min-w-64 flex-1 rounded-full border border-line bg-ink px-5 py-3.5 text-fg placeholder:text-slate-500 focus:border-brand focus:outline-none"
         />
-        <button disabled={loading || text.trim().length < 3} className="rounded-full bg-mint px-6 py-3.5 font-semibold text-mint-ink transition hover:bg-mint-light disabled:opacity-40">
+        <button disabled={loading || text.trim().length < 3} className="rounded-xl bg-brand px-6 py-3.5 font-semibold text-brand-ink transition hover:bg-brand-light disabled:opacity-40">
           {loading ? "Finding..." : "Find my companies"}
         </button>
       </form>
       <div className="mt-3 flex flex-wrap gap-2">
         {EXAMPLES.map((e) => (
-          <button key={e} type="button" onClick={() => run(e)} disabled={loading} className="rounded-full border border-line-strong px-3 py-1.5 text-[13px] text-slate-700 transition hover:border-mint hover:text-mint">
+          <button key={e} type="button" onClick={() => run(e)} disabled={loading} className="rounded-full border border-line-strong px-3 py-1.5 text-[13px] text-slate-700 transition hover:border-brand hover:text-brand">
             {e}
           </button>
         ))}
@@ -120,7 +120,7 @@ export default function InterestMatcher() {
               <div
                 key={m.symbol}
                 style={{ animationDelay: `${Math.min(i, 6) * 80}ms` }}
-                className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5 transition hover:border-mint/40 motion-safe:animate-page-in"
+                className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5 transition hover:border-brand/40 motion-safe:animate-page-in"
               >
                 <Link href={`/stocks/${m.symbol}`} className="flex items-center gap-3 rounded-xl transition hover:opacity-80">
                   <Avatar symbol={m.symbol} size={40} />
@@ -134,7 +134,7 @@ export default function InterestMatcher() {
                   <span
                     title={m.votes ? `Picked in ${m.votes} of ${m.runs} independent AI runs` : undefined}
                     className={`self-start rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-                      m.match === "Strong match" ? "border-mint-line bg-mint-soft text-mint" : m.match === "Your pick" ? "border-line bg-slate-100 text-fg" : "border-amber-200 bg-amber-50 text-gold"
+                      m.match === "Strong match" ? "border-brand-line bg-brand-soft text-brand" : m.match === "Your pick" ? "border-line bg-slate-100 text-fg" : "border-amber-200 bg-amber-50 text-gold"
                     }`}
                   >
                     {m.match}{m.votes ? ` · ${m.votes}/${m.runs} runs` : ""}{m.similarTo ? ` · like ${m.similarTo}` : ""}
@@ -145,7 +145,7 @@ export default function InterestMatcher() {
                   <span>{price(m.latest_price)} a share</span>
                   <span className="flex gap-1">
                     {m.match !== "Your pick" && (
-                      <button type="button" onClick={() => moreLike(m)} disabled={Boolean(moreFor)} className="rounded-full border border-line px-2.5 py-1 font-semibold text-fg transition hover:border-mint hover:text-mint disabled:opacity-50">
+                      <button type="button" onClick={() => moreLike(m)} disabled={Boolean(moreFor)} className="rounded-full border border-line px-2.5 py-1 font-semibold text-fg transition hover:border-brand hover:text-brand disabled:opacity-50">
                         {moreFor === m.symbol ? "Finding…" : "More like this"}
                       </button>
                     )}
@@ -164,10 +164,10 @@ export default function InterestMatcher() {
           </div>
           {result.fund_tip && (
             <p className="flex items-start gap-3 rounded-2xl border border-line bg-surface p-4 text-sm text-slate-800">
-              <svg className="mt-0.5 shrink-0 text-mint" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg className="mt-0.5 shrink-0 text-brand" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
               </svg>
-              <span><span className="font-semibold text-mint">Simpler idea: </span>{result.fund_tip}</span>
+              <span><span className="font-semibold text-brand">Simpler idea: </span>{result.fund_tip}</span>
             </p>
           )}
           <p className="text-xs text-slate-500">{result.disclaimer}</p>

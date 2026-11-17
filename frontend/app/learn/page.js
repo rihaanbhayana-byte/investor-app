@@ -110,11 +110,11 @@ function Lesson({ lesson, index, open, done, onToggle, onComplete }) {
   const correct = picked === lesson.quiz.answer;
 
   return (
-    <li className={`overflow-hidden rounded-3xl border transition ${open ? "border-slate-300 bg-surface" : done ? "border-mint-line bg-surface" : "border-line bg-surface hover:border-slate-300"}`}>
+    <li className={`overflow-hidden rounded-3xl border transition ${open ? "border-slate-300 bg-surface" : done ? "border-brand-line bg-surface" : "border-line bg-surface hover:border-slate-300"}`}>
       <button onClick={onToggle} aria-expanded={open} className="flex w-full items-center gap-4 p-5 text-left sm:p-6">
         <span
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full font-display font-bold transition ${
-            done ? "bg-mint text-mint-ink" : open ? "border-2 border-mint text-mint" : "border-2 border-slate-300 text-muted"
+            done ? "bg-brand text-brand-ink" : open ? "border-2 border-brand text-brand" : "border-2 border-slate-300 text-muted"
           }`}
         >
           {done ? <Check size={18} /> : index + 1}
@@ -131,15 +131,15 @@ function Lesson({ lesson, index, open, done, onToggle, onComplete }) {
       {open && (
         <div className="flex flex-col gap-5 px-5 pb-6 motion-safe:animate-[sw-rise_0.3s_ease-out_both] sm:px-6 sm:pl-[84px]">
           <p className="text-lg leading-relaxed text-slate-800">{lesson.text}</p>
-          <div className="flex gap-3 rounded-2xl border border-mint-line bg-green-50 p-4">
-            <svg className="mt-0.5 shrink-0 text-mint" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <div className="flex gap-3 rounded-2xl border border-brand-line bg-green-50 p-4">
+            <svg className="mt-0.5 shrink-0 text-brand" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
             </svg>
-            <p className="text-slate-800"><span className="font-semibold text-mint">Key idea: </span>{lesson.key}</p>
+            <p className="text-slate-800"><span className="font-semibold text-brand">Key idea: </span>{lesson.key}</p>
           </div>
 
           <fieldset className="rounded-2xl border border-line bg-ink p-5">
-            <legend className="px-2 text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">Quick check</legend>
+            <legend className="px-2 text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">Quick check</legend>
             <p className="font-semibold">{lesson.quiz.q}</p>
             <div className="mt-4 flex flex-col gap-2.5">
               {lesson.quiz.options.map((o, i) => {
@@ -156,20 +156,20 @@ function Lesson({ lesson, index, open, done, onToggle, onComplete }) {
                     disabled={correct}
                     className={`flex items-center justify-between gap-3 rounded-xl border-2 px-4 py-3 text-left transition ${
                       state === "right"
-                        ? "border-mint bg-mint/10"
+                        ? "border-brand bg-brand/10"
                         : state === "wrong"
                           ? "border-red-200 bg-red-50"
                           : "border-line hover:border-slate-300"
                     }`}
                   >
                     {o}
-                    {state === "right" && <span className="text-mint"><Check /></span>}
+                    {state === "right" && <span className="text-brand"><Check /></span>}
                   </button>
                 );
               })}
             </div>
             {picked != null && (
-              <p className={`mt-3 text-sm ${correct ? "text-mint" : "text-red-600"}`}>
+              <p className={`mt-3 text-sm ${correct ? "text-brand" : "text-red-600"}`}>
                 {correct ? "Correct! Lesson complete." : "Not quite. Have another look at the lesson and try again."}
               </p>
             )}
@@ -197,8 +197,8 @@ function FlipCard({ term, meaning }) {
           <span className="font-display text-xl font-bold">{term}</span>
           <span className="text-xs text-muted">Tap to flip</span>
         </span>
-        <span className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-3xl border border-mint-line bg-mint-soft p-4 text-center [backface-visibility:hidden] [transform:rotateY(180deg)]">
-          <span className="font-display text-sm font-bold text-mint">{term}</span>
+        <span className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-3xl border border-brand-line bg-brand-soft p-4 text-center [backface-visibility:hidden] [transform:rotateY(180deg)]">
+          <span className="font-display text-sm font-bold text-brand">{term}</span>
           <span className="text-sm leading-snug text-slate-800">{meaning}</span>
         </span>
       </span>
@@ -249,7 +249,7 @@ export default function LearnPage() {
       <style>{RISE}</style>
       <section className="flex flex-wrap items-end justify-between gap-8">
         <div className="max-w-2xl">
-          <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">Learn</div>
+          <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">Learn</div>
           <h1 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl">Learn to invest in 7 short lessons.</h1>
           <p className="mt-3 text-lg text-muted">From &ldquo;where do I start?&rdquo; to your first investment. About 10 minutes in total.</p>
         </div>
@@ -262,7 +262,7 @@ export default function LearnPage() {
                 cy="18"
                 r="15.5"
                 fill="none"
-                stroke="var(--color-mint)"
+                stroke="var(--color-brand)"
                 strokeWidth="3.5"
                 strokeLinecap="round"
                 strokeDasharray={`${(progress / 100) * 97.4} 97.4`}
@@ -283,12 +283,12 @@ export default function LearnPage() {
       </section>
 
       {allDone && (
-        <section className="flex flex-wrap items-center justify-between gap-6 rounded-3xl border border-mint-line bg-glow p-8 motion-safe:animate-[sw-rise_0.4s_ease-out_both]">
+        <section className="flex flex-wrap items-center justify-between gap-6 rounded-3xl border border-brand-line bg-glow p-8 motion-safe:animate-[sw-rise_0.4s_ease-out_both]">
           <div>
             <h2 className="font-display text-2xl font-bold">Course complete. You know the basics!</h2>
             <p className="mt-1 text-muted">Now put it to work: build a plan and see your numbers.</p>
           </div>
-          <Link href="/plan" className="rounded-full bg-mint px-6 py-3.5 font-semibold text-mint-ink transition hover:bg-mint-light">Build my plan →</Link>
+          <Link href="/plan" className="rounded-xl bg-brand px-6 py-3.5 font-semibold text-brand-ink transition hover:bg-brand-light">Build my plan →</Link>
         </section>
       )}
 
@@ -317,19 +317,19 @@ export default function LearnPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
-        <Link href="/coach" className="flex items-center justify-between rounded-3xl border border-line bg-surface p-6 transition hover:-translate-y-0.5 hover:border-mint/40">
+        <Link href="/coach" className="flex items-center justify-between rounded-3xl border border-line bg-surface p-6 transition hover:-translate-y-0.5 hover:border-brand/40">
           <span>
             <span className="block font-semibold">Still confused about something?</span>
             <span className="text-sm text-muted">Ask the AI Coach in your own words.</span>
           </span>
-          <span className="text-mint">→</span>
+          <span className="text-brand">→</span>
         </Link>
-        <Link href="/plan" className="flex items-center justify-between rounded-3xl border border-line bg-surface p-6 transition hover:-translate-y-0.5 hover:border-mint/40">
+        <Link href="/plan" className="flex items-center justify-between rounded-3xl border border-line bg-surface p-6 transition hover:-translate-y-0.5 hover:border-brand/40">
           <span>
             <span className="block font-semibold">Ready for numbers?</span>
             <span className="text-sm text-muted">Build your plan in about 2 minutes.</span>
           </span>
-          <span className="text-mint">→</span>
+          <span className="text-brand">→</span>
         </Link>
       </section>
     </div>

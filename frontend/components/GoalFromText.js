@@ -30,12 +30,12 @@ export default function GoalFromText({ onFill }) {
   }
 
   return (
-    <div className="rounded-3xl border border-mint-line bg-glow p-6 sm:p-8">
+    <div className="rounded-3xl border border-brand-line bg-glow p-6 sm:p-8">
       <div className="flex items-center gap-2.5">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-mint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" />
         </svg>
-        <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">Fastest way · AI</span>
+        <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">Fastest way · AI</span>
       </div>
       <label htmlFor="goal-text" className="mt-3 block font-display text-2xl font-bold tracking-tight">
         Tell us your goal in your own words
@@ -46,7 +46,7 @@ export default function GoalFromText({ onFill }) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={EXAMPLES[0]}
-        className="mt-4 w-full resize-none rounded-2xl border border-line bg-ink px-4 py-3.5 text-fg placeholder:text-slate-500 focus:border-mint focus:outline-none"
+        className="mt-4 w-full resize-none rounded-2xl border border-line bg-ink px-4 py-3.5 text-fg placeholder:text-slate-500 focus:border-brand focus:outline-none"
       />
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <span className="text-[13px] text-muted">Try:</span>
@@ -55,7 +55,7 @@ export default function GoalFromText({ onFill }) {
             key={label}
             type="button"
             onClick={() => setText(EXAMPLES[i])}
-            className="rounded-full border border-slate-300 px-3 py-1.5 text-[13px] text-slate-700 transition hover:border-mint hover:text-mint"
+            className="rounded-xl border border-slate-300 px-3 py-1.5 text-[13px] text-slate-700 transition hover:border-brand hover:text-brand"
           >
             {label}
           </button>
@@ -65,13 +65,13 @@ export default function GoalFromText({ onFill }) {
         type="button"
         onClick={fill}
         disabled={loading || text.trim().length < 5}
-        className="mt-5 rounded-full bg-mint px-6 py-3 font-semibold text-mint-ink transition hover:bg-mint-light disabled:cursor-not-allowed disabled:opacity-40"
+        className="mt-5 rounded-xl bg-brand px-6 py-3 font-semibold text-brand-ink transition hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-40"
       >
         {loading ? "Reading your goal..." : "Read my goal →"}
       </button>
       {summary && (
-        <p className="mt-4 rounded-xl border border-mint-line bg-ink/60 px-4 py-3 text-sm text-slate-700">
-          <span className="font-semibold text-mint">Got it. </span>
+        <p className="mt-4 rounded-xl border border-brand-line bg-ink/60 px-4 py-3 text-sm text-slate-700">
+          <span className="font-semibold text-brand">Got it. </span>
           {summary} Check the details below and change anything that&rsquo;s off.
         </p>
       )}

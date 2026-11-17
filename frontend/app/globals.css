@@ -2,90 +2,197 @@
 
 /* ============================================================
    Seedwise design system
-   Every colour is a variable, so the whole app can switch
-   between dark (default) and light with one class on <html>.
+   Every colour is a variable, so the whole app switches between
+   light (default) and dark with one class on <html>.
+   brand = actions and links (blue) · gain / loss = money going up / down
    ============================================================ */
 
 @theme inline {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-grotesk), ui-sans-serif, sans-serif;
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 @theme {
-  /* ---------- DARK (default) ---------- */
-  --color-ink: #0A0E13;          /* page background */
-  --color-surface: #11171F;      /* cards */
-  --color-surface-2: #0E141B;    /* subtle inner panels */
-  --color-line: #1F2833;         /* borders */
-  --color-line-strong: #2A3542;
-  --color-fg: #E6EDF3;           /* main text */
-  --color-muted: #9AA7B4;        /* secondary text */
-  --color-dim: #5B6876;          /* dashed lines, decoration */
-  --color-grid: #1A222C;         /* chart grid */
+  /* ---------- LIGHT (default) ---------- */
+  --color-ink: #F4F6FA;          /* page background */
+  --color-surface: #FFFFFF;      /* cards */
+  --color-surface-2: #F1F4F9;    /* inner panels, inputs */
+  --color-line: #E4E8EF;         /* borders */
+  --color-line-strong: #D3DAE5;
+  --color-fg: #0B1220;           /* main text */
+  --color-muted: #5B6577;        /* secondary text (5.9:1 on white) */
+  --color-dim: #98A2B3;          /* decoration only */
+  --color-grid: #EEF1F6;         /* chart grid */
 
-  --color-mint: #3DDC97;         /* brand accent */
-  --color-mint-light: #7BEBB9;
-  --color-mint-ink: #06281A;     /* text on mint buttons */
-  --color-mint-line: #23493A;    /* mint-tinted borders */
-  --color-mint-soft: #10241C;    /* mint-tinted backgrounds */
-  --color-glow: #17402F;         /* gradient glow on hero cards */
-  --color-danger-glow: #3A1A1E;
-  --color-page-glow: rgba(61, 220, 151, 0.07);
+  --color-brand: #2B5BFF;        /* buttons, links, active states */
+  --color-brand-light: #1E46D6;  /* hover */
+  --color-brand-ink: #FFFFFF;    /* text on brand buttons */
+  --color-brand-line: #C9D6FF;
+  --color-brand-soft: #EAF0FF;
+  --color-glow: #EEF3FF;
+  --color-danger-glow: #FDECEC;
+  --color-page-glow: transparent;
 
-  --color-sky: #5AA9F5;
-  --color-sky-soft: #13263A;
+  --color-gain: #0E8F52;         /* money going up */
+  --color-gain-soft: #E5F5EC;
+  --color-gain-line: #BFE6CF;
+  --color-loss: #D23339;         /* money going down */
+  --color-loss-soft: #FCEBEC;
+
+  --color-sky: #0EA5E9;
+  --color-sky-soft: #E0F2FE;
+  --color-gold: #B45309;
+  --color-gold-soft: #FEF3E2;
+  --color-gold-ink: #FFFFFF;
+  --color-violet: #7C3AED;
+  --color-rose: #E11D48;
+
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
+  --shadow-float: 0 24px 60px rgba(16, 24, 40, 0.16);
+  --shadow-lift: 0 12px 32px rgba(16, 24, 40, 0.1);
+
+  /* Calmer, more professional corners */
+  --radius-2xl: 0.875rem;
+  --radius-3xl: 1rem;
+
+  /* Older class names, pointed at the new palette */
+  --color-white: #FFFFFF;
+  --color-slate-50: #F8FAFC;
+  --color-slate-100: #F1F4F9;
+  --color-slate-200: #E4E8EF;
+  --color-slate-300: #D3DAE5;
+  --color-slate-400: #98A2B3;
+  --color-slate-500: #667085;
+  --color-slate-600: #5B6577;
+  --color-slate-700: #344054;
+  --color-slate-800: #1D2939;
+  --color-slate-900: #0B1220;
+  --color-slate-950: #050A14;
+
+  --color-blue-50: #EAF0FF;
+  --color-blue-100: #D9E3FF;
+  --color-blue-200: #C9D6FF;
+  --color-blue-300: #93ACFF;
+  --color-blue-400: #5B86FF;
+  --color-blue-500: #3A68FF;
+  --color-blue-600: #2B5BFF;
+  --color-blue-700: #1E46D6;
+  --color-blue-800: #1838A8;
+  --color-blue-900: #142C80;
+
+  --color-green-50: #E5F5EC;
+  --color-green-100: #CDEBD9;
+  --color-green-200: #BFE6CF;
+  --color-green-600: #0E8F52;
+  --color-green-700: #0B7744;
+  --color-green-800: #085E36;
+  --color-emerald-50: #E5F5EC;
+  --color-emerald-100: #CDEBD9;
+  --color-emerald-600: #0E8F52;
+  --color-emerald-700: #0B7744;
+
+  --color-red-50: #FCEBEC;
+  --color-red-100: #F9D7D9;
+  --color-red-200: #F2B8BB;
+  --color-red-600: #D23339;
+  --color-red-700: #B0262C;
+  --color-red-800: #8A1D22;
+
+  --color-amber-50: #FFF8EB;
+  --color-amber-100: #FEF0D0;
+  --color-amber-200: #F8DDA4;
+  --color-amber-600: #B45309;
+  --color-amber-700: #B45309;
+  --color-amber-800: #92400E;
+
+  /* Smoother default motion */
+  --default-transition-duration: 200ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --animate-page-in: page-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+}
+
+/* ---------- DARK ---------- */
+html.dark {
+  --color-ink: #0A0E15;
+  --color-surface: #111824;
+  --color-surface-2: #0E131C;
+  --color-line: #1F2836;
+  --color-line-strong: #2A3546;
+  --color-fg: #E8EDF5;
+  --color-muted: #94A1B5;
+  --color-dim: #5E6A7D;
+  --color-grid: #182030;
+
+  --color-brand: #5B86FF;
+  --color-brand-light: #8AA8FF;
+  --color-brand-ink: #06122E;
+  --color-brand-line: #22345C;
+  --color-brand-soft: #16233F;
+  --color-glow: #131E35;
+  --color-danger-glow: #2E161A;
+
+  --color-gain: #2BC883;
+  --color-gain-soft: #0F2A1F;
+  --color-gain-line: #1D4A36;
+  --color-loss: #FF6B70;
+  --color-loss-soft: #2E161A;
+
+  --color-sky: #38BDF8;
+  --color-sky-soft: #0C2A3A;
   --color-gold: #F5B95A;
   --color-gold-soft: #3A2D14;
   --color-gold-ink: #2A1F08;
   --color-violet: #B58CF5;
-  --color-rose: #F58C8C;
-  --color-loss: #F87171;
+  --color-rose: #FB7185;
 
-  --shadow-float: 0 30px 80px rgba(0, 0, 0, 0.45);
-  --shadow-lift: 0 20px 50px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 0 0 transparent;
+  --shadow-float: 0 24px 60px rgba(0, 0, 0, 0.5);
+  --shadow-lift: 0 12px 32px rgba(0, 0, 0, 0.4);
 
-  /* Old light-theme class names, re-pointed to the dark palette */
-  --color-white: #11171F;
-  --color-slate-50: #0E141B;
-  --color-slate-100: #161E27;
-  --color-slate-200: #1F2833;
-  --color-slate-300: #2A3542;
-  --color-slate-400: #6B7886;
-  --color-slate-500: #8492A0;
-  --color-slate-600: #9AA7B4;
-  --color-slate-700: #B6C2CE;
-  --color-slate-800: #D3DCE4;
-  --color-slate-900: #E6EDF3;
-  --color-slate-950: #F4F7FA;
+  --color-white: #111824;
+  --color-slate-50: #0E131C;
+  --color-slate-100: #172031;
+  --color-slate-200: #1F2836;
+  --color-slate-300: #2A3546;
+  --color-slate-400: #5E6A7D;
+  --color-slate-500: #8492A6;
+  --color-slate-600: #94A1B5;
+  --color-slate-700: #B9C3D3;
+  --color-slate-800: #D5DCE7;
+  --color-slate-900: #E8EDF5;
+  --color-slate-950: #F4F7FB;
 
-  --color-blue-50: #0F2A22;
-  --color-blue-100: #133227;
-  --color-blue-200: #1F4A3A;
-  --color-blue-300: #2E6B53;
-  --color-blue-400: #5FE3AA;
-  --color-blue-500: #3DDC97;
-  --color-blue-600: #3DDC97;
-  --color-blue-700: #7BEBB9;
-  --color-blue-800: #9FF0CB;
-  --color-blue-900: #C5F6DF;
+  --color-blue-50: #16233F;
+  --color-blue-100: #1B2B4D;
+  --color-blue-200: #22345C;
+  --color-blue-300: #33508C;
+  --color-blue-400: #5B86FF;
+  --color-blue-500: #5B86FF;
+  --color-blue-600: #5B86FF;
+  --color-blue-700: #8AA8FF;
+  --color-blue-800: #B3C7FF;
+  --color-blue-900: #D6E1FF;
 
-  --color-green-50: #0F2A22;
-  --color-green-100: #133227;
-  --color-green-200: #1F4A3A;
-  --color-green-600: #3DDC97;
-  --color-green-700: #5FE3AA;
-  --color-green-800: #7BEBB9;
-  --color-emerald-50: #0F2A22;
-  --color-emerald-100: #133227;
-  --color-emerald-600: #3DDC97;
-  --color-emerald-700: #5FE3AA;
+  --color-green-50: #0F2A1F;
+  --color-green-100: #133527;
+  --color-green-200: #1D4A36;
+  --color-green-600: #2BC883;
+  --color-green-700: #5AD8A0;
+  --color-green-800: #8FE6BF;
+  --color-emerald-50: #0F2A1F;
+  --color-emerald-100: #133527;
+  --color-emerald-600: #2BC883;
+  --color-emerald-700: #5AD8A0;
 
-  --color-red-50: #2A1215;
-  --color-red-100: #3A1A1E;
-  --color-red-200: #5A2328;
-  --color-red-600: #F87171;
-  --color-red-700: #FCA5A5;
-  --color-red-800: #FECACA;
+  --color-red-50: #2E161A;
+  --color-red-100: #3A1B20;
+  --color-red-200: #5A262C;
+  --color-red-600: #FF6B70;
+  --color-red-700: #FF9A9D;
+  --color-red-800: #FFC4C6;
 
   --color-amber-50: #2A2110;
   --color-amber-100: #3A2D14;
@@ -93,111 +200,20 @@
   --color-amber-600: #F5B95A;
   --color-amber-700: #F5B95A;
   --color-amber-800: #FAD48F;
-
-  /* Smoother default motion */
-  --default-transition-duration: 220ms;
-  --default-transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
-
-  --animate-page-in: page-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
-  --animate-float: float 7s ease-in-out infinite;
-  --animate-shimmer: shimmer 1.6s linear infinite;
-}
-
-/* ---------- LIGHT ---------- */
-html.light {
-  --color-ink: #F4F7F5;
-  --color-surface: #FFFFFF;
-  --color-surface-2: #F1F5F3;
-  --color-line: #E1E8E4;
-  --color-line-strong: #CBD5D0;
-  --color-fg: #0B1A14;
-  --color-muted: #55665F;
-  --color-dim: #94A39D;
-  --color-grid: #ECF1EE;
-
-  --color-mint: #087F5B;
-  --color-mint-light: #066B4C;
-  --color-mint-ink: #FFFFFF;
-  --color-mint-line: #B9E3CF;
-  --color-mint-soft: #E7F6EE;
-  --color-glow: #DDF3E7;
-  --color-danger-glow: #FDE7E7;
-  --color-page-glow: rgba(8, 127, 91, 0.08);
-
-  --color-sky: #2563EB;
-  --color-sky-soft: #E6EEFD;
-  --color-gold: #B45309;
-  --color-gold-soft: #FEF3E2;
-  --color-gold-ink: #FFFFFF;
-  --color-violet: #7C3AED;
-  --color-rose: #E11D48;
-  --color-loss: #DC2626;
-
-  --shadow-float: 0 30px 70px rgba(15, 40, 30, 0.12);
-  --shadow-lift: 0 18px 40px rgba(15, 40, 30, 0.1);
-
-  --color-white: #FFFFFF;
-  --color-slate-50: #F8FAF9;
-  --color-slate-100: #EEF3F0;
-  --color-slate-200: #E1E8E4;
-  --color-slate-300: #CBD5D0;
-  --color-slate-400: #94A39D;
-  --color-slate-500: #65756F;
-  --color-slate-600: #55665F;
-  --color-slate-700: #36463F;
-  --color-slate-800: #1E2C26;
-  --color-slate-900: #0B1A14;
-  --color-slate-950: #050D0A;
-
-  --color-blue-50: #E7F6EE;
-  --color-blue-100: #D2EEDF;
-  --color-blue-200: #B9E3CF;
-  --color-blue-300: #7FCBA6;
-  --color-blue-400: #2FA77A;
-  --color-blue-500: #0E936A;
-  --color-blue-600: #087F5B;
-  --color-blue-700: #066B4C;
-  --color-blue-800: #065F46;
-  --color-blue-900: #064E3B;
-
-  --color-green-50: #E7F6EE;
-  --color-green-100: #D2EEDF;
-  --color-green-200: #B9E3CF;
-  --color-green-600: #087F5B;
-  --color-green-700: #066B4C;
-  --color-green-800: #065F46;
-  --color-emerald-50: #E7F6EE;
-  --color-emerald-100: #D2EEDF;
-  --color-emerald-600: #087F5B;
-  --color-emerald-700: #066B4C;
-
-  --color-red-50: #FEF2F2;
-  --color-red-100: #FEE2E2;
-  --color-red-200: #FECACA;
-  --color-red-600: #DC2626;
-  --color-red-700: #B91C1C;
-  --color-red-800: #991B1B;
-
-  --color-amber-50: #FFFBEB;
-  --color-amber-100: #FEF3C7;
-  --color-amber-200: #FDE68A;
-  --color-amber-600: #B45309;
-  --color-amber-700: #B45309;
-  --color-amber-800: #92400E;
 }
 
 /* ---------- Gradient helpers ---------- */
 @utility bg-glow {
-  background-image: radial-gradient(130% 120% at 0% 0%, var(--color-glow) 0%, var(--color-surface) 62%);
+  background-image: linear-gradient(135deg, var(--color-glow) 0%, var(--color-surface) 55%);
 }
 @utility bg-glow-danger {
   background-image: radial-gradient(130% 120% at 0% 0%, var(--color-danger-glow) 0%, var(--color-surface) 62%);
 }
 @utility bg-glow-hero {
-  background-image: radial-gradient(120% 120% at 0% 0%, var(--color-glow) 0%, var(--color-surface) 58%, var(--color-ink) 100%);
+  background-image: linear-gradient(135deg, var(--color-glow) 0%, var(--color-surface) 60%);
 }
 @utility text-gradient {
-  background-image: linear-gradient(100deg, var(--color-mint) 0%, var(--color-sky) 100%);
+  background-image: linear-gradient(100deg, var(--color-brand) 0%, var(--color-violet) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -206,11 +222,11 @@ html.light {
 /* ---------- Base ---------- */
 @layer base {
   html {
-    color-scheme: dark;
+    color-scheme: light;
     scroll-behavior: smooth;
   }
-  html.light {
-    color-scheme: light;
+  html.dark {
+    color-scheme: dark;
   }
   html,
   body {
@@ -219,36 +235,22 @@ html.light {
   body {
     background: var(--color-ink);
     color: var(--color-fg);
-    font-feature-settings: "cv11", "ss03";
+    font-feature-settings: "cv11", "ss03", "tnum";
     text-rendering: optimizeLegibility;
-  }
-  /* soft brand glow behind every page */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background:
-      radial-gradient(1100px 520px at 50% -12%, var(--color-page-glow), transparent 70%),
-      radial-gradient(700px 400px at 100% 0%, color-mix(in srgb, var(--color-sky) 5%, transparent), transparent 70%);
   }
   h1, h2, h3 {
     font-family: var(--font-display);
-    letter-spacing: -0.025em;
+    letter-spacing: -0.02em;
     text-wrap: balance;
-  }
-  h1 {
-    letter-spacing: -0.035em;
   }
   p {
     text-wrap: pretty;
   }
   ::selection {
-    background: color-mix(in srgb, var(--color-mint) 30%, transparent);
+    background: color-mix(in srgb, var(--color-brand) 30%, transparent);
   }
   :focus-visible {
-    outline: 2px solid var(--color-mint);
+    outline: 2px solid var(--color-brand);
     outline-offset: 3px;
     border-radius: 10px;
   }
@@ -258,7 +260,7 @@ html.light {
     outline: none;
   }
   input[type="range"] {
-    accent-color: var(--color-mint);
+    accent-color: var(--color-brand);
   }
   /* subtle scrollbars */
   * {
@@ -277,6 +279,10 @@ html.light {
 /* cards that lift on hover also get a soft shadow */
 [class*="hover:-translate-y"]:hover {
   box-shadow: var(--shadow-lift);
+}
+/* every card gets the same soft shadow in light mode (flat borders in dark) */
+:is(section, article, div, form, aside)[class*="rounded-3xl"][class*="border"]:not([class*="shadow-"]) {
+  box-shadow: var(--shadow-card);
 }
 /* skeleton loaders shimmer instead of blinking */
 .animate-pulse {
@@ -337,8 +343,28 @@ html.light {
 .md li { margin: 0.2em 0; }
 .md strong { font-weight: 600; color: var(--color-fg); }
 .md h1, .md h2, .md h3 { font-weight: 600; margin: 0.8em 0 0.4em; }
-.md a { color: var(--color-mint); text-decoration: underline; }
+.md a { color: var(--color-brand); text-decoration: underline; }
 .md code { background: var(--color-ink); border: 1px solid var(--color-line); border-radius: 6px; padding: 0 4px; }
 .md table { border-collapse: collapse; margin: 0.6em 0; font-size: 0.9em; }
 .md th, .md td { border: 1px solid var(--color-line); padding: 0.35rem 0.6rem; text-align: left; }
 .md th { background: var(--color-surface-2); }
+
+/* ---------- App shell ----------
+   App pages: a sidebar (desktop) or a slim top bar (phones).
+   The landing page and login set data-layout="marketing" on <html> (lib/layoutMode.js)
+   and get the classic top menu and footer instead. Pure CSS: no flash on load. */
+.app-shell { display: flex; min-height: 100vh; }
+.app-sidebar { position: sticky; top: 0; height: 100vh; width: 256px; flex: none; }
+.app-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.app-mobilebar { display: none; }
+.app-content { width: 100%; box-sizing: border-box; max-width: 80rem; margin: 0 auto; padding: 1.75rem 2rem 3rem; }
+@media (max-width: 1023px) {
+  .app-sidebar { display: none; }
+  .app-mobilebar { display: flex; }
+  .app-content { padding: 1.25rem 1rem 2.5rem; }
+}
+html:not([data-layout="marketing"]) .site-topbar,
+html:not([data-layout="marketing"]) .site-footer { display: none; }
+html[data-layout="marketing"] .app-sidebar,
+html[data-layout="marketing"] .app-mobilebar { display: none; }
+html[data-layout="marketing"] .app-content { max-width: 72rem; padding: 2.5rem 1.5rem; }

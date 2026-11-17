@@ -8,6 +8,7 @@ import PriceChart from "@/components/PriceChart";
 import AIExplainer from "@/components/AIExplainer";
 import { Avatar, ChartTooltip, ReturnPill, RISE, Segmented, monthName } from "@/components/ui";
 import { api } from "@/lib/api";
+import { setPageContext } from "@/lib/coach";
 import { bigMoney, percent, price } from "@/lib/format";
 
 const RANGES = [
@@ -21,7 +22,7 @@ function Stat({ label, value, hint, tone }) {
   return (
     <div className="rounded-3xl border border-line bg-surface p-5">
       <div className="text-xs text-muted">{label}</div>
-      <div className={`mt-1 font-display text-2xl font-bold ${tone === "up" ? "text-mint" : tone === "down" ? "text-red-600" : ""}`}>{value}</div>
+      <div className={`mt-1 font-display text-2xl font-bold ${tone === "up" ? "text-brand" : tone === "down" ? "text-red-600" : ""}`}>{value}</div>
       <div className="mt-1.5 text-xs leading-relaxed text-slate-500">{hint}</div>
     </div>
   );
@@ -39,12 +40,20 @@ export default function StockPage() {
       .catch(() => api.liveStock(symbol).then(setStock).catch((e) => setError(e.message)));
   }, [symbol]);
 
+  // the AI side panel knows which stock you're looking at
+  useEffect(() => {
+    if (!stock) return;
+    const p = stock.prices?.at(-1)?.close;
+    setPageContext(`stock page for ${stock.symbol} (${stock.name})${p ? `, latest monthly close $${p.toFixed(2)}` : ""}`);
+    return () => setPageContext("");
+  }, [stock]);
+
   if (error)
     return (
       <div className="rounded-3xl border border-line bg-surface p-10 text-center">
         <h1 className="font-display text-2xl font-bold">We couldn&rsquo;t load {String(symbol).toUpperCase()}</h1>
         <p className="mt-2 text-muted">{error}</p>
-        <Link href="/stocks" className="mt-6 inline-block rounded-full bg-mint px-6 py-3 font-semibold text-mint-ink">Back to stocks</Link>
+        <Link href="/stocks" className="mt-6 inline-block rounded-xl bg-brand px-6 py-3 font-semibold text-brand-ink">Back to stocks</Link>
       </div>
     );
 
@@ -74,7 +83,7 @@ export default function StockPage() {
   return (
     <div className="flex flex-col gap-6">
       <style>{RISE}</style>
-      <Link href="/stocks" className="self-start text-sm text-muted transition hover:text-mint">← All stocks</Link>
+      <Link href="/stocks" className="self-start text-sm text-muted transition hover:text-brand">← All stocks</Link>
 
       <section className="flex flex-wrap items-center justify-between gap-6 rounded-3xl border border-line bg-surface p-7 motion-safe:animate-[sw-rise_0.4s_ease-out_both]">
         <div className="flex min-w-0 items-center gap-5">
@@ -85,7 +94,7 @@ export default function StockPage() {
               <span className="rounded-full border border-slate-300 px-2.5 py-1 font-semibold">{stock.symbol}</span>
               <span className="rounded-full border border-line px-2.5 py-1 text-muted">{stock.asset_type === "etf" ? "Fund (ETF)" : "Stock"}</span>
               {stock.sector && stock.sector !== "Live data" && <span className="rounded-full border border-line px-2.5 py-1 text-muted">{stock.sector}</span>}
-              {(stock.live || stock.featured === false) && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-mint">Added by search</span>}
+              {(stock.live || stock.featured === false) && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-brand">Added by search</span>}
             </div>
           </div>
         </div>
@@ -100,6 +109,8 @@ export default function StockPage() {
         )}
       </section>
 
+      <AIExplainer symbol={stock.symbol} />
+
       {(stock.live || stock.featured === false) && (
         <p className="rounded-2xl border border-line bg-surface px-5 py-3 text-sm text-muted">
           {stock.symbol} isn&rsquo;t one of our 36 featured stocks, so we loaded its prices from Alpaca and its financials from the company&rsquo;s SEC filings.
@@ -113,7 +124,7 @@ export default function StockPage() {
             <h2 className="font-display text-xl font-bold">Price history</h2>
             {change != null && first && (
               <p className="mt-1 text-sm text-muted">
-                <span className={change >= 0 ? "font-semibold text-mint" : "font-semibold text-red-600"}>
+                <span className={change >= 0 ? "font-semibold text-gain" : "font-semibold text-loss"}>
                   {change >= 0 ? "+" : ""}
                   {percent(change)}
                 </span>{" "}
@@ -127,8 +138,6 @@ export default function StockPage() {
           <PriceChart data={prices} up={change == null || change >= 0} />
         </div>
       </section>
-
-      <AIExplainer symbol={stock.symbol} />
 
       {stats && (
         <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -154,13 +163,13 @@ export default function StockPage() {
                   <YAxis tickFormatter={bigMoney} width={70} tick={{ fill: "var(--color-muted)", fontSize: 12 }} tickLine={false} axisLine={false} />
                   <Tooltip content={<ChartTooltip format={bigMoney} />} cursor={{ fill: "color-mix(in srgb, var(--color-fg) 4%, transparent)" }} />
                   <Bar dataKey="revenue" name="Revenue" fill="var(--color-sky)" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="profit" name="Profit" fill="var(--color-mint)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="profit" name="Profit" fill="var(--color-brand)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
             <div className="mt-3 flex gap-5 text-[13px] text-muted">
               <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-sky" />Revenue (money coming in)</span>
-              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-mint" />Profit (what&rsquo;s left)</span>
+              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-brand" />Profit (what&rsquo;s left)</span>
             </div>
             <div className="mt-6 overflow-x-auto rounded-2xl border border-line">
               <table className="w-full min-w-[640px] text-left text-sm">
@@ -195,20 +204,20 @@ export default function StockPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
-        <Link href="/coach" className="flex items-center justify-between rounded-3xl border border-line bg-surface p-6 transition hover:-translate-y-0.5 hover:border-mint/40">
+        <Link href="/coach" className="flex items-center justify-between rounded-3xl border border-line bg-surface p-6 transition hover:-translate-y-0.5 hover:border-brand/40">
           <span>
             <span className="block font-semibold">Ask the AI Coach</span>
             <span className="text-sm text-muted">&ldquo;Is {stock.symbol} a good fit for a beginner?&rdquo;</span>
           </span>
-          <span className="text-mint">→</span>
+          <span className="text-brand">→</span>
         </Link>
         {!stock.live && (
-          <Link href={`/tools?tab=time&symbol=${stock.symbol}`} className="flex items-center justify-between rounded-3xl border border-line bg-surface p-6 transition hover:-translate-y-0.5 hover:border-mint/40">
+          <Link href={`/tools?tab=time&symbol=${stock.symbol}`} className="flex items-center justify-between rounded-3xl border border-line bg-surface p-6 transition hover:-translate-y-0.5 hover:border-brand/40">
             <span>
               <span className="block font-semibold">Time Machine</span>
               <span className="text-sm text-muted">What if I&rsquo;d bought {stock.symbol} in 2016?</span>
             </span>
-            <span className="text-mint">→</span>
+            <span className="text-brand">→</span>
           </Link>
         )}
       </section>

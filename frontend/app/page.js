@@ -1,9 +1,57 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { price, percent } from "../lib/format";
+
+const GOAL_EXAMPLES = [
+  "I'm 17, I have $500 and can add $50 a month for 10 years",
+  "A house deposit in 6 years: I have $2,000 and can save $250 a month",
+  "Retire comfortably. I'm 25 and can invest $300 a month",
+];
+
+// The first thing on the page: tell the AI your goal in your own words.
+function GoalBox() {
+  const router = useRouter();
+  const [text, setText] = useState("");
+  const ready = text.trim().length >= 5;
+  function go(e) {
+    e.preventDefault();
+    if (ready) router.push(`/plan?goal=${encodeURIComponent(text.trim())}`);
+  }
+  return (
+    <form onSubmit={go} className="mt-8 rounded-2xl border border-line bg-surface p-2 shadow-float focus-within:border-brand">
+      <label htmlFor="goal" className="sr-only">Your money goal, in your own words</label>
+      <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+        <span className="ml-3 hidden text-brand sm:block" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" /></svg>
+        </span>
+        <input
+          id="goal"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          maxLength={1000}
+          autoComplete="off"
+          placeholder="Tell me your money goal…"
+          className="min-w-0 flex-1 bg-transparent px-3 py-3.5 text-base text-fg placeholder:text-slate-500 focus:outline-none"
+        />
+        <button disabled={!ready} className="w-full rounded-xl bg-brand px-6 py-3.5 text-base font-semibold text-brand-ink transition hover:bg-brand-light disabled:opacity-50 sm:w-auto">
+          Build my plan →
+        </button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 pb-1.5 pt-3">
+        <span className="text-xs text-muted">Try:</span>
+        {GOAL_EXAMPLES.map((g) => (
+          <button key={g} type="button" onClick={() => setText(g)} className="max-w-full truncate rounded-full border border-line px-3 py-1 text-xs text-slate-700 transition hover:border-brand hover:text-brand">
+            {g}
+          </button>
+        ))}
+      </div>
+    </form>
+  );
+}
 
 const STEPS = [
   { n: "01", title: "Say your goal, your way", text: "“I want a house deposit in 6 years and can save $250 a month.” Our AI turns that into a plan." },
@@ -16,14 +64,14 @@ const FEATURES = [
     href: "/practice",
     title: "Practice portfolio",
     text: "Get $10,000 of play money and invest it at real prices. Learn by doing, with zero risk.",
-    demo: <>Can you beat the S&amp;P 500? <span className="font-semibold text-mint">Start practicing →</span></>,
+    demo: <>Can you beat the S&amp;P 500? <span className="font-semibold text-brand">Start practicing →</span></>,
     icon: <><rect x="3" y="6" width="18" height="14" rx="2" /><path d="M16 13h2" /><path d="M3 10h18" /></>,
   },
   {
     href: "/tools?tab=crash",
     title: "Crash test",
     text: "Replay the 2020 COVID crash on your plan, month by month. Would you have panicked?",
-    demo: <>Hold, sell or buy more? <span className="font-semibold text-mint">You decide.</span></>,
+    demo: <>Hold, sell or buy more? <span className="font-semibold text-brand">You decide.</span></>,
     icon: <><path d="M3 7l6 6 4-4 8 8" /><path d="M21 11v6h-6" /></>,
   },
   {
@@ -44,7 +92,7 @@ const FEATURES = [
     href: "/tools",
     title: "Time Machine",
     text: "What if you’d invested back then? Pick any stock and a start date, and see it against the S&P 500.",
-    demo: <>$1,000 in NVDA (2016) → <span className="font-semibold text-mint">$223,625</span></>,
+    demo: <>$1,000 in NVDA (2016) → <span className="font-semibold text-brand">$223,625</span></>,
     icon: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
   },
   {
@@ -57,7 +105,7 @@ const FEATURES = [
 
 function Icon({ children }) {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-mint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {children}
     </svg>
   );
@@ -69,7 +117,7 @@ function TickerItem({ s }) {
     <span className="flex items-center gap-2 whitespace-nowrap text-sm">
       <span className="font-semibold text-fg">{s.symbol}</span>
       <span className="text-muted">{price(s.latest_price)}</span>
-      <span className={up ? "text-mint" : "text-red-600"}>
+      <span className={up ? "text-gain" : "text-loss"}>
         {up ? "▲" : "▼"} {percent(Math.abs(s.return_1y))}
       </span>
     </span>
@@ -90,54 +138,47 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-24">
+    <div data-layout="marketing" className="flex flex-col gap-24">
       {/* HERO */}
       <section className="flex flex-wrap items-center gap-14 overflow-x-clip pt-6">
         <div className="min-w-0 flex-[1_1_440px]">
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-2 text-[13px] text-slate-700">
-            <span className="h-2 w-2 rounded-full bg-mint" />
+            <span className="h-2 w-2 rounded-full bg-brand" />
             AI-powered · Real US market data · Free
           </div>
-          <h1 className="mt-6 font-display text-[clamp(2.75rem,6.2vw,4.6rem)] font-bold leading-[1.0] tracking-[-0.04em]">
-            See where your money could be in <span className="text-gradient">10 years.</span>
-            <br />
-            In 2 minutes.
+          <h1 className="mt-6 text-[clamp(2.5rem,5.4vw,4rem)] font-bold leading-[1.05] tracking-[-0.035em]">
+            Tell us your goal. <span className="text-gradient">Get a real plan</span> in 2 minutes.
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
-            Tell Seedwise your goal in plain words. Get a beginner-friendly portfolio, a projection built from 5,000
-            simulated futures, and an AI coach that explains every number.
+            Type your goal in plain words. Seedwise&rsquo;s AI reads it, builds a beginner-friendly portfolio, and shows
+            good, likely and bad outcomes from 5,000 simulations on real market data.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3.5">
-            <Link href="/plan" className="rounded-full bg-mint px-7 py-4 text-base font-semibold text-mint-ink transition hover:bg-mint-light">
-              Build my plan →
-            </Link>
-            <Link href="/tools" className="rounded-full border border-slate-300 px-7 py-4 text-base font-medium text-fg transition hover:border-mint hover:text-mint">
-              Try the Time Machine
-            </Link>
+          <GoalBox />
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+            <Link href="/plan?mode=manual" className="font-medium text-muted underline-offset-4 hover:text-fg hover:underline">Rather answer step by step</Link>
+            <Link href="/tools" className="font-medium text-muted underline-offset-4 hover:text-fg hover:underline">Try the Time Machine</Link>
+            <span className="text-slate-500">Free · Educational only, not financial advice</span>
           </div>
-          <p className="mt-5 text-[13px] text-slate-500">No credit card. Educational only, not financial advice.</p>
         </div>
 
         <div className="relative min-w-0 flex-[1_1_440px]">
-          <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-12 h-56 w-56 rounded-full bg-mint/20 blur-3xl motion-safe:animate-float" />
-          <div aria-hidden="true" className="pointer-events-none absolute -bottom-10 -left-8 h-48 w-48 rounded-full bg-sky/15 blur-3xl motion-safe:animate-float [animation-delay:-3s]" />
-          <div className="relative rounded-3xl border border-line bg-gradient-to-b from-surface to-surface-2 p-7 shadow-float">
+          <div className="relative rounded-3xl border border-line bg-surface p-7 shadow-float">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-[13px] text-muted">Balanced Builder · $5,000 + $150/month</div>
               <div className="mt-1.5 font-display text-4xl font-bold tracking-tight">$40,500</div>
-              <div className="mt-1 text-sm text-mint">Likely value in 10 years</div>
+              <div className="mt-1 text-sm text-brand">Likely value in 10 years</div>
             </div>
-            <div className="rounded-full bg-mint/10 px-3 py-1.5 text-[13px] font-semibold text-mint">9.1% past avg / yr</div>
+            <div className="rounded-full bg-brand/10 px-3 py-1.5 text-[13px] font-semibold text-brand">9.1% past avg / yr</div>
           </div>
           <svg viewBox="0 0 440 200" className="mt-5 h-auto w-full" role="img" aria-label="Example projection: a range of outcomes widening over time, with the likely path rising above the money put in">
-            <path d="M0 170 C 120 150, 260 110, 440 40 L 440 130 C 260 150, 120 165, 0 170 Z" fill="color-mix(in srgb, var(--color-mint) 16%, transparent)" />
-            <path d="M0 170 C 120 158, 260 132, 440 86" stroke="var(--color-mint)" strokeWidth="3" fill="none" />
+            <path d="M0 170 C 120 150, 260 110, 440 40 L 440 130 C 260 150, 120 165, 0 170 Z" fill="color-mix(in srgb, var(--color-brand) 16%, transparent)" />
+            <path d="M0 170 C 120 158, 260 132, 440 86" stroke="var(--color-brand)" strokeWidth="3" fill="none" />
             <path d="M0 170 L 440 128" stroke="var(--color-dim)" strokeWidth="2" strokeDasharray="6 6" fill="none" />
           </svg>
           <div className="mt-2 flex flex-wrap gap-5 text-[13px] text-muted">
-            <span className="flex items-center gap-2"><span className="h-[3px] w-4 bg-mint" />Likely path</span>
-            <span className="flex items-center gap-2"><span className="h-2.5 w-4 rounded-sm bg-mint/25" />Range of outcomes</span>
+            <span className="flex items-center gap-2"><span className="h-[3px] w-4 bg-brand" />Likely path</span>
+            <span className="flex items-center gap-2"><span className="h-2.5 w-4 rounded-sm bg-brand/25" />Range of outcomes</span>
             <span className="flex items-center gap-2"><span className="w-4 border-t-2 border-dashed border-dim" />Money you put in</span>
           </div>
         </div>
@@ -164,11 +205,11 @@ export default function Home() {
 
       {/* HOW IT WORKS */}
       <section className="reveal">
-        <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">How it works</div>
+        <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">How it works</div>
         <h2 className="mt-3 font-display text-4xl font-bold tracking-tight">From “I want to start investing” to a real plan.</h2>
         <div className="mt-10 grid gap-5 md:grid-cols-3">
           {STEPS.map((s) => (
-            <div key={s.n} className="rounded-3xl border border-line bg-surface p-7 transition hover:-translate-y-1 hover:border-mint/40">
+            <div key={s.n} className="rounded-3xl border border-line bg-surface p-7 transition hover:-translate-y-1 hover:border-brand/40">
               <div className="text-gradient font-display text-3xl font-bold">{s.n}</div>
               <h3 className="mt-3.5 text-xl font-semibold">{s.title}</h3>
               <p className="mt-2.5 leading-relaxed text-muted">{s.text}</p>
@@ -185,27 +226,27 @@ export default function Home() {
             <Link
               key={f.href}
               href={f.href}
-              className="group flex flex-col gap-3.5 rounded-2xl border border-line bg-surface p-8 transition hover:-translate-y-1 hover:border-mint/40"
+              className="group flex flex-col gap-3.5 rounded-2xl border border-line bg-surface p-8 transition hover:-translate-y-1 hover:border-brand/40"
             >
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-mint/12 transition duration-300 group-hover:scale-110 group-hover:bg-mint/20"><Icon>{f.icon}</Icon></span>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/12 transition duration-300 group-hover:scale-110 group-hover:bg-brand/20"><Icon>{f.icon}</Icon></span>
               <h3 className="text-[22px] font-semibold">{f.title}</h3>
               <p className="leading-relaxed text-muted">{f.text}</p>
               {f.demo && (
                 <div className="rounded-xl border border-line bg-ink px-4 py-3.5 text-sm text-slate-700">{f.demo}</div>
               )}
-              <span className="mt-auto text-sm font-medium text-mint opacity-0 transition group-hover:opacity-100">Open →</span>
+              <span className="mt-auto text-sm font-medium text-brand opacity-0 transition group-hover:opacity-100">Open →</span>
             </Link>
           ))}
         </div>
       </section>
 
       {/* FINAL CTA */}
-      <section className="reveal flex flex-wrap items-center justify-between gap-6 rounded-[28px] border border-mint-line bg-glow p-10 sm:p-14">
+      <section className="reveal flex flex-wrap items-center justify-between gap-6 rounded-[28px] border border-brand-line bg-glow p-10 sm:p-14">
         <div className="min-w-0 flex-[1_1_400px]">
           <h2 className="font-display text-4xl font-bold tracking-tight">Your first plan is 2 minutes away.</h2>
           <p className="mt-2.5 text-lg text-muted">Free, private and built for complete beginners.</p>
         </div>
-        <Link href="/plan" className="rounded-full bg-mint px-7 py-4 text-base font-semibold text-mint-ink transition hover:bg-mint-light">
+        <Link href="/plan" className="rounded-full bg-brand px-7 py-4 text-base font-semibold text-brand-ink transition hover:bg-brand-light">
           Build my plan →
         </Link>
       </section>

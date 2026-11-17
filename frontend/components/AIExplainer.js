@@ -25,10 +25,10 @@ export default function AIExplainer({ symbol }) {
   }
 
   return (
-    <section className="rounded-3xl border border-mint-line bg-glow p-7">
+    <section className="rounded-3xl border border-brand-line bg-glow p-7">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-mint/15 text-mint">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/15 text-brand">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" />
             </svg>
@@ -42,7 +42,7 @@ export default function AIExplainer({ symbol }) {
           <button
             onClick={explain}
             disabled={loading}
-            className="rounded-full bg-mint px-6 py-3 font-semibold text-mint-ink transition hover:bg-mint-light disabled:opacity-50"
+            className="rounded-xl bg-brand px-6 py-3 font-semibold text-brand-ink transition hover:bg-brand-light disabled:opacity-50"
           >
             {loading ? "Reading the numbers..." : "Explain it →"}
           </button>

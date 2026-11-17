@@ -154,7 +154,7 @@ export default function SymbolSearch({
   return (
     <div ref={box} className={`relative ${open ? "z-40" : "z-20"} ${className}`}>
       <div
-        className={`flex items-center gap-3 border border-line bg-surface transition focus-within:border-mint ${
+        className={`flex items-center gap-3 border border-line bg-surface transition focus-within:border-brand ${
           big ? "rounded-full px-5 py-2 shadow-lift" : small ? "rounded-full px-3.5 py-1" : "rounded-2xl px-4 py-1.5"
         }`}
       >
@@ -182,7 +182,7 @@ export default function SymbolSearch({
           placeholder={placeholder}
           className={`w-full min-w-0 bg-transparent text-fg placeholder:text-slate-500 focus:outline-none ${big ? "py-3 text-lg" : small ? "py-1 text-sm" : "py-2"}`}
         />
-        {loading && <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-300 border-t-mint" aria-hidden="true" />}
+        {loading && <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-300 border-t-brand" aria-hidden="true" />}
       </div>
 
       {open && (
@@ -205,7 +205,7 @@ export default function SymbolSearch({
                   e.preventDefault();
                   choose(r);
                 }}
-                className={`flex cursor-pointer items-center gap-3 px-4 py-2.5 ${i === active ? "bg-mint-soft" : ""}`}
+                className={`flex cursor-pointer items-center gap-3 px-4 py-2.5 ${i === active ? "bg-brand-soft" : ""}`}
               >
                 <Avatar symbol={r.symbol} size={small ? 30 : 36} />
                 <span className="min-w-0 flex-1">
@@ -213,7 +213,7 @@ export default function SymbolSearch({
                   <span className="block truncate text-sm text-muted">{r.name}</span>
                 </span>
                 {r.asset_type === "etf" && <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-xs text-muted">Fund</span>}
-                {r.featured && <span className="shrink-0 rounded-full bg-mint/10 px-2 py-0.5 text-xs font-semibold text-mint">Featured</span>}
+                {r.featured && <span className="shrink-0 rounded-full bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand">Featured</span>}
               </li>
             ))}
           </ul>

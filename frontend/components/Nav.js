@@ -44,14 +44,14 @@ export default function Nav() {
 
   return (
     <header
-      className={`sticky top-0 z-40 border-b backdrop-blur-xl transition-all duration-300 ${
-        scrolled ? "border-line bg-ink/85 shadow-lift" : "border-transparent bg-ink/40"
+      className={`site-topbar sticky top-0 z-40 border-b backdrop-blur-xl transition-all duration-300 ${
+        scrolled ? "border-line bg-surface/90" : "border-transparent bg-ink/60"
       }`}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
         <Link href="/" className="group flex items-center gap-2.5" onClick={() => setOpen(false)}>
           <span className="transition duration-300 group-hover:rotate-[-8deg] group-hover:scale-105"><Logo /></span>
-          <span className="font-display text-xl font-bold tracking-tight">Seedwise</span>
+          <span className="text-xl font-bold tracking-tight">Seedwise</span>
         </Link>
 
         <nav aria-label="Main" className="hidden items-center gap-6 text-[15px] lg:flex">
@@ -59,7 +59,7 @@ export default function Nav() {
             <Link
               key={l.href}
               href={l.href}
-              className="relative py-1 text-muted transition hover:text-fg after:absolute after:inset-x-0 after:-bottom-0.5 after:h-[2px] after:origin-left after:scale-x-0 after:rounded-full after:bg-mint after:transition-transform after:duration-300 hover:after:scale-x-100"
+              className="relative py-1 text-muted transition hover:text-fg after:absolute after:inset-x-0 after:-bottom-0.5 after:h-[2px] after:origin-left after:scale-x-0 after:rounded-full after:bg-brand after:transition-transform after:duration-300 hover:after:scale-x-100"
             >
               {l.label}
             </Link>
@@ -70,23 +70,20 @@ export default function Nav() {
           <ThemeToggle />
           {user ? (
             <>
-              <Link href="/dashboard" className="rounded-full px-3 py-2.5 text-[15px] text-fg hover:text-mint">
-                My plans
-              </Link>
               <button onClick={logOut} className="rounded-full px-3 py-2.5 text-[15px] text-muted hover:text-fg">
                 Log out
               </button>
             </>
           ) : (
-            <Link href="/login" className="rounded-full px-4 py-2.5 text-[15px] text-fg hover:text-mint">
+            <Link href="/login" className="rounded-full px-4 py-2.5 text-[15px] text-fg hover:text-brand">
               Log in
             </Link>
           )}
           <Link
-            href="/plan"
-            className="rounded-full bg-mint px-5 py-2.5 text-[15px] font-semibold text-mint-ink transition hover:bg-mint-light"
+            href={user ? "/dashboard" : "/plan"}
+            className="rounded-full bg-brand px-5 py-2.5 text-[15px] font-semibold text-brand-ink transition hover:bg-brand-light"
           >
-            {user ? "New plan" : "Start free"}
+            {user ? "Dashboard" : "Start free"}
           </Link>
         </div>
 

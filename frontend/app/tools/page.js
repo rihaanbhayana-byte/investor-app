@@ -21,7 +21,7 @@ const TABS = [
 ];
 
 const card = "rounded-3xl border border-line bg-surface p-7";
-const primary = "rounded-full bg-mint px-7 py-3.5 font-semibold text-mint-ink transition hover:bg-mint-light disabled:opacity-40";
+const primary = "rounded-xl bg-brand px-7 py-3.5 font-semibold text-brand-ink transition hover:bg-brand-light disabled:opacity-40";
 
 function useDebounced(value, ms = 450) {
   const [v, setV] = useState(value);
@@ -39,11 +39,11 @@ function InlineSelect({ value, onChange, children, label }) {
         aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="cursor-pointer appearance-none rounded-2xl border-2 border-mint/40 bg-ink py-1 pl-4 pr-10 font-display font-bold text-mint transition hover:border-mint focus:border-mint focus:outline-none"
+        className="cursor-pointer appearance-none rounded-2xl border-2 border-brand/40 bg-ink py-1 pl-4 pr-10 font-display font-bold text-brand transition hover:border-brand focus:border-brand focus:outline-none"
       >
         {children}
       </select>
-      <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-mint" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...STROKE}>
+      <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-brand" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...STROKE}>
         <path d="M6 9l6 6 6-6" />
       </svg>
     </span>
@@ -74,7 +74,7 @@ function InlineSymbol({ value, onChange }) {
       type="button"
       onClick={() => setEditing(true)}
       aria-label={`Stock: ${value}. Change it`}
-      className="inline-flex items-center gap-2 rounded-2xl border-2 border-mint/40 bg-ink py-1 pl-4 pr-3 font-display font-bold text-mint transition hover:border-mint focus:border-mint focus:outline-none"
+      className="inline-flex items-center gap-2 rounded-2xl border-2 border-brand/40 bg-ink py-1 pl-4 pr-3 font-display font-bold text-brand transition hover:border-brand focus:border-brand focus:outline-none"
     >
       {value}
       <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...STROKE}>
@@ -92,7 +92,7 @@ function Slider({ id, label, value, setValue, min, max, step, display }) {
         <label htmlFor={id} className="text-sm font-medium text-slate-700">{label}</label>
         <span className="font-display text-2xl font-bold tabular-nums">{display(value)}</span>
       </div>
-      <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={(e) => setValue(Number(e.target.value))} className="mt-4 w-full cursor-pointer accent-mint" />
+      <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={(e) => setValue(Number(e.target.value))} className="mt-4 w-full cursor-pointer accent-brand" />
     </div>
   );
 }
@@ -131,10 +131,10 @@ export default function ToolsPage() {
                 window.history.replaceState(null, "", `/tools?tab=${t.id}`); // keep the link shareable and accurate
               }}
               className={`flex flex-col items-start gap-3 rounded-3xl border-2 p-5 text-left transition ${
-                on ? "border-mint bg-glow" : "border-line bg-surface hover:-translate-y-0.5 hover:border-slate-300"
+                on ? "border-brand bg-glow" : "border-line bg-surface hover:-translate-y-0.5 hover:border-slate-300"
               }`}
             >
-              <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${on ? "bg-mint text-mint-ink" : "bg-mint/15 text-mint"}`}>
+              <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${on ? "bg-brand text-brand-ink" : "bg-brand/15 text-brand"}`}>
                 <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" {...STROKE}>{t.icon}</svg>
               </span>
               <span>
@@ -189,7 +189,7 @@ function TimeMachine({ stocks, startSymbol }) {
       <form onSubmit={run} className={`${card} flex flex-col gap-6`}>
         <p className="font-display text-2xl font-bold leading-[2.4] sm:text-3xl sm:leading-[2.2]">
           If I had invested{" "}
-          <span className="inline-flex items-baseline rounded-2xl border-2 border-mint/40 bg-ink px-3 text-mint focus-within:border-mint">
+          <span className="inline-flex items-baseline rounded-2xl border-2 border-brand/40 bg-ink px-3 text-brand focus-within:border-brand">
             $
             <input
               type="text"
@@ -233,7 +233,7 @@ function TimeMachine({ stocks, startSymbol }) {
 
       {result && (
         <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
-          <div className={`${card} flex flex-col gap-5 border-mint-line bg-glow`}>
+          <div className={`${card} flex flex-col gap-5 border-brand-line bg-glow`}>
             <div className="flex items-center gap-3">
               <Avatar symbol={result.symbol} />
               <div>
@@ -249,16 +249,16 @@ function TimeMachine({ stocks, startSymbol }) {
               <div className="font-display text-6xl font-bold tracking-tight tabular-nums">{money(shown)}</div>
             </div>
             <div className="flex flex-wrap gap-2 text-sm">
-              <span className={`rounded-full px-3 py-1.5 font-semibold ${result.gain >= 0 ? "bg-mint/10 text-mint" : "bg-red-50 text-red-600"}`}>
+              <span className={`rounded-full px-3 py-1.5 font-semibold ${result.gain >= 0 ? "bg-gain-soft text-gain" : "bg-loss-soft text-loss"}`}>
                 {result.gain >= 0 ? "+" : "−"}{money(Math.abs(result.gain))} ({percent(result.total_return)})
               </span>
-              <span className="rounded-full border border-slate-300 px-3 py-1.5 text-slate-700">≈ {percent(result.annual_return)} a year</span>
+              <span className="rounded-xl border border-slate-300 px-3 py-1.5 text-slate-700">≈ {percent(result.annual_return)} a year</span>
             </div>
             {result.sp500_final_value != null && (
               <div className="flex flex-col gap-3 rounded-2xl border border-line bg-ink p-4">
                 <div className="text-sm font-semibold">vs. the whole market (S&amp;P 500)</div>
                 {[
-                  [result.symbol, result.final_value, "var(--color-mint)"],
+                  [result.symbol, result.final_value, "var(--color-brand)"],
                   ["S&P 500", result.sp500_final_value, "var(--color-dim)"],
                 ].map(([label, value, color]) => (
                   <div key={label}>
@@ -281,7 +281,7 @@ function TimeMachine({ stocks, startSymbol }) {
               <MultiLineChart
                 data={result.series}
                 lines={[
-                  { key: "value", name: result.symbol, color: "var(--color-mint)" },
+                  { key: "value", name: result.symbol, color: "var(--color-brand)" },
                   { key: "sp500_value", name: "S&P 500 (VOO)", color: "var(--color-dim)", dashed: true },
                 ]}
                 format={(v) => money(v)}
@@ -345,22 +345,22 @@ function GoalCalculator() {
         </div>
       </div>
 
-      <div className={`${card} flex flex-col gap-5 border-mint-line bg-glow`} aria-live="polite">
+      <div className={`${card} flex flex-col gap-5 border-brand-line bg-glow`} aria-live="polite">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">{result?.portfolio_name || "Your answer"}</span>
-          {loading && <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-mint" aria-label="Calculating" />}
+          <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">{result?.portfolio_name || "Your answer"}</span>
+          {loading && <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-brand" aria-label="Calculating" />}
         </div>
         {error && <ErrorBox>{error}</ErrorBox>}
         {result && (
           <>
             {initial >= target ? (
               <div>
-                <div className="font-display text-4xl font-bold tracking-tight text-mint">You&rsquo;ve already reached this goal!</div>
+                <div className="font-display text-4xl font-bold tracking-tight text-brand">You&rsquo;ve already reached this goal!</div>
                 <div className="mt-2 text-muted">Your starting {money(initial)} is already more than {money(target)}. Try a bigger goal.</div>
               </div>
             ) : monthly <= 0 ? (
               <div>
-                <div className="font-display text-4xl font-bold tracking-tight text-mint">No monthly saving needed</div>
+                <div className="font-display text-4xl font-bold tracking-tight text-brand">No monthly saving needed</div>
                 <div className="mt-2 text-muted">Invested like this, your {money(initial)} could grow to {money(target)} in {years} {years === 1 ? "year" : "years"} on its own (at this level of certainty).</div>
               </div>
             ) : (
@@ -379,7 +379,7 @@ function GoalCalculator() {
             </div>
             <div className="flex flex-col gap-3 rounded-2xl border border-line bg-ink p-4">
               {[
-                ["Investing", monthly, "var(--color-mint)"],
+                ["Investing", monthly, "var(--color-brand)"],
                 ["Just saving cash", cash, "var(--color-dim)"],
               ].map(([label, value, color]) => (
                 <div key={label}>
@@ -395,7 +395,7 @@ function GoalCalculator() {
             </div>
             {saved > 0 && (
               <p className="text-slate-700">
-                Investing could save you about <span className="font-semibold text-mint">{money(saved)} a month</span> compared with keeping it in cash.
+                Investing could save you about <span className="font-semibold text-brand">{money(saved)} a month</span> compared with keeping it in cash.
               </p>
             )}
             <p className="text-xs text-slate-500">{result.disclaimer}</p>
@@ -491,14 +491,14 @@ function Compare({ stocks }) {
               <div
                 key={s}
                 style={{ animationDelay: `${i * 70}ms` }}
-                className={`rounded-3xl border p-5 motion-safe:animate-[sw-rise_0.4s_ease-out_both] ${i === 0 ? "border-mint bg-mint/5" : "border-line bg-surface"}`}
+                className={`rounded-3xl border p-5 motion-safe:animate-[sw-rise_0.4s_ease-out_both] ${i === 0 ? "border-brand bg-brand/5" : "border-line bg-surface"}`}
               >
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <span className="h-3 w-3 rounded-full" style={{ background: colorOf(s) }} />
                     <span className="font-semibold">{s}</span>
                   </span>
-                  <span className={`font-display text-sm font-bold ${i === 0 ? "text-mint" : "text-muted"}`}>{i === 0 ? "Winner" : `#${i + 1}`}</span>
+                  <span className={`font-display text-sm font-bold ${i === 0 ? "text-brand" : "text-muted"}`}>{i === 0 ? "Winner" : `#${i + 1}`}</span>
                 </div>
                 <div className="mt-3 text-xs text-muted">$100 became</div>
                 <div className="font-display text-3xl font-bold tabular-nums">{money(result.series.at(-1)[s])}</div>

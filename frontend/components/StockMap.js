@@ -9,7 +9,7 @@ import { percent } from "@/lib/format";
 
 export const CLUSTER_COLORS = {
   steady: "var(--color-sky)",
-  grower: "var(--color-mint)",
+  grower: "var(--color-brand)",
   rocket: "var(--color-gold)",
   bumpy: "var(--color-rose)",
   middle: "var(--color-violet)",
@@ -43,7 +43,7 @@ function MapTooltip({ active, payload, clusters = [] }) {
         <span>Biggest drop</span><span className="text-right font-semibold text-fg">{percent(p.max_drawdown)}</span>
       </div>
       {p.fit && (
-        <div className={`mt-2 border-t border-line pt-2 text-xs ${p.fit === "borderline" ? "text-gold" : "text-mint"}`}>
+        <div className={`mt-2 border-t border-line pt-2 text-xs ${p.fit === "borderline" ? "text-gold" : "text-brand"}`}>
           {p.fit === "borderline" ? `Between groups: ${own} and ${p.runner_up}` : `${p.fit_label} ${own}`} · fit {p.fit_score.toFixed(2)}
         </div>
       )}
@@ -74,7 +74,7 @@ export default function StockMap() {
     <section className="reveal flex flex-col gap-5 rounded-3xl border border-line bg-surface p-6 sm:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-2xl">
-          <div className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">
+          <div className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="8" r="2.5" /><circle cx="9" cy="17" r="2.5" /><circle cx="17" cy="18" r="2.5" />
             </svg>
@@ -85,13 +85,13 @@ export default function StockMap() {
             An algorithm grouped all {data.points.length} stocks and funds by how they actually behaved since 2016. Higher up means more growth. Further right means bigger swings.
           </p>
         </div>
-        <button onClick={() => setShowHow(!showHow)} className="rounded-full border border-line px-4 py-2 text-sm text-muted transition hover:border-line-strong hover:text-fg" aria-expanded={showHow}>
+        <button onClick={() => setShowHow(!showHow)} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:border-line-strong hover:text-fg" aria-expanded={showHow}>
           {showHow ? "Hide" : "How does it work?"}
         </button>
       </div>
 
       {showHow && (
-        <div className="rounded-2xl border border-mint-line bg-mint-soft p-5 text-sm leading-relaxed text-slate-800 motion-safe:animate-page-in">
+        <div className="rounded-2xl border border-brand-line bg-brand-soft p-5 text-sm leading-relaxed text-slate-800 motion-safe:animate-page-in">
           <p className="font-semibold text-fg">k-means clustering, in plain words</p>
           <ol className="mt-2 list-decimal space-y-1 pl-5">
             <li>For each stock we measure three things from real prices: yearly return, how much it swings, and its biggest drop.</li>
@@ -104,7 +104,7 @@ export default function StockMap() {
 
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface-2 px-4 py-3">
         <label htmlFor="groups" className="text-sm font-medium text-slate-700">Groups to find</label>
-        <input id="groups" type="range" min={3} max={5} step={1} value={k} onChange={(e) => setK(Number(e.target.value))} className="w-32 cursor-pointer accent-mint" />
+        <input id="groups" type="range" min={3} max={5} step={1} value={k} onChange={(e) => setK(Number(e.target.value))} className="w-32 cursor-pointer accent-brand" />
         <span className="font-display text-xl font-bold tabular-nums">{k}</span>
         <span className="text-sm text-muted">
           {busy ? "Re-running the algorithm…" : "You choose how many groups. Compare the quality score below to see which fits best."}
@@ -184,7 +184,7 @@ export default function StockMap() {
             </p>
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {c.members.map((m) => (
-                <Link key={m} href={`/stocks/${m}`} className="rounded-md border border-line px-1.5 py-0.5 text-xs text-slate-700 transition hover:border-mint hover:text-mint">
+                <Link key={m} href={`/stocks/${m}`} className="rounded-md border border-line px-1.5 py-0.5 text-xs text-slate-700 transition hover:border-brand hover:text-brand">
                   {m}
                 </Link>
               ))}

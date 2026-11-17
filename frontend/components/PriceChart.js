@@ -5,7 +5,7 @@ import { price } from "@/lib/format";
 import { ChartTooltip, monthName, monthAxis } from "@/components/ui";
 
 export default function PriceChart({ data, up = true }) {
-  const color = up ? "var(--color-mint)" : "var(--color-loss)";
+  const color = up ? "var(--color-gain)" : "var(--color-loss)";
   return (
     <div className="h-72 w-full">
       <ResponsiveContainer width="100%" height="100%">

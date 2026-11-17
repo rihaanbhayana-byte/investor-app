@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 
 // Shared building blocks for the Seedwise look.
 
-export const SERIES_COLORS = ["var(--color-mint)", "var(--color-sky)", "var(--color-gold)", "var(--color-violet)", "var(--color-rose)"];
+export const SERIES_COLORS = ["var(--color-brand)", "var(--color-sky)", "var(--color-gold)", "var(--color-violet)", "var(--color-rose)"];
 
-const AVATAR_COLORS = ["var(--color-mint)", "var(--color-sky)", "var(--color-gold)", "var(--color-violet)", "var(--color-rose)", "#2CB5A8"];
+const AVATAR_COLORS = ["var(--color-brand)", "var(--color-sky)", "var(--color-gold)", "var(--color-violet)", "var(--color-rose)", "#2CB5A8"];
 
 export function Avatar({ symbol, size = 44 }) {
   const sum = [...(symbol || "?")].reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -28,7 +28,7 @@ export function PageHeader({ eyebrow, title, subtitle, children }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-6">
       <div className="max-w-2xl">
-        {eyebrow && <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">{eyebrow}</div>}
+        {eyebrow && <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">{eyebrow}</div>}
         <h1 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl">{title}</h1>
         {subtitle && <p className="mt-3 text-lg text-muted">{subtitle}</p>}
       </div>
@@ -44,7 +44,7 @@ export function Select({ value, onChange, children, label, className = "" }) {
         aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full min-w-0 cursor-pointer appearance-none truncate rounded-2xl border border-line bg-ink py-3.5 pl-4 pr-11 text-fg transition hover:border-slate-300 focus:border-mint focus:outline-none"
+        className="w-full min-w-0 cursor-pointer appearance-none truncate rounded-2xl border border-line bg-ink py-3.5 pl-4 pr-11 text-fg transition hover:border-slate-300 focus:border-brand focus:outline-none"
       >
         {children}
       </select>
@@ -65,7 +65,7 @@ export function Segmented({ options, value, onChange, label }) {
           role="radio"
           aria-checked={value === id}
           onClick={() => onChange(id)}
-          className={`rounded-full px-4 py-2 text-sm font-medium transition ${value === id ? "bg-mint text-mint-ink" : "text-muted hover:text-fg"}`}
+          className={`rounded-full px-4 py-2 text-sm font-medium transition ${value === id ? "bg-brand text-brand-ink" : "text-muted hover:text-fg"}`}
         >
           {text}
         </button>
@@ -78,7 +78,7 @@ export function ReturnPill({ value, children }) {
   if (value == null) return <span className="text-muted">–</span>;
   const up = value >= 0;
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold ${up ? "bg-mint/10 text-mint" : "bg-red-50 text-red-600"}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold ${up ? "bg-gain-soft text-gain" : "bg-loss-soft text-loss"}`}>
       {up ? "▲" : "▼"} {children}
     </span>
   );

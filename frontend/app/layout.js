@@ -1,11 +1,15 @@
 import Link from "next/link";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Suspense } from "react";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import Nav from "../components/Nav";
 import Logo from "../components/Logo";
+import Sidebar, { StaticSidebar } from "../components/Sidebar";
+import MobileBar from "../components/MobileBar";
+import CoachPanel from "../components/CoachPanel";
+import { LayoutMode } from "../lib/layoutMode";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const grotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-grotesk" });
 
 export const metadata = {
   title: "Seedwise · Investing for beginners",
@@ -13,7 +17,10 @@ export const metadata = {
 };
 
 // Runs before the page paints, so a saved light theme never flashes dark first.
-const THEME_SCRIPT = `try{if(localStorage.getItem("seedwise-theme")==="light")document.documentElement.classList.add("light")}catch(e){}`;
+// Light by default; dark if the person chose it, or (until they choose) if their device is in dark mode.
+// Before the first paint: landing page and login use the top menu layout (see lib/layoutMode.js).
+const LAYOUT_SCRIPT = `try{var p=location.pathname.replace(/\\/+$/,"")||"/";if(p==="/"||p==="/login")document.documentElement.dataset.layout="marketing"}catch(e){}`;
+const THEME_SCRIPT = `try{var t=localStorage.getItem("seedwise-theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(e){}`;
 
 const FOOTER_LINKS = [
   ["/plan", "Build my plan"],
@@ -26,14 +33,27 @@ const FOOTER_LINKS = [
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${inter.variable} ${grotesk.variable}`} suppressHydrationWarning>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT + LAYOUT_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-ink font-sans text-fg antialiased">
-        <Nav />
-        <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
-        <footer className="mt-16 border-t border-line">
+        <a href="#content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-xl focus:bg-brand focus:px-4 focus:py-2 focus:text-brand-ink">
+          Skip to content
+        </a>
+        <div className="app-shell">
+          {/* App pages: sidebar. The landing page and login hide it and show the top menu instead (see globals.css). */}
+          <Suspense fallback={<StaticSidebar />}>
+            <Sidebar />
+          </Suspense>
+          <Suspense fallback={null}>
+            <LayoutMode />
+          </Suspense>
+          <div className="app-main">
+            <Nav />
+            <MobileBar />
+            <main id="content" className="app-content flex-1">{children}</main>
+        <footer className="site-footer mt-16 border-t border-line">
           <div className="mx-auto flex max-w-6xl flex-wrap items-start justify-between gap-8 px-6 py-10">
             <div className="max-w-sm">
               <Link href="/" className="flex items-center gap-2.5">
@@ -56,6 +76,9 @@ export default function RootLayout({ children }) {
             Market data from Alpaca and SEC EDGAR · Built with Next.js, FastAPI and Supabase
           </div>
         </footer>
+          </div>
+        </div>
+        <CoachPanel />
       </body>
     </html>
   );

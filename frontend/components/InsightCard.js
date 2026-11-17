@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 // and a thumbs up / down that is saved so we can see which answers people trust.
 
 const LEVEL_STYLE = {
-  high: { chip: "border-mint-line bg-mint-soft text-mint", bar: "var(--color-mint)", word: "High confidence" },
+  high: { chip: "border-gain-line bg-gain-soft text-gain", bar: "var(--color-gain)", word: "High confidence" },
   medium: { chip: "border-amber-200 bg-amber-50 text-gold", bar: "var(--color-gold)", word: "Medium confidence" },
   low: { chip: "border-red-200 bg-red-50 text-red-600", bar: "var(--color-rose)", word: "Low confidence" },
 };
@@ -51,7 +51,7 @@ export function Feedback({ feature, level, compact = false }) {
   return (
     <span className="flex items-center gap-1">
       {!compact && <span className="mr-1 text-xs text-muted">Helpful?</span>}
-      <button type="button" onClick={() => vote(true)} aria-label="Helpful" className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition hover:bg-mint-soft hover:text-mint">
+      <button type="button" onClick={() => vote(true)} aria-label="Helpful" className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition hover:bg-brand-soft hover:text-brand">
         <Icon d={THUMB} size={15} />
       </button>
       <button type="button" onClick={() => vote(false)} aria-label="Not helpful" className="flex h-7 w-7 rotate-180 items-center justify-center rounded-full text-muted transition hover:bg-red-50 hover:text-red-600">
@@ -110,7 +110,7 @@ export default function InsightCard({ insight, feature, title = "How sure is thi
           type="button"
           onClick={() => setOpen(!open)}
           aria-expanded={open}
-          className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-mint transition hover:text-mint-light"
+          className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-brand transition hover:text-brand-light"
         >
           {open ? "Hide details" : "Why? · Based on · How we measured it"}
           <span className={`transition-transform ${open ? "rotate-180" : ""}`}>

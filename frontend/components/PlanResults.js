@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import GrowthChart from "@/components/GrowthChart";
 import { LEVEL_LABELS, money, percent } from "@/lib/format";
 
-const COLORS = ["var(--color-mint)", "var(--color-sky)", "var(--color-gold)", "var(--color-violet)", "var(--color-rose)"];
+const COLORS = ["var(--color-brand)", "var(--color-sky)", "var(--color-gold)", "var(--color-violet)", "var(--color-rose)"];
 
 function useCountUp(target, ms = 1400) {
   const [value, setValue] = useState(0);
@@ -73,7 +73,7 @@ function PersonalityIcon({ level }) {
     aggressive: <><path d="M4 20L20 4" /><path d="M9 4h11v11" /></>,
   };
   return (
-    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--color-mint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {paths[level] || paths.moderate}
     </svg>
   );
@@ -81,9 +81,9 @@ function PersonalityIcon({ level }) {
 
 function Box({ label, value, highlight }) {
   return (
-    <div className={`rounded-2xl bg-ink p-4 ${highlight ? "border-2 border-mint" : "border border-line"}`}>
+    <div className={`rounded-2xl bg-ink p-4 ${highlight ? "border-2 border-brand" : "border border-line"}`}>
       <div className="text-xs text-muted">{label}</div>
-      <div className={`mt-1 text-xl font-semibold ${highlight ? "text-mint" : ""}`}>{value}</div>
+      <div className={`mt-1 text-xl font-semibold ${highlight ? "text-brand" : ""}`}>{value}</div>
     </div>
   );
 }
@@ -104,8 +104,8 @@ export default function PlanResults({ result, goal, years, saved, onStartOver, o
       <style>{`@keyframes sw-rise { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: none } }`}</style>
 
       {saved === "saved" && (
-        <p className="rounded-2xl border border-mint-line bg-green-50 px-5 py-3 text-sm text-slate-800">
-          <span className="font-semibold text-mint">Plan saved.</span> Find it any time under My plans.
+        <p className="rounded-2xl border border-brand-line bg-green-50 px-5 py-3 text-sm text-slate-800">
+          <span className="font-semibold text-brand">Plan saved.</span> Find it any time under My plans.
         </p>
       )}
       {saved === "opened" && (
@@ -121,10 +121,10 @@ export default function PlanResults({ result, goal, years, saved, onStartOver, o
 
       <section className="flex flex-wrap gap-6">
         <div
-          className="flex min-w-0 flex-[1_1_320px] flex-col gap-4 rounded-3xl border border-mint-line bg-glow p-8 motion-safe:animate-[sw-rise_0.6s_ease-out_both]"
+          className="flex min-w-0 flex-[1_1_320px] flex-col gap-4 rounded-3xl border border-brand-line bg-glow p-8 motion-safe:animate-[sw-rise_0.6s_ease-out_both]"
         >
-          <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-mint">Your investor personality</div>
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-mint/15">
+          <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">Your investor personality</div>
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand/15">
             <PersonalityIcon level={risk.risk_level} />
           </div>
           <h1 className="font-display text-4xl font-bold tracking-tight">{portfolio.name}</h1>
@@ -132,7 +132,7 @@ export default function PlanResults({ result, goal, years, saved, onStartOver, o
           {risk.chosen && (
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-slate-800">
               <span className="font-semibold">You chose this.</span> The quiz suggested {PERSONALITY_NAMES[risk.quiz_level]}.{" "}
-              <button type="button" onClick={() => onChangePersonality?.(risk.quiz_level)} disabled={switching} className="font-semibold text-mint underline underline-offset-2">
+              <button type="button" onClick={() => onChangePersonality?.(risk.quiz_level)} disabled={switching} className="font-semibold text-brand underline underline-offset-2">
                 Go back
               </button>
             </p>
@@ -154,7 +154,7 @@ export default function PlanResults({ result, goal, years, saved, onStartOver, o
                   aria-pressed={me}
                   onClick={() => onChangePersonality?.(level)}
                   className={`group flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-left text-sm transition ${
-                    me ? "border border-mint bg-mint/10" : "border border-line bg-ink/50 text-muted hover:border-mint/50 hover:text-fg"
+                    me ? "border border-brand bg-brand/10" : "border border-line bg-ink/50 text-muted hover:border-brand/50 hover:text-fg"
                   }`}
                 >
                   <span className={me ? "font-semibold text-fg" : ""}>
@@ -163,11 +163,11 @@ export default function PlanResults({ result, goal, years, saved, onStartOver, o
                   </span>
                   <span className="text-right text-xs">
                     {me ? (
-                      <span className="font-semibold text-mint">{switching ? "Updating…" : "You are here"}</span>
+                      <span className="font-semibold text-brand">{switching ? "Updating…" : "You are here"}</span>
                     ) : (
                       <>
                         <span className="group-hover:hidden">{note}</span>
-                        <span className="hidden font-semibold text-mint group-hover:inline">Switch to this →</span>
+                        <span className="hidden font-semibold text-brand group-hover:inline">Switch to this →</span>
                       </>
                     )}
                   </span>
@@ -177,7 +177,7 @@ export default function PlanResults({ result, goal, years, saved, onStartOver, o
           </div>
           <div className="mt-auto flex items-center gap-3 pt-2">
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full rounded-full bg-mint" style={{ width: `${(risk.score / risk.max_score) * 100}%` }} />
+              <div className="h-full rounded-full bg-brand" style={{ width: `${(risk.score / risk.max_score) * 100}%` }} />
             </div>
             <span className="text-sm text-slate-700">
               {LEVEL_LABELS[risk.risk_level]} · {risk.score} / {risk.max_score}
@@ -195,12 +195,12 @@ export default function PlanResults({ result, goal, years, saved, onStartOver, o
           </div>
           <div className="mt-3 flex flex-wrap gap-2.5 text-sm">
             {growth >= 0 ? (
-              <span className="rounded-full bg-mint/10 px-3 py-1.5 font-semibold text-mint">+{money(growth)} from growth</span>
+              <span className="rounded-full bg-gain-soft px-3 py-1.5 font-semibold text-gain">+{money(growth)} from growth</span>
             ) : (
               <span className="rounded-full bg-red-50 px-3 py-1.5 font-semibold text-red-600">{money(growth)} vs. what you put in</span>
             )}
-            <span className="rounded-full border border-slate-300 px-3 py-1.5 text-slate-700">{money(final.contributed)} you put in</span>
-            <span className="rounded-full border border-slate-300 px-3 py-1.5 text-slate-700">
+            <span className="rounded-xl border border-slate-300 px-3 py-1.5 text-slate-700">{money(final.contributed)} you put in</span>
+            <span className="rounded-xl border border-slate-300 px-3 py-1.5 text-slate-700">
               ≈ {money(final.median_in_todays_dollars)} in today&rsquo;s money
             </span>
           </div>
@@ -230,7 +230,7 @@ export default function PlanResults({ result, goal, years, saved, onStartOver, o
               <Link
                 key={h.symbol}
                 href={`/stocks/${h.symbol}`}
-                className="flex items-center gap-4 rounded-2xl border border-line bg-ink p-4 transition hover:border-mint/40"
+                className="flex items-center gap-4 rounded-2xl border border-line bg-ink p-4 transition hover:border-brand/40"
               >
                 <span className="h-3 w-3 shrink-0 rounded" style={{ background: COLORS[i % COLORS.length] }} />
                 <span className="w-14 font-semibold">{h.symbol}</span>
@@ -245,7 +245,7 @@ export default function PlanResults({ result, goal, years, saved, onStartOver, o
           <div className="rounded-3xl border border-line bg-surface p-7">
             <h2 className="font-display text-xl font-bold">How it behaved in the past</h2>
             <div className="mt-4 grid grid-cols-2 gap-4">
-              <div><div className="text-xs text-muted">Avg yearly return</div><div className="text-2xl font-semibold text-mint">{percent(stats.annual_return)}</div></div>
+              <div><div className="text-xs text-muted">Avg yearly return</div><div className="text-2xl font-semibold text-brand">{percent(stats.annual_return)}</div></div>
               <div><div className="text-xs text-muted">Biggest drop</div><div className="text-2xl font-semibold">{percent(stats.max_drawdown)}</div></div>
               <div><div className="text-xs text-muted">Worst 12 months</div><div className="text-2xl font-semibold">{percent(stats.worst_12_months)}</div></div>
               <div><div className="text-xs text-muted">Years of data</div><div className="text-2xl font-semibold">{stats.years_of_data}</div></div>
@@ -257,16 +257,16 @@ export default function PlanResults({ result, goal, years, saved, onStartOver, o
 
           <div className="flex flex-col gap-3 rounded-3xl border border-line bg-surface p-7">
             <h2 className="mb-1 font-display text-xl font-bold">Your next steps</h2>
-            <Link href="/coach" className="flex justify-between rounded-2xl border border-line bg-ink px-4 py-3.5 transition hover:border-mint/40">
-              Ask the AI Coach about my plan <span className="text-mint">→</span>
+            <Link href="/coach" className="flex justify-between rounded-2xl border border-line bg-ink px-4 py-3.5 transition hover:border-brand/40">
+              Ask the AI Coach about my plan <span className="text-brand">→</span>
             </Link>
-            <Link href="/learn" className="flex justify-between rounded-2xl border border-line bg-ink px-4 py-3.5 transition hover:border-mint/40">
-              How do I actually start investing? <span className="text-mint">→</span>
+            <Link href="/learn" className="flex justify-between rounded-2xl border border-line bg-ink px-4 py-3.5 transition hover:border-brand/40">
+              How do I actually start investing? <span className="text-brand">→</span>
             </Link>
-            <Link href="/tools" className="flex justify-between rounded-2xl border border-line bg-ink px-4 py-3.5 transition hover:border-mint/40">
-              How much to reach {money(target)}? <span className="text-mint">→</span>
+            <Link href="/tools" className="flex justify-between rounded-2xl border border-line bg-ink px-4 py-3.5 transition hover:border-brand/40">
+              How much to reach {money(target)}? <span className="text-brand">→</span>
             </Link>
-            <button onClick={onStartOver} className="mt-1 rounded-full border border-slate-300 px-5 py-3 text-sm font-medium transition hover:border-mint hover:text-mint">
+            <button onClick={onStartOver} className="mt-1 rounded-xl border border-slate-300 px-5 py-3 text-sm font-medium transition hover:border-brand hover:text-brand">
               Start a new plan
             </button>
           </div>

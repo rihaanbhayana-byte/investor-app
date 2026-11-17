@@ -29,14 +29,14 @@ function StockCard({ s, index }) {
     <Link
       href={`/stocks/${s.symbol}`}
       style={{ animationDelay: `${Math.min(index, 20) * 25}ms` }}
-      className="group flex flex-col gap-4 rounded-3xl border border-line bg-surface p-5 transition duration-200 hover:-translate-y-1 hover:border-mint/40 hover:shadow-lift motion-safe:animate-[sw-rise_0.4s_ease-out_both]"
+      className="group flex flex-col gap-4 rounded-3xl border border-line bg-surface p-5 transition duration-200 hover:-translate-y-1 hover:border-brand/40 hover:shadow-lift motion-safe:animate-[sw-rise_0.4s_ease-out_both]"
     >
       <div className="flex items-center gap-3">
         <Avatar symbol={s.symbol} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="font-semibold">{s.symbol}</span>
-            {s.asset_type === "etf" && <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold text-mint">FUND</span>}
+            {s.asset_type === "etf" && <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold text-brand">FUND</span>}
           </div>
           <div className="truncate text-sm text-muted">{s.name}</div>
         </div>
@@ -104,14 +104,14 @@ export default function StocksPage() {
               <Link
                 key={s.symbol}
                 href={`/stocks/${s.symbol}`}
-                className="relative overflow-hidden rounded-3xl border border-mint-line bg-glow p-5 transition hover:-translate-y-1 hover:border-mint/60"
+                className="relative overflow-hidden rounded-3xl border border-brand-line bg-glow p-5 transition hover:-translate-y-1 hover:border-brand/60"
               >
                 <div className="flex items-center justify-between">
                   <Avatar symbol={s.symbol} size={40} />
-                  <span className="font-display text-sm font-bold text-mint">#{i + 1}</span>
+                  <span className="font-display text-sm font-bold text-brand">#{i + 1}</span>
                 </div>
                 <div className="mt-4 font-semibold">{s.name}</div>
-                <div className="mt-1 font-display text-3xl font-bold text-mint">+{percent(s.return_1y)}</div>
+                <div className="mt-1 font-display text-3xl font-bold text-gain">+{percent(s.return_1y)}</div>
                 <div className="text-xs text-muted">over the last 12 months</div>
               </Link>
             ))}
@@ -160,7 +160,7 @@ export default function StocksPage() {
               placeholder="Filter by name, ticker or sector..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-2xl border border-line bg-ink py-3.5 pl-11 pr-4 text-fg placeholder:text-slate-500 focus:border-mint focus:outline-none"
+              className="w-full rounded-2xl border border-line bg-ink py-3.5 pl-11 pr-4 text-fg placeholder:text-slate-500 focus:border-brand focus:outline-none"
             />
           </div>
           <Select label="Sort by" value={sort} onChange={setSort} className="w-56">
