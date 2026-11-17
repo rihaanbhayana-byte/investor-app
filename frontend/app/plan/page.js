@@ -249,11 +249,10 @@ export default function PlanPage() {
       {error && <p className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm text-red-700">{error}</p>}
 
       {phase === "intro" && (
-        <section className="flex flex-col items-center gap-10 pt-6 text-center">
+        <section className="flex flex-col items-center gap-8 pt-4 text-center">
           <div className="max-w-2xl">
-            <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">Build my plan</div>
-            <h1 className="mt-4 font-display text-5xl font-bold tracking-tight sm:text-6xl">Let&rsquo;s build your plan.</h1>
-            <p className="mt-4 text-lg text-muted">About 2 minutes. No jargon. You can change anything later.</p>
+            <h1 className="text-[32px] font-bold leading-tight tracking-tight">Build my plan</h1>
+            <p className="mt-1.5 text-[15px] text-muted">About 2 minutes. No jargon. You can change anything later.</p>
           </div>
 
           <div className="grid w-full max-w-4xl gap-5 md:grid-cols-2">

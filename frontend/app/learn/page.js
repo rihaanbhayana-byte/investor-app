@@ -110,18 +110,18 @@ function Lesson({ lesson, index, open, done, onToggle, onComplete }) {
   const correct = picked === lesson.quiz.answer;
 
   return (
-    <li className={`overflow-hidden rounded-3xl border transition ${open ? "border-slate-300 bg-surface" : done ? "border-brand-line bg-surface" : "border-line bg-surface hover:border-slate-300"}`}>
-      <button onClick={onToggle} aria-expanded={open} className="flex w-full items-center gap-4 p-5 text-left sm:p-6">
+    <li className={`transition ${open ? "bg-surface" : "hover:bg-surface-2"}`}>
+      <button onClick={onToggle} aria-expanded={open} className="flex w-full items-center gap-4 px-4 py-4 text-left sm:px-5">
         <span
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full font-display font-bold transition ${
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold transition ${
             done ? "bg-brand text-brand-ink" : open ? "border-2 border-brand text-brand" : "border-2 border-slate-300 text-muted"
           }`}
         >
-          {done ? <Check size={18} /> : index + 1}
+          {done ? <Check size={15} /> : index + 1}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-display text-lg font-bold">{lesson.title}</span>
-          <span className="text-sm text-muted">{done ? "Completed" : `${lesson.minutes} min read · 1 question`}</span>
+          <span className="block font-semibold">{lesson.title}</span>
+          <span className="text-xs text-muted">{done ? "Completed" : `${lesson.minutes} min read · 1 question`}</span>
         </span>
         <svg className={`shrink-0 text-muted transition ${open ? "rotate-180" : ""}`} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <path d="M6 9l6 6 6-6" />
@@ -129,9 +129,9 @@ function Lesson({ lesson, index, open, done, onToggle, onComplete }) {
       </button>
 
       {open && (
-        <div className="flex flex-col gap-5 px-5 pb-6 motion-safe:animate-[sw-rise_0.3s_ease-out_both] sm:px-6 sm:pl-[84px]">
-          <p className="text-lg leading-relaxed text-slate-800">{lesson.text}</p>
-          <div className="flex gap-3 rounded-2xl border border-brand-line bg-green-50 p-4">
+        <div className="flex flex-col gap-4 px-4 pb-5 motion-safe:animate-[sw-rise_0.3s_ease-out_both] sm:px-5 sm:pl-[68px]">
+          <p className="max-w-3xl leading-relaxed text-fg">{lesson.text}</p>
+          <div className="flex gap-3 rounded-xl border border-brand-line bg-brand-soft p-4">
             <svg className="mt-0.5 shrink-0 text-brand" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
             </svg>
@@ -245,17 +245,16 @@ export default function LearnPage() {
   const allDone = done.length === LESSONS.length;
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <style>{RISE}</style>
-      <section className="flex flex-wrap items-end justify-between gap-8">
+      <section className="flex flex-wrap items-end justify-between gap-4">
         <div className="max-w-2xl">
-          <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">Learn</div>
-          <h1 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl">Learn to invest in 7 short lessons.</h1>
-          <p className="mt-3 text-lg text-muted">From &ldquo;where do I start?&rdquo; to your first investment. About 10 minutes in total.</p>
+          <h1 className="text-[28px] font-bold leading-tight tracking-tight">Learn</h1>
+          <p className="mt-1 text-[15px] text-muted">7 short lessons, from &ldquo;where do I start?&rdquo; to your first investment. About 10 minutes in total.</p>
         </div>
-        <div className="flex items-center gap-5 rounded-3xl border border-line bg-surface p-5">
-          <div className="relative h-20 w-20">
-            <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90" aria-hidden="true">
+        <div className="flex items-center gap-3.5 rounded-2xl border border-line bg-surface px-4 py-3">
+          <div className="relative h-12 w-12">
+            <svg viewBox="0 0 36 36" className="h-12 w-12 -rotate-90" aria-hidden="true">
               <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--color-grid)" strokeWidth="3.5" />
               <circle
                 cx="18"
@@ -270,10 +269,10 @@ export default function LearnPage() {
                 className="transition-all duration-700"
               />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center font-display text-lg font-bold">{progress}%</span>
+            <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold">{progress}%</span>
           </div>
           <div>
-            <div className="font-display text-xl font-bold">{done.length} of {LESSONS.length} done</div>
+            <div className="text-sm font-bold">{done.length} of {LESSONS.length} lessons done</div>
             <div className="text-sm text-muted">{allDone ? "You finished the course!" : "Your progress is saved on this device."}</div>
             {done.length > 0 && (
               <button onClick={reset} className="mt-1 text-xs text-muted underline hover:text-fg">Start over</button>
@@ -283,16 +282,16 @@ export default function LearnPage() {
       </section>
 
       {allDone && (
-        <section className="flex flex-wrap items-center justify-between gap-6 rounded-3xl border border-brand-line bg-glow p-8 motion-safe:animate-[sw-rise_0.4s_ease-out_both]">
+        <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand-line bg-brand-soft px-5 py-4 motion-safe:animate-[sw-rise_0.4s_ease-out_both]">
           <div>
-            <h2 className="font-display text-2xl font-bold">Course complete. You know the basics!</h2>
-            <p className="mt-1 text-muted">Now put it to work: build a plan and see your numbers.</p>
+            <h2 className="font-bold">Course complete. You know the basics!</h2>
+            <p className="text-sm text-muted">Now put it to work: practice your plan with play money.</p>
           </div>
-          <Link href="/plan" className="rounded-xl bg-brand px-6 py-3.5 font-semibold text-brand-ink transition hover:bg-brand-light">Build my plan →</Link>
+          <Link href="/practice" className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-brand-ink transition hover:bg-brand-light">Go to Practice →</Link>
         </section>
       )}
 
-      <ol className="flex flex-col gap-3">
+      <ol className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
         {LESSONS.map((lesson, i) => (
           <Lesson
             key={lesson.title}

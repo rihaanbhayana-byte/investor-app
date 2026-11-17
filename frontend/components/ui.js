@@ -26,11 +26,10 @@ export function Avatar({ symbol, size = 44 }) {
 
 export function PageHeader({ eyebrow, title, subtitle, children }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-6">
+    <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="max-w-2xl">
-        {eyebrow && <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">{eyebrow}</div>}
-        <h1 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl">{title}</h1>
-        {subtitle && <p className="mt-3 text-lg text-muted">{subtitle}</p>}
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight">{title}</h1>
+        {subtitle && <p className="mt-1 text-[15px] text-muted">{subtitle}</p>}
       </div>
       {children}
     </div>

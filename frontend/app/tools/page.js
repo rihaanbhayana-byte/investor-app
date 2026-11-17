@@ -118,9 +118,9 @@ export default function ToolsPage() {
   return (
     <div className="flex flex-col gap-8">
       <style>{RISE}</style>
-      <PageHeader eyebrow="Tools" title="Play with real market data." subtitle="Every number here comes from real US prices since 2016." />
+      <PageHeader title="Tools" subtitle="Calculators and experiments on real US market data since 2016." />
 
-      <div role="tablist" aria-label="Tools" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div role="tablist" aria-label="Tools" className="-mx-1 flex gap-1 overflow-x-auto rounded-2xl border border-line bg-surface p-1 [scrollbar-width:none]">
         {TABS.map((t) => {
           const on = tab === t.id;
           return (
@@ -132,23 +132,20 @@ export default function ToolsPage() {
                 setTab(t.id);
                 window.history.replaceState(null, "", `/tools?tab=${t.id}`); // keep the link shareable and accurate
               }}
-              className={`flex flex-col items-start gap-3 rounded-3xl border-2 p-5 text-left transition ${
-                on ? "border-brand bg-glow" : "border-line bg-surface hover:-translate-y-0.5 hover:border-slate-300"
+              title={t.text}
+              className={`flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3.5 text-sm font-semibold transition ${
+                on ? "bg-brand-soft text-brand" : "text-muted hover:bg-surface-2 hover:text-fg"
               }`}
             >
-              <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${on ? "bg-brand text-brand-ink" : "bg-brand/15 text-brand"}`}>
-                <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" {...STROKE}>{t.icon}</svg>
-              </span>
-              <span>
-                <span className="block font-display text-lg font-bold">{t.title}</span>
-                <span className="block text-sm text-muted">{t.text}</span>
-              </span>
+              <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true" {...STROKE}>{t.icon}</svg>
+              {t.title}
             </button>
           );
         })}
       </div>
 
       <div key={tab} className="motion-safe:animate-[sw-rise_0.35s_ease-out_both]">
+        <p className="-mt-2 text-sm text-muted">{TABS.find((t) => t.id === tab)?.text}</p>
         {tab === "time" && <TimeMachine stocks={stocks} startSymbol={startSymbol} />}
         {tab === "goal" && <GoalCalculator />}
         {tab === "compare" && <Compare stocks={stocks} />}
@@ -190,7 +187,7 @@ function TimeMachine({ stocks, startSymbol }) {
   return (
     <div className="flex flex-col gap-6">
       <form onSubmit={run} className={`${card} flex flex-col gap-6`}>
-        <p className="font-display text-2xl font-bold leading-[2.4] sm:text-3xl sm:leading-[2.2]">
+        <p className="text-xl font-bold leading-[2.4] sm:text-2xl sm:leading-[2.3]">
           If I had invested{" "}
           <span className="inline-flex items-baseline rounded-2xl border-2 border-brand/40 bg-ink px-3 text-brand focus-within:border-brand">
             $

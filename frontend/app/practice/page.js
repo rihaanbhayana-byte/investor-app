@@ -179,9 +179,8 @@ export default function PracticePage() {
 
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div className="max-w-2xl">
-          <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">Practice portfolio</div>
-          <h1 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl">Play money. Real prices.</h1>
-          <p className="mt-3 text-lg text-muted">Practice investing with $10,000 of pretend money. Nothing here is real, so mistakes are free lessons.</p>
+          <h1 className="text-[28px] font-bold leading-tight tracking-tight">Practice</h1>
+          <p className="mt-1 text-[15px] text-muted">$10,000 of play money at real prices. Nothing here is real, so mistakes are free lessons.</p>
         </div>
         {confirmReset ? (
           <div className="flex items-center gap-2">

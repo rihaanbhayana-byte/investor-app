@@ -124,12 +124,12 @@ export default function CoachPage() {
     <div className="flex flex-col gap-6 lg:flex-row">
       <style>{`@keyframes sw-rise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }`}</style>
 
-      <aside className="flex flex-col gap-4 lg:w-80 lg:shrink-0">
+      <aside className="flex flex-col gap-4 lg:w-72 lg:shrink-0">
         <div className="rounded-3xl border border-line bg-surface p-6">
-          <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">What the coach knows</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted">What the coach knows</div>
           {plan ? (
             <>
-              <h2 className="mt-3 font-display text-xl font-bold">Your latest plan</h2>
+              <h2 className="mt-1 text-lg font-bold">Your latest plan</h2>
               <div className="mt-4 flex flex-col gap-2.5 text-sm">
                 {[
                   ["Goal", plan.goal],
@@ -165,7 +165,7 @@ export default function CoachPage() {
         </div>
       </aside>
 
-      <section className="flex h-[calc(100vh-11rem)] min-h-[560px] flex-1 flex-col overflow-hidden rounded-3xl border border-line bg-surface">
+      <section className="flex h-[calc(100vh-5rem)] min-h-[560px] flex-1 flex-col overflow-hidden rounded-3xl border border-line bg-surface">
         <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
           <div className="flex items-center gap-3">
             <CoachAvatar />
