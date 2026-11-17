@@ -48,11 +48,11 @@ export default function WhatIf({ riskLevel, initialAmount, monthly, years, base 
   const maxStart = Math.max(10000, Math.ceil((initialAmount * 3) / 500) * 500);
 
   return (
-    <section className="rounded-3xl border border-line bg-surface p-6 sm:p-8" aria-labelledby="whatif-title">
+    <section className="rounded-2xl border border-line bg-surface p-5 sm:p-6" aria-labelledby="whatif-title">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-brand">What if…</div>
-          <h2 id="whatif-title" className="text-2xl font-bold tracking-tight">Try small changes, see the difference</h2>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted">What if…</div>
+          <h2 id="whatif-title" className="text-lg font-bold">Try small changes, see the difference</h2>
         </div>
         {changed && <button type="button" onClick={() => setV(start)} className="text-sm font-semibold text-brand">Reset to my plan</button>}
       </div>
