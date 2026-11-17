@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import Link from "next/link";
 import Logo from "@/components/Logo";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const BENEFITS = [
   "Save every plan and come back to it any time",
@@ -15,7 +17,7 @@ function Field({ id, label, icon, children }) {
   return (
     <label htmlFor={id} className="block">
       <span className="text-sm font-medium text-slate-700">{label}</span>
-      <span className="mt-2 flex items-center gap-3 rounded-2xl border border-line bg-ink px-4 transition focus-within:border-brand">
+      <span className="mt-1.5 flex items-center gap-3 rounded-xl border border-line bg-surface px-3.5 transition focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
         <svg className="shrink-0 text-muted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           {icon}
         </svg>
@@ -25,7 +27,60 @@ function Field({ id, label, icon, children }) {
   );
 }
 
-const inputClass = "w-full bg-transparent py-3.5 text-fg placeholder:text-slate-500 focus:outline-none";
+const inputClass = "w-full bg-transparent py-3 text-fg placeholder:text-slate-500 focus:outline-none";
+
+// The right-hand side: a calm preview of what's inside the app (example numbers).
+function AuthPreview() {
+  return (
+    <div className="relative hidden overflow-hidden border-l border-line bg-surface-2 lg:flex lg:flex-col lg:justify-center lg:px-14 xl:px-20">
+      <div className="pointer-events-none absolute inset-0 bg-glow" aria-hidden="true" />
+      <div className="relative max-w-md">
+        <h2 className="text-[32px] font-bold leading-tight tracking-tight">
+          Your money&rsquo;s future, <span className="text-brand">made simple.</span>
+        </h2>
+        <ul className="mt-5 flex flex-col gap-2.5 text-[15px] text-muted">
+          {BENEFITS.map((b) => (
+            <li key={b} className="flex items-center gap-2.5">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>
+              </span>
+              {b}
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-10 flex flex-col gap-3" aria-label="Example of the app" role="img">
+          <div className="rounded-2xl border border-line bg-surface p-5 shadow-float">
+            <div className="flex items-center justify-between text-xs text-muted">
+              <span>My plan · Buying a home</span>
+              <span className="rounded-full bg-brand-soft px-2 py-0.5 font-semibold text-brand">Balanced Builder</span>
+            </div>
+            <div className="mt-2 flex items-end justify-between">
+              <div>
+                <div className="text-xs text-muted">Likely value in 6 years</div>
+                <div className="text-2xl font-bold tabular-nums">$22,757</div>
+              </div>
+              <svg width="120" height="38" viewBox="0 0 120 38" aria-hidden="true">
+                <path d="M0 34 C 30 31, 50 25, 70 18 S 105 6, 120 3 L120 38 L0 38Z" fill="var(--color-brand)" opacity="0.08" />
+                <path d="M0 34 C 30 31, 50 25, 70 18 S 105 6, 120 3" stroke="var(--color-brand)" strokeWidth="2.5" fill="none" />
+              </svg>
+            </div>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2"><div className="h-full w-[90%] rounded-full bg-brand" /></div>
+            <div className="mt-1.5 text-[11px] text-muted">90% of 5,000 futures end above what you put in</div>
+          </div>
+          <div className="ml-10 rounded-2xl rounded-br-md border border-line bg-surface p-4 text-sm shadow-card">
+            <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-brand">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" /></svg>
+              Seedwise AI
+            </div>
+            Your plan is mostly broad funds, so one company having a bad year won&rsquo;t sink it.
+          </div>
+        </div>
+        <p className="mt-4 text-[11px] text-muted">Example numbers. Based on real prices since 2016; not a promise of future returns.</p>
+      </div>
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,6 +96,8 @@ export default function LoginPage() {
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("mode");
     if (wanted === "signup" || wanted === "reset") setMode(wanted);
+    // already logged in? go to the app (except when choosing a new password)
+    if (wanted !== "reset") supabase.auth.getSession().then(({ data: d }) => d.session && router.replace("/dashboard"));
     // The link in the reset email logs the user in for one purpose: choosing a new password.
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setMode("reset");
@@ -99,44 +156,21 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="mx-auto grid max-w-5xl overflow-hidden rounded-[32px] border border-line bg-surface shadow-float md:grid-cols-2" data-layout="marketing">
-      <div className="relative hidden flex-col justify-between gap-10 overflow-hidden bg-glow-hero p-10 md:flex">
-        <div className="flex items-center gap-2.5">
-          <Logo />
-          <span className="font-display text-xl font-bold">Seedwise</span>
-        </div>
-        <div>
-          <h2 className="font-display text-4xl font-bold leading-tight tracking-tight">
-            Your money&rsquo;s future, <span className="text-brand">made simple.</span>
-          </h2>
-          <ul className="mt-8 flex flex-col gap-4">
-            {BENEFITS.map((b) => (
-              <li key={b} className="flex items-center gap-3 text-slate-800">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/15 text-brand">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M5 12l5 5 9-10" />
-                  </svg>
-                </span>
-                {b}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="rounded-2xl border border-brand-line bg-ink/60 p-5 backdrop-blur">
-          <div className="text-xs text-muted">Balanced Builder · past average</div>
-          <div className="mt-1 flex items-end justify-between gap-4">
-            <span className="font-display text-3xl font-bold text-brand">9.1% / yr</span>
-            <svg width="120" height="40" viewBox="0 0 120 40" aria-hidden="true">
-              <path d="M0 36 C 30 32, 50 26, 70 18 S 105 6, 120 3" stroke="var(--color-brand)" strokeWidth="2.5" fill="none" />
-            </svg>
+    <div className="grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="flex flex-col px-6 py-6 sm:px-10">
+        <div className="flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <Logo size={30} />
+            <span className="text-lg font-bold tracking-tight">Seedwise</span>
+          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="text-sm font-medium text-muted hover:text-fg">← Back to home</Link>
+            <ThemeToggle />
           </div>
-          <div className="mt-1 text-xs text-slate-500">Based on real prices since 2016. Not a promise of future returns.</div>
         </div>
-        <div className="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-brand/10 blur-3xl" aria-hidden="true" />
-      </div>
 
-      <div className="p-8 sm:p-12">
-        <div role="tablist" aria-label="Account" className="inline-flex rounded-full border border-line bg-ink p-1">
+        <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center py-10">
+        <div role="tablist" aria-label="Account" className="grid grid-cols-2 rounded-xl border border-line bg-surface-2 p-1">
           {[
             ["login", "Log in"],
             ["signup", "Sign up"],
@@ -146,17 +180,17 @@ export default function LoginPage() {
               role="tab"
               aria-selected={mode === id}
               onClick={() => switchMode(id)}
-              className={`rounded-full px-5 py-2 text-sm font-medium transition ${mode === id ? "bg-brand text-brand-ink" : "text-muted hover:text-fg"}`}
+              className={`rounded-lg py-2 text-sm font-semibold transition ${mode === id ? "bg-surface text-fg shadow-card" : "text-muted hover:text-fg"}`}
             >
               {label}
             </button>
           ))}
         </div>
 
-        <h1 className="mt-8 font-display text-3xl font-bold tracking-tight">{HEADINGS[mode][0]}</h1>
-        <p className="mt-2 text-muted">{HEADINGS[mode][1]}</p>
+        <h1 className="mt-8 text-[28px] font-bold leading-tight tracking-tight">{HEADINGS[mode][0]}</h1>
+        <p className="mt-1.5 text-[15px] text-muted">{HEADINGS[mode][1]}</p>
 
-        <form onSubmit={handleSubmit} noValidate className="mt-8 flex flex-col gap-5">
+        <form onSubmit={handleSubmit} noValidate className="mt-7 flex flex-col gap-4">
           {signup && (
             <Field id="name" label="Your name" icon={<><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>}>
               <input id="name" className={inputClass} value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Alex Smith" autoComplete="name" required />
@@ -187,12 +221,12 @@ export default function LoginPage() {
             </button>
           )}
 
-          {error && <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-          {info && <p role="status" className="rounded-2xl border border-brand-line bg-brand-soft px-4 py-3 text-sm text-slate-800">{info}</p>}
+          {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+          {info && <p role="status" className="rounded-xl border border-brand-line bg-brand-soft px-4 py-3 text-sm text-fg">{info}</p>}
 
           <button
             disabled={loading}
-            className="mt-2 flex items-center justify-center gap-2 rounded-full bg-brand py-4 font-semibold text-brand-ink transition hover:bg-brand-light disabled:opacity-50"
+            className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-brand py-3 font-semibold text-brand-ink transition hover:bg-brand-light disabled:opacity-50"
           >
             {loading && <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-ink/30 border-t-brand-ink" />}
             {loading ? "Please wait..." : { login: "Log in →", signup: "Create my account →", forgot: "Send reset link →", reset: "Save new password →" }[mode]}
@@ -211,7 +245,13 @@ export default function LoginPage() {
             </>
           )}
         </p>
+          {signup && <p className="mt-6 text-center text-xs text-muted">Seedwise is for learning. It never touches real money and isn&rsquo;t financial advice.</p>}
+        </div>
+
+        <p className="text-xs text-muted">© Seedwise · An educational project. Not financial advice.</p>
       </div>
+
+      <AuthPreview />
     </div>
   );
 }

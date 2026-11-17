@@ -374,3 +374,8 @@ html[data-layout="marketing"] .app-content { max-width: 72rem; padding: 2.5rem 1
 
 /* a mouse click never leaves a focus box behind; keyboard users still get a clear ring */
 html:not(.kbd) :focus-visible:not(input):not(textarea):not(select) { outline: none; }
+
+/* log in / sign up: a focused screen of its own */
+html[data-layout="auth"] .app-sidebar, html[data-layout="auth"] .app-mobilebar,
+html[data-layout="auth"] .site-topbar, html[data-layout="auth"] .site-footer { display: none; }
+html[data-layout="auth"] .app-content { max-width: none; padding: 0; }
