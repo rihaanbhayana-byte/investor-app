@@ -51,6 +51,7 @@ export default function StockPage() {
   if (!stock)
     return (
       <div className="flex flex-col gap-6" aria-busy="true">
+        <p className="text-sm text-muted" role="status">Loading {String(symbol).toUpperCase()}&hellip; a stock opened for the first time can take a few seconds.</p>
         <div className="h-24 animate-pulse rounded-3xl border border-line bg-surface" />
         <div className="h-96 animate-pulse rounded-3xl border border-line bg-surface" />
         <div className="h-32 animate-pulse rounded-3xl border border-line bg-surface" />
@@ -84,7 +85,7 @@ export default function StockPage() {
               <span className="rounded-full border border-slate-300 px-2.5 py-1 font-semibold">{stock.symbol}</span>
               <span className="rounded-full border border-line px-2.5 py-1 text-muted">{stock.asset_type === "etf" ? "Fund (ETF)" : "Stock"}</span>
               {stock.sector && stock.sector !== "Live data" && <span className="rounded-full border border-line px-2.5 py-1 text-muted">{stock.sector}</span>}
-              {stock.live && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-mint">Live data</span>}
+              {(stock.live || stock.featured === false) && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-mint">Added by search</span>}
             </div>
           </div>
         </div>
@@ -99,9 +100,10 @@ export default function StockPage() {
         )}
       </section>
 
-      {stock.live && (
+      {(stock.live || stock.featured === false) && (
         <p className="rounded-2xl border border-line bg-surface px-5 py-3 text-sm text-muted">
-          {stock.symbol} isn&rsquo;t one of our 36 featured stocks, so this page shows the latest public data: prices from Alpaca and financials from the company&rsquo;s SEC filings.
+          {stock.symbol} isn&rsquo;t one of our 36 featured stocks, so we loaded its prices from Alpaca and its financials from the company&rsquo;s SEC filings.
+          {!stock.live && " It now works in every tool: Practice, Time Machine, Compare and the Strategy lab."}
         </p>
       )}
 

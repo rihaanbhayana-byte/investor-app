@@ -3,6 +3,8 @@ Investor App - data loader
 
 Downloads daily prices (Alpaca) and yearly company financials (SEC EDGAR)
 for every symbol in the `securities` table, and saves them to Supabase.
+Once a week (Mondays) it also refreshes the `symbols` table: every US-listed
+stock and ETF, which powers the search-as-you-type box.
 
 First run: loads history since 2016. Later runs: only fetch what is new.
 
@@ -10,10 +12,12 @@ Usage:
     python data-pipeline/load_data.py                 # prices + financials
     python data-pipeline/load_data.py --prices        # prices only
     python data-pipeline/load_data.py --fundamentals  # financials only
+    python data-pipeline/load_data.py --symbols       # search list only (run once after search.sql)
 """
 
 import argparse
 import os
+import re
 import sys
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -74,6 +78,12 @@ def db_upsert(table, rows, conflict_columns):
         )
         if r.status_code >= 300:
             sys.exit(f"Saving to {table} failed ({r.status_code}): {r.text}")
+
+
+def db_delete(table, params):
+    r = http.delete(f"{SUPABASE_URL}/rest/v1/{table}", headers={**DB_HEADERS, "Prefer": "return=minimal"}, params=params, timeout=60)
+    if r.status_code >= 300:
+        sys.exit(f"Deleting from {table} failed ({r.status_code}): {r.text}")
 
 
 def db_update(table, match, values):
@@ -244,14 +254,87 @@ def load_fundamentals(stocks):
 
 
 # ------------------------------------------------------------------
+# The search list: every US-listed stock and ETF
+# ------------------------------------------------------------------
+EXCHANGES = {"NYSE", "NASDAQ", "ARCA", "AMEX", "BATS"}
+FUND_WORDS = re.compile(r"\b(ETF|ETN|Fund|iShares|SPDR|ProShares|Direxion|Index Trust|QQQ Trust)\b", re.I)
+SKIP_WORDS = re.compile(
+    r"\b(Warrants?|Units|Rights|Preferred (Stock|Shares|Securities)|Notes due|Debentures?)\b|%", re.I
+)
+NAME_TAIL = re.compile(
+    r"\s*-?\s*(Class [A-Z] )?(Common Stock|Ordinary Shares|American Depositary Shares|Common Shares"
+    r"|Shares of Beneficial Interest|Capital Stock|Subordinate Voting Shares)\b.*$",
+    re.I,
+)
+
+
+def alpaca_assets():
+    """All active US stocks and ETFs Alpaca knows about (works with paper or live keys)."""
+    last = None
+    for base in ("https://paper-api.alpaca.markets", "https://api.alpaca.markets"):
+        r = http.get(f"{base}/v2/assets", headers=ALPACA_HEADERS,
+                     params={"status": "active", "asset_class": "us_equity"}, timeout=90)
+        if r.ok:
+            return r.json()
+        last = r
+    raise RuntimeError(f"Alpaca assets error {last.status_code}: {last.text[:200]}")
+
+
+def sec_companies():
+    r = http.get("https://www.sec.gov/files/company_tickers.json", headers=SEC_HEADERS, timeout=60)
+    r.raise_for_status()
+    return {row["ticker"].upper().replace("-", "."): (str(row["cik_str"]).zfill(10), row["title"]) for row in r.json().values()}
+
+
+def load_symbols():
+    started = datetime.now(timezone.utc).isoformat()
+    companies = sec_companies()
+    rows = {}
+    try:
+        assets = alpaca_assets()
+    except RuntimeError as error:
+        print(f"  Alpaca list unavailable ({error}); using the SEC list (stocks only).")
+        assets = [{"symbol": t, "name": title.title(), "exchange": None, "tradable": True} for t, (_, title) in companies.items()]
+    for asset in assets:
+        if not asset.get("tradable") or (asset.get("exchange") and asset["exchange"] not in EXCHANGES):
+            continue
+        symbol = asset["symbol"].upper().replace("/", ".")
+        name = (asset.get("name") or "").strip()
+        if not name or not re.fullmatch(r"[A-Z.]{1,6}", symbol) or SKIP_WORDS.search(name):
+            continue
+        cik = companies.get(symbol, (None,))[0]
+        rows[symbol] = {
+            "symbol": symbol,
+            "name": (NAME_TAIL.sub("", name).strip(" ,-") or name)[:200],
+            "asset_type": "etf" if FUND_WORDS.search(name) else "stock",
+            "exchange": asset.get("exchange"),
+            "cik": cik,
+            "updated_at": started,
+        }
+    db_upsert("symbols", list(rows.values()), "symbol")
+    # anything not seen for 2 weeks has been delisted
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
+    db_delete("symbols", {"updated_at": f"lt.{cutoff}"})
+    etfs = sum(1 for r in rows.values() if r["asset_type"] == "etf")
+    print(f"  {len(rows)} symbols saved ({len(rows) - etfs} stocks, {etfs} ETFs and funds).")
+
+
+# ------------------------------------------------------------------
 # Main
 # ------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser(description="Load prices and financials into Supabase.")
     parser.add_argument("--prices", action="store_true", help="only load prices")
     parser.add_argument("--fundamentals", action="store_true", help="only load financials")
+    parser.add_argument("--symbols", action="store_true", help="only refresh the search list")
     args = parser.parse_args()
-    load_all = not args.prices and not args.fundamentals
+    load_all = not args.prices and not args.fundamentals and not args.symbols
+
+    if args.symbols:
+        print("Refreshing the list of US stocks and ETFs...")
+        load_symbols()
+        print("Done.")
+        return
 
     securities = db_get("securities", {"select": "symbol,asset_type,cik", "order": "symbol"})
     print(f"Found {len(securities)} securities.")
@@ -263,6 +346,10 @@ def main():
     if args.fundamentals or load_all:
         print("Loading yearly financials from SEC EDGAR...")
         load_fundamentals([s for s in securities if s["asset_type"] == "stock"])
+
+    if load_all and (date.today().weekday() == 0 or not db_get("symbols", {"select": "symbol", "limit": 1})):
+        print("Refreshing the list of US stocks and ETFs (weekly)...")
+        load_symbols()
 
     print("Done.")
 

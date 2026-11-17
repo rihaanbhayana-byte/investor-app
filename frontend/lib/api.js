@@ -38,6 +38,7 @@ export const api = {
   goalCalculator: (body) => post("/goal-calculator", body),
   search: (q) => request(`/search?q=${encodeURIComponent(q)}`),
   liveStock: (symbol) => request(`/live-stock/${symbol}`),
+  quote: (symbol) => request(`/quote/${encodeURIComponent(symbol)}`),
   compare: (symbols) => request(`/compare?symbols=${symbols.join(",")}`),
   practice: () => withLogin("/practice"),
   practiceTrade: (body) => withLogin("/practice/trade", { method: "POST", body: JSON.stringify(body) }),

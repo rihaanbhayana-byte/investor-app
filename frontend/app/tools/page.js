@@ -1,5 +1,6 @@
 "use client";
 
+import SymbolSearch from "@/components/SymbolSearch";
 import { useEffect, useState } from "react";
 import MultiLineChart from "@/components/MultiLineChart";
 import CrashTest from "@/components/CrashTest";
@@ -46,6 +47,41 @@ function InlineSelect({ value, onChange, children, label }) {
         <path d="M6 9l6 6 6-6" />
       </svg>
     </span>
+  );
+}
+
+// The ticker inside the Time Machine sentence: tap it to search any US stock or fund.
+function InlineSymbol({ value, onChange }) {
+  const [editing, setEditing] = useState(false);
+  if (editing)
+    return (
+      <span className="inline-block w-64 max-w-full align-middle font-sans text-base font-normal leading-normal">
+        <SymbolSearch
+          size="sm"
+          autoFocus
+          label="Pick a stock or fund"
+          placeholder="Type a name or ticker…"
+          onSelect={(item) => {
+            onChange(item.symbol);
+            setEditing(false);
+          }}
+          onDismiss={() => setEditing(false)}
+        />
+      </span>
+    );
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      aria-label={`Stock: ${value}. Change it`}
+      className="inline-flex items-center gap-2 rounded-2xl border-2 border-mint/40 bg-ink py-1 pl-4 pr-3 font-display font-bold text-mint transition hover:border-mint focus:border-mint focus:outline-none"
+    >
+      {value}
+      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...STROKE}>
+        <circle cx="11" cy="11" r="7" />
+        <path d="M20 20l-3.5-3.5" />
+      </svg>
+    </button>
   );
 }
 
@@ -146,7 +182,6 @@ function TimeMachine({ stocks, startSymbol }) {
     setLoading(false);
   }
 
-  const options = stocks.length ? stocks : [{ symbol, name: symbol }];
   const maxBar = result ? Math.max(result.final_value, result.sp500_final_value || 0) : 1;
 
   return (
@@ -167,11 +202,7 @@ function TimeMachine({ stocks, startSymbol }) {
             />
           </span>{" "}
           in{" "}
-          <InlineSelect label="Stock" value={symbol} onChange={setSymbol}>
-            {options.map((s) => (
-              <option key={s.symbol} value={s.symbol}>{s.symbol}</option>
-            ))}
-          </InlineSelect>{" "}
+          <InlineSymbol value={symbol} onChange={setSymbol} />{" "}
           in January{" "}
           <InlineSelect label="Year" value={year} onChange={(v) => setYear(Number(v))}>
             {YEARS.map((y) => (
@@ -208,6 +239,9 @@ function TimeMachine({ stocks, startSymbol }) {
               <div>
                 <div className="font-semibold">{result.name}</div>
                 <div className="text-sm text-muted">{money(result.amount)} in {monthName(result.start_month)}</div>
+                {result.start_month > `${year}-01` && (
+                  <div className="text-xs text-muted">{result.symbol}&rsquo;s price data starts in {monthName(result.start_month)}, so the trip starts there.</div>
+                )}
               </div>
             </div>
             <div>
@@ -427,19 +461,14 @@ function Compare({ stocks }) {
             </span>
           ))}
           {picks.length < 4 && (
-            <span className="relative">
-              <select
-                aria-label="Add a stock"
-                value=""
-                onChange={(e) => e.target.value && setPicks([...picks, e.target.value])}
-                className="cursor-pointer appearance-none rounded-full border-2 border-dashed border-slate-300 bg-transparent py-1.5 pl-4 pr-4 text-sm text-muted transition hover:border-mint hover:text-mint focus:outline-none"
-              >
-                <option value="">+ Add a stock</option>
-                {stocks.filter((s) => !picks.includes(s.symbol)).map((s) => (
-                  <option key={s.symbol} value={s.symbol}>{s.symbol}: {s.name}</option>
-                ))}
-              </select>
-            </span>
+            <SymbolSearch
+              size="sm"
+              className="w-56"
+              label="Add a stock to the race"
+              placeholder="+ Add a stock…"
+              exclude={picks}
+              onSelect={(item) => setPicks((p) => (p.includes(item.symbol) ? p : [...p, item.symbol].slice(0, 4)))}
+            />
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">

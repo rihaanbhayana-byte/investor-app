@@ -1,12 +1,13 @@
 "use client";
 
+import SymbolSearch from "@/components/SymbolSearch";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { money, percent, price } from "@/lib/format";
 import PortfolioDoctor from "@/components/PortfolioDoctor";
-import { Avatar, ReturnPill, RISE, SERIES_COLORS, Segmented, Select, useCountUp } from "@/components/ui";
+import { Avatar, ReturnPill, RISE, SERIES_COLORS, Segmented, useCountUp } from "@/components/ui";
 
 const QUICK = [100, 500, 1000];
 
@@ -59,7 +60,18 @@ export default function PracticePage() {
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
+  const [quotes, setQuotes] = useState({}); // prices for stocks outside our featured 36
   const total = useCountUp(state?.total ?? null, 900);
+
+  // A stock picked from search that isn't one of our 36: fetch its price (adds it on first use).
+  useEffect(() => {
+    if (!state || !symbol || quotes[symbol]) return;
+    if (stocks.some((s) => s.symbol === symbol) || state.holdings.some((h) => h.symbol === symbol)) return;
+    setQuotes((q) => ({ ...q, [symbol]: { loading: true } }));
+    api.quote(symbol)
+      .then((r) => setQuotes((q) => ({ ...q, [symbol]: r })))
+      .catch((e) => setQuotes((q) => ({ ...q, [symbol]: { error: e.message } })));
+  }, [symbol, stocks, state, quotes]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -92,13 +104,15 @@ export default function PracticePage() {
 
   const stock = stocks.find((s) => s.symbol === symbol);
   const position = state.holdings.find((h) => h.symbol === symbol);
-  const livePrice = position?.price ?? stock?.latest_price;
+  const quote = quotes[symbol];
+  const livePrice = position?.price ?? stock?.latest_price ?? quote?.price;
+  const pickedName = stock?.name ?? position?.name ?? quote?.name;
   const maxDollars = side === "buy" ? state.cash : position?.value ?? 0;
   const amount = sellAll ? maxDollars : dollars;
   const tooMuch = !sellAll && amount > maxDollars + 0.005;
   const shares = livePrice ? amount / livePrice : 0;
   const ahead = state.sp500_value != null ? state.total - state.sp500_value : null;
-  const etfs = new Set(stocks.filter((s) => s.asset_type === "etf").map((s) => s.symbol));
+  const etfs = new Set([...stocks, ...Object.values(quotes)].filter((s) => s.asset_type === "etf").map((s) => s.symbol));
 
   const badges = [
     { title: "First trade", text: "Make your first investment", done: state.trade_count > 0, icon: <path d="M12 5v14M5 12h14" /> },
@@ -232,22 +246,59 @@ export default function PracticePage() {
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[380px_minmax(0,1fr)] [&>*]:min-w-0">
         <form onSubmit={trade} className="flex flex-col gap-5 rounded-3xl border border-line bg-surface p-5 sm:p-6 lg:sticky lg:top-24">
           <h2 className="font-display text-xl font-bold">Make a trade</h2>
-          <Select label="Stock or fund" value={symbol} onChange={(v) => { setSymbol(v); setSellAll(false); }}>
-            {stocks.map((s) => (
-              <option key={s.symbol} value={s.symbol}>{s.symbol} · {s.name}</option>
-            ))}
-          </Select>
-          {stock && (
-            <div className="flex items-center gap-3 rounded-2xl border border-line bg-ink p-4">
-              <Avatar symbol={stock.symbol} />
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-semibold">{stock.name}</div>
-                <div className="text-sm text-muted">{price(livePrice)} a share</div>
+          <Segmented label="Buy or sell" value={side} onChange={(v) => { setSide(v); setSellAll(false); if (v === "sell" && state.holdings.length && !position) setSymbol(state.holdings[0].symbol); }} options={[["buy", "Buy"], ["sell", "Sell"]]} />
+          {side === "buy" ? (
+            <SymbolSearch
+              label="Find a stock or fund to buy"
+              placeholder="Find a stock or fund to buy…"
+              onSelect={(item) => { setSymbol(item.symbol); setSellAll(false); }}
+            />
+          ) : state.holdings.length ? (
+            <div>
+              <div className="text-sm font-medium text-slate-700">Pick one you own</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {state.holdings.map((h) => (
+                  <button
+                    type="button"
+                    key={h.symbol}
+                    onClick={() => { setSymbol(h.symbol); setSellAll(false); }}
+                    aria-pressed={symbol === h.symbol}
+                    className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${symbol === h.symbol ? "bg-fg text-ink" : "border border-line text-muted hover:border-slate-300 hover:text-fg"}`}
+                  >
+                    {h.symbol}
+                  </button>
+                ))}
               </div>
-              <ReturnPill value={stock.return_1y}>{percent(Math.abs(stock.return_1y ?? 0))}</ReturnPill>
             </div>
+          ) : (
+            <p className="rounded-2xl border border-line bg-ink px-4 py-3 text-sm text-muted">You don&rsquo;t own anything yet. Buy something first.</p>
           )}
-          <Segmented label="Buy or sell" value={side} onChange={(v) => { setSide(v); setSellAll(false); }} options={[["buy", "Buy"], ["sell", "Sell"]]} />
+          {quote?.loading ? (
+            <div className="flex items-center gap-3 rounded-2xl border border-line bg-ink p-4 text-sm text-muted" role="status">
+              <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-slate-300 border-t-mint" aria-hidden="true" />
+              Loading {symbol}&rsquo;s prices. The first time takes a few seconds.
+            </div>
+          ) : quote?.error ? (
+            <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{quote.error}</p>
+          ) : (
+            pickedName && (
+              <div className="flex items-center gap-3 rounded-2xl border border-line bg-ink p-4">
+                <Avatar symbol={symbol} />
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold">{symbol}</div>
+                  <div className="truncate text-sm text-muted">{pickedName}</div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="font-semibold tabular-nums">{price(livePrice)}</div>
+                  {stock?.return_1y != null ? (
+                    <ReturnPill value={stock.return_1y}>{percent(Math.abs(stock.return_1y))}</ReturnPill>
+                  ) : (
+                    <div className="text-xs text-muted">a share</div>
+                  )}
+                </div>
+              </div>
+            )
+          )}
           <div>
             <label htmlFor="amount" className="text-sm font-medium text-slate-700">Amount</label>
             <div className={`mt-2 flex items-baseline gap-1 rounded-2xl border bg-ink px-4 py-3 ${tooMuch ? "border-red-400" : "border-line focus-within:border-mint"}`}>
@@ -298,7 +349,7 @@ export default function PracticePage() {
           )}
           {error && <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
           <button
-            disabled={busy || !amount || amount <= 0 || tooMuch}
+            disabled={busy || !amount || amount <= 0 || tooMuch || !livePrice}
             className={`rounded-full py-4 font-semibold transition disabled:opacity-40 ${side === "buy" ? "bg-mint text-mint-ink hover:bg-mint-light" : "bg-gold text-gold-ink hover:opacity-90"}`}
           >
             {busy ? "Placing order..." : `${side === "buy" ? "Buy" : "Sell"} ${money(amount)} of ${symbol}`}

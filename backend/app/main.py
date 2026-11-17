@@ -138,8 +138,17 @@ def get_projection(request: ProjectionRequest):
 
 
 @app.get("/stocks")
+def featured_securities(columns="symbol,name,asset_type,sector"):
+    """Our 36 hand-picked stocks. Stocks users add by searching are stored too, but aren't listed here."""
+    try:
+        return db.select("securities", {"select": columns, "featured": "is.true", "order": "symbol"})
+    except Exception:
+        # search.sql hasn't been run yet, so there is no "featured" column: every stored stock is one of ours
+        return db.select("securities", {"select": columns, "order": "symbol"})
+
+
 def get_stocks():
-    securities = db.select("securities", {"select": "symbol,name,asset_type,sector", "order": "symbol"})
+    securities = featured_securities()
     series = analytics.monthly_closes([s["symbol"] for s in securities])
     for security in securities:
         closes = series.get(security["symbol"], [])
@@ -149,11 +158,15 @@ def get_stocks():
 
 
 @app.get("/stocks/{symbol}")
-def get_stock(symbol: str):
-    symbol = symbol.upper()
-    found = db.select("securities", {"select": "symbol,name,asset_type,sector", "symbol": f"eq.{symbol}"})
-    if not found:
-        raise HTTPException(404, f"{symbol} is not in our list")
+def get_stock_page(symbol: str, request: Request):
+    return get_stock(symbol, request)
+
+
+def get_stock(symbol, request=None):
+    """One stock with its price history and financials (fetched and saved on first use)."""
+    symbol = ensure_security(symbol, request)
+    found = db.select("securities", {"select": "*", "symbol": f"eq.{symbol}"})
+    found[0].setdefault("featured", True)
     closes = analytics.monthly_closes([symbol]).get(symbol, [])
     returns = analytics.returns_from_closes(closes) if len(closes) > 1 else []
     fundamentals = db.select("fundamentals", {
@@ -399,8 +412,8 @@ def clean_symbol(symbol):
 
 
 @app.get("/time-machine")
-def time_machine(symbol: str, amount: float = Query(1000, gt=0, le=10_000_000), start: str = "2016-01"):
-    symbol = clean_symbol(symbol)
+def time_machine(request: Request, symbol: str, amount: float = Query(1000, gt=0, le=10_000_000), start: str = "2016-01"):
+    symbol = ensure_security(symbol, request)
     names = {s["symbol"]: s["name"] for s in db.select("securities", {"select": "symbol,name", "symbol": f"in.({symbol},VOO)"})}
     if symbol not in names:
         raise HTTPException(404, f"{symbol} is not in our list")
@@ -451,8 +464,9 @@ def goal_calculator(request: GoalCalcRequest):
 
 
 @app.get("/compare")
-def compare(symbols: str):
+def compare(symbols: str, request: Request):
     wanted = list(dict.fromkeys(clean_symbol(s) for s in symbols.split(",") if s.strip()))[:4]
+    wanted = [ensure_security(s, request) for s in wanted]
     if len(wanted) < 2:
         raise HTTPException(400, "Pick at least two different stocks.")
     series = analytics.monthly_closes(wanted)
@@ -461,6 +475,8 @@ def compare(symbols: str):
         raise HTTPException(404, f"Not in our list: {', '.join(missing)}")
     by_month = {s: dict(series[s]) for s in wanted}
     months = sorted(set.intersection(*(set(m) for m in by_month.values())))
+    if len(months) < 2:
+        raise HTTPException(400, "These stocks don't share enough price history to compare.")
     rows = [{"month": m, **{s: round(100 * by_month[s][m] / by_month[s][months[0]], 2) for s in wanted}} for m in months]
     stats = {
         s: analytics.summarize(analytics.returns_from_closes([(m, by_month[s][m]) for m in months]))
@@ -696,10 +712,8 @@ class TradeRequest(BaseModel):
 
 
 @app.post("/practice/trade")
-def practice_trade(request: TradeRequest, user_id: str = Depends(current_user)):
-    symbol = clean_symbol(request.symbol)
-    if not db.select("securities", {"select": "symbol", "symbol": f"eq.{symbol}"}):
-        raise HTTPException(400, f"{symbol} isn't in our list. Practice trading works with our 36 stocks and funds.")
+def practice_trade(request: TradeRequest, http_request: Request, user_id: str = Depends(current_user)):
+    symbol = ensure_security(request.symbol, http_request)
     price = latest_prices([symbol]).get(symbol, (None,))[0]
     if not price:
         raise HTTPException(400, f"No price available for {symbol} right now.")
@@ -846,7 +860,7 @@ def crash_test(
 STRATEGY_PROMPT = """Turn the user's investing strategy into rules for a simple monthly backtest.
 Reply with JSON only, using these keys:
 "name": a short name for the strategy (max 6 words),
-"symbol": ONE ticker from ALLOWED. "S&P 500" means VOO, "Nasdaq" or "tech fund" means QQQ, "bonds" means BND,
+"symbol": ONE US stock or ETF ticker. Prefer ALLOWED; any other real US ticker the user names is fine. "S&P 500" means VOO, "Nasdaq" or "tech fund" means QQQ, "bonds" means BND,
           "whole US market" means VTI, "international" means VXUS. Default "VOO".
 "initial": dollars invested at the start (0 if not mentioned),
 "monthly": dollars invested every month (100 if no amounts at all are mentioned, otherwise 0 if not mentioned),
@@ -876,9 +890,9 @@ def _optional_number(value, low, high):
 
 
 @app.post("/strategy-test")
-def strategy_test(request: StrategyRequest, _: None = Depends(ai_rate_limit)):
+def strategy_test(request: StrategyRequest, http_request: Request, _: None = Depends(ai_rate_limit)):
     text = screen_or_reject(request.text)
-    allowed = [s["symbol"] for s in db.select("securities", {"select": "symbol", "order": "symbol"})]
+    allowed = [s["symbol"] for s in featured_securities("symbol")]
     messages = [
         {"role": "system", "content": STRATEGY_PROMPT + json.dumps(allowed)},
         {"role": "user", "content": text},
@@ -892,9 +906,10 @@ def strategy_test(request: StrategyRequest, _: None = Depends(ai_rate_limit)):
     except Exception as error:
         raise HTTPException(503, f"The AI couldn't read that strategy right now: {error}")
 
-    symbol = str(rules.get("symbol") or "VOO").upper()
-    if symbol not in allowed:
-        raise HTTPException(400, f"The strategy uses {symbol}, which isn't in our list. Try one of: VOO, QQQ, VTI, BND, AAPL, MSFT...")
+    try:
+        symbol = ensure_security(str(rules.get("symbol") or "VOO"), http_request)
+    except HTTPException as error:
+        raise HTTPException(400, f"The strategy uses a ticker we couldn't find ({error.detail}) Try a US ticker like VOO, QQQ or AAPL.")
     initial = _optional_number(rules.get("initial"), 0, 10_000_000) or 0.0
     monthly = _optional_number(rules.get("monthly"), 0, 1_000_000) or 0.0
     if initial == 0 and monthly == 0:
@@ -962,7 +977,7 @@ def stock_map():
     today = date.today().isoformat()
     if today in _map_cache:
         return _map_cache[today]
-    securities = db.select("securities", {"select": "symbol,name,asset_type,sector", "order": "symbol"})
+    securities = featured_securities()
     series = analytics.monthly_closes([s["symbol"] for s in securities])
     stats = {}
     for s in securities:
@@ -1205,3 +1220,89 @@ def guardrail_info():
         ],
         "counts_since_restart": dict(guardrails.stats),
     }
+
+
+
+# =====================================================================
+# Any US stock or ETF: fetched from Alpaca + SEC the first time someone
+# uses it, then saved, so every tool works with it and the nightly job keeps it fresh.
+# =====================================================================
+import threading  # noqa: E402
+from collections import defaultdict, deque  # noqa: E402
+
+_add_lock = threading.Lock()
+_added_by_visitor = defaultdict(deque)
+NEW_STOCKS_PER_DAY = 40  # per visitor, so nobody can drain the free Alpaca quota
+
+
+def _is_stored(symbol):
+    return bool(db.select("securities", {"select": "symbol", "symbol": f"eq.{symbol}"}))
+
+
+def ensure_security(symbol, request=None):
+    """Make sure `symbol` is in our database. Returns the cleaned ticker, or raises a friendly 404/429."""
+    symbol = clean_symbol(str(symbol).replace("-", "."))
+    if _is_stored(symbol):
+        return symbol
+    if request is not None:
+        hits, now = _added_by_visitor[guardrails.client_ip(request)], time.time()
+        while hits and now - hits[0] > 86400:
+            hits.popleft()
+        if len(hits) >= NEW_STOCKS_PER_DAY:
+            raise HTTPException(429, "You've added a lot of new stocks today. Please try again tomorrow.")
+    with _add_lock:
+        if _is_stored(symbol):  # someone else added it while we waited
+            return symbol
+        try:
+            listed = db.select("symbols", {"select": "symbol,name,asset_type,cik", "symbol": f"eq.{symbol}"})
+        except Exception:
+            listed = []  # search.sql not run yet: fall back to the SEC list
+        info = listed[0] if listed else None
+        if not info:
+            match = live.find(symbol)
+            if match:
+                info = {"symbol": symbol, "name": match["name"].title(), "asset_type": "stock", "cik": match["cik"]}
+        if not info:
+            raise HTTPException(404, f"We couldn't find {symbol}. Check the ticker and try again.")
+        try:
+            bars = live.daily_bars(symbol)
+        except Exception as error:
+            raise HTTPException(502, f"Couldn't fetch prices for {symbol} right now: {error}")
+        if len(bars) < 20:
+            raise HTTPException(404, f"{symbol} doesn't have enough price history yet.")
+
+        row = {"symbol": symbol, "name": info["name"], "asset_type": info["asset_type"], "sector": None,
+               "cik": info.get("cik"), "featured": False}
+        upsert = "resolution=merge-duplicates,return=minimal"
+        try:
+            db.admin("POST", "securities", params={"on_conflict": "symbol"}, json=row, prefer=upsert)
+        except RuntimeError as error:
+            if "featured" not in str(error):
+                raise
+            raise HTTPException(503, "Run database/search.sql in Supabase to turn on searching any stock.")
+        prices = [{"symbol": symbol, "date": b["t"][:10], "open": b["o"], "high": b["h"], "low": b["l"],
+                   "close": b["c"], "volume": int(b["v"])} for b in bars]
+        for i in range(0, len(prices), 1000):
+            db.admin("POST", "daily_prices", params={"on_conflict": "symbol,date"}, json=prices[i:i + 1000], prefer=upsert)
+        if info["asset_type"] == "stock" and info.get("cik"):
+            try:
+                facts = [{"symbol": symbol, **f} for f in live.fundamentals(info["cik"])]
+                if facts:
+                    db.admin("POST", "fundamentals", params={"on_conflict": "symbol,fiscal_year"}, json=facts, prefer=upsert)
+            except Exception:
+                pass  # financials are a bonus; prices are what the tools need
+    if request is not None:
+        _added_by_visitor[guardrails.client_ip(request)].append(time.time())
+    return symbol
+
+
+@app.get("/quote/{symbol}")
+def quote(symbol: str, request: Request):
+    """Latest price for any US stock or ETF (adds it to our database on first use)."""
+    symbol = ensure_security(symbol, request)
+    info = db.select("securities", {"select": "*", "symbol": f"eq.{symbol}"})[0]
+    price, as_of = latest_prices([symbol]).get(symbol, (None, None))
+    if not price:
+        raise HTTPException(404, f"No recent price for {symbol}.")
+    return {"symbol": symbol, "name": info["name"], "asset_type": info["asset_type"],
+            "featured": info.get("featured", True), "price": price, "as_of": as_of}

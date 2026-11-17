@@ -69,6 +69,28 @@ CONCEPTS = {
 }
 
 
+def daily_bars(symbol, start="2016-01-01"):
+    """Daily bars since `start`, adjusted for splits and dividends (Alpaca, every page)."""
+    end = datetime.now(timezone.utc) - timedelta(minutes=20)  # free plan: data must be 15+ minutes old
+    params = {
+        "symbols": symbol, "timeframe": "1Day", "start": start,
+        "end": end.strftime("%Y-%m-%dT%H:%M:%SZ"), "adjustment": "all", "feed": "sip", "limit": 10000,
+    }
+    url = "https://data.alpaca.markets/v2/stocks/bars"
+    bars = []
+    while True:
+        r = _http.get(url, headers=ALPACA_HEADERS, params=params, timeout=30)
+        if r.status_code == 403 and params["feed"] == "sip":
+            params["feed"] = "iex"
+            continue
+        r.raise_for_status()
+        data = r.json()
+        bars.extend((data.get("bars") or {}).get(symbol, []))
+        if not data.get("next_page_token"):
+            return bars
+        params["page_token"] = data["next_page_token"]
+
+
 def _annual(us_gaap, tags):
     result = {}
     for tag in tags:
