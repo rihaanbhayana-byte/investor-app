@@ -61,8 +61,9 @@ def complete(messages, tools=None, temperature=0.3, json_mode=False):
     return response.json()["choices"][0]["message"]
 
 
-def run_with_tools(messages, tool_specs, tool_functions, max_rounds=5):
-    """Let the AI call our tools (real data) as many times as it needs, then return its final answer."""
+def run_with_tools(messages, tool_specs, tool_functions, max_rounds=5, trace=None):
+    """Let the AI call our tools (real data) as many times as it needs, then return its final answer.
+    If `trace` is a list, every tool call is recorded in it (so the app can show what data was used)."""
     messages = list(messages)
     for _ in range(max_rounds):
         reply = complete(messages, tools=tool_specs)
@@ -72,11 +73,14 @@ def run_with_tools(messages, tool_specs, tool_functions, max_rounds=5):
         messages.append({"role": "assistant", "content": reply.get("content") or "", "tool_calls": calls})
         for call in calls:
             name = call["function"]["name"]
+            arguments, ok = {}, True
             try:
                 arguments = json.loads(call["function"].get("arguments") or "{}")
                 result = tool_functions[name](**arguments)
             except Exception as error:
-                result = {"error": str(error)}
+                result, ok = {"error": str(error)}, False
+            if trace is not None:
+                trace.append({"tool": name, "args": arguments, "ok": ok, "result": result if isinstance(result, dict) else {}})
             messages.append({
                 "role": "tool",
                 "tool_call_id": call["id"],

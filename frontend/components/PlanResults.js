@@ -1,5 +1,6 @@
 "use client";
 
+import InsightCard from "@/components/InsightCard";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import GrowthChart from "@/components/GrowthChart";
@@ -154,6 +155,7 @@ export default function PlanResults({ result, goal, years, saved, onStartOver })
               {LEVEL_LABELS[risk.risk_level]} · {risk.score} / {risk.max_score}
             </span>
           </div>
+          <InsightCard insight={risk.insight} feature="personality" title="How well this fits you" />
         </div>
 
         <div className="min-w-0 flex-[2_1_520px] rounded-3xl border border-line bg-surface p-8 motion-safe:animate-[sw-rise_0.6s_ease-out_0.15s_both]">
@@ -182,6 +184,7 @@ export default function PlanResults({ result, goal, years, saved, onStartOver })
             <Box label="Likely" value={money(final.median)} highlight />
             <Box label="Good case (1 in 10)" value={money(final.high)} />
           </div>
+          <InsightCard insight={projection.insight} feature="projection" title="How likely is this?" className="mt-5" />
         </div>
       </section>
 

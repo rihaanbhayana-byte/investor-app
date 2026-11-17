@@ -93,9 +93,74 @@ def score_answers(answers, horizon_years):
     else:
         level = "aggressive"
 
+    max_score = 3 * (len(QUESTIONS) + 1)
     return {
         "score": score,
-        "max_score": 3 * (len(QUESTIONS) + 1),
+        "max_score": max_score,
         "risk_level": level,
         "explanation": EXPLANATIONS[level],
+        "insight": personality_insight(answers, horizon_years, score, max_score, level),
+    }
+
+
+NAMES = {"conservative": "Steady Saver", "moderate": "Balanced Builder", "aggressive": "Growth Seeker"}
+SHORT = {
+    "market_drop": "In a 20% drop you'd",
+    "priority": "What matters most",
+    "experience": "Experience",
+    "income": "Income",
+    "emergency_fund": "Emergency savings",
+}
+
+
+def personality_insight(answers, horizon_years, score, max_score, level):
+    """How clearly does this person fit their personality? Measured as the distance from their
+    score to the cut-off of the neighbouring personality (bands: 0-6, 7-12, 13-18)."""
+    from .confidence import insight
+
+    if horizon_years < 3:
+        return insight(
+            "high", f"Clear fit: {NAMES[level]}",
+            "Money needed in under 3 years always gets the steadiest plan, whatever the answers.",
+            why=[f"You need the money in {horizon_years} year{'s' if horizon_years != 1 else ''}, which is too soon to ride out a crash."],
+            based_on=["Your timeline", "Your 5 answers"],
+            assumptions=["Stocks can take 2 to 5 years to recover from a crash."],
+        )
+    # distance (in points) to the nearest cut-off, and which personality sits on the other side
+    if level == "conservative":
+        gap, neighbour = 6.5 - score, "moderate"
+    elif level == "aggressive":
+        gap, neighbour = score - 12.5, "moderate"
+    else:
+        down, up = score - 6.5, 12.5 - score
+        gap, neighbour = (down, "conservative") if down < up else (up, "aggressive")
+    points = int(gap + 0.5)  # points needed to cross over
+    if gap >= 2.5:
+        conf, label = "high", f"Strong fit: {NAMES[level]}"
+    elif gap >= 1.5:
+        conf, label = "medium", f"Good fit: {NAMES[level]}"
+    else:
+        conf, label = "low", f"Close call: near {NAMES[neighbour]}"
+
+    # the answers that pushed hardest towards this result
+    chosen = []
+    for q in QUESTIONS:
+        option = next(o for o in q["options"] if o["id"] == answers.get(q["id"]))
+        chosen.append((q["id"], option["text"], option["points"]))
+    pull = (lambda c: -c[2]) if level == "aggressive" else (lambda c: c[2]) if level == "conservative" else (lambda c: abs(c[2] - 1.5))  # middle answers explain a middle result
+    decisive = sorted(chosen, key=pull)[:3]
+    why = [f"{SHORT[qid]}: {text[0].lower() + text[1:]} ({pts} of 3 points)" for qid, text, pts in decisive]
+    why.append(f"Your {horizon_years}-year timeline adds {horizon_points(horizon_years)} of 3 points.")
+    return {
+        **insight(
+            conf, label,
+            f"You scored {score} of {max_score}. You are {points} point{'s' if points != 1 else ''} away from {NAMES[neighbour]}. "
+            "The bands are 0-6 Steady Saver, 7-12 Balanced Builder, 13-18 Growth Seeker.",
+            value=min(1.0, gap / 3.0),
+            why=why,
+            based_on=["Your 5 answers", "Your timeline"],
+            assumptions=["Each answer is worth 0 to 3 points; the total decides the personality."],
+        ),
+        "neighbour": neighbour,
+        "neighbour_name": NAMES[neighbour],
     }

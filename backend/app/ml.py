@@ -96,4 +96,19 @@ def stock_map(stats_by_symbol, k=4):
     order = {"steady": 0, "grower": 1, "rocket": 2, "bumpy": 3}
     clusters.sort(key=lambda c: order[c["key"]])
     cluster_of = {symbol: names[labels[i]] for i, symbol in enumerate(symbols)}
-    return clusters, cluster_of, round(inertia, 3)
+
+    # How clearly does each stock belong? (silhouette score, a standard ML measure)
+    from .confidence import silhouettes
+    scores, runner_up = silhouettes(scaled, labels)
+    fit_of = {}
+    for i, symbol in enumerate(symbols):
+        sc = float(scores[i])
+        fit = "clear" if sc >= 0.5 else "good" if sc >= 0.25 else "borderline"
+        fit_of[symbol] = {
+            "fit": fit,
+            "fit_score": round(sc, 3),
+            "fit_label": {"clear": "Clearly", "good": "Fits", "borderline": "Between groups:"}[fit],
+            "runner_up": PERSONALITIES[names[runner_up[i]]][0],
+        }
+    overall = round(float(np.mean(scores)), 3)
+    return clusters, cluster_of, round(inertia, 3), fit_of, overall

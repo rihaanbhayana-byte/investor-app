@@ -1,5 +1,6 @@
 "use client";
 
+import InsightCard from "@/components/InsightCard";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import MultiLineChart from "@/components/MultiLineChart";
@@ -22,8 +23,18 @@ const EVENT_STYLE = {
   buy_back: { label: "Bought back in", color: "text-sky", bg: "bg-sky-soft" },
 };
 
-function Chip({ children }) {
-  return <span className="rounded-full border border-slate-300 bg-ink px-3 py-1.5 text-sm">{children}</span>;
+// A rule the AI read. If the AI guessed it (it wasn't in your words), it's marked so you can check it.
+function Chip({ children, source }) {
+  const guessed = source === "ai_guess";
+  return (
+    <span
+      title={guessed ? "The AI guessed this: it wasn't in your words." : source === "said_it" ? "Taken from your words." : undefined}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm ${guessed ? "border-amber-200 bg-amber-50" : "border-slate-300 bg-ink"}`}
+    >
+      {children}
+      {guessed && <span className="text-[11px] font-semibold text-gold">AI guessed</span>}
+    </span>
+  );
 }
 
 function ResultCard({ title, data, winner, color }) {
@@ -85,6 +96,7 @@ export default function StrategyLab() {
   const strategyWins = result && result.strategy.profit_per_100 >= result.simple.profit_per_100;
   const events = result ? (showAll ? result.events : result.events.slice(0, 6)) : [];
   const sameRules = r && !r.dip_drop_pct && !r.stop_loss_pct;
+  const src = result?.insight?.rule_sources || {};
 
   return (
     <div className="flex flex-col gap-6">
@@ -135,13 +147,14 @@ export default function StrategyLab() {
             <div className="text-sm font-semibold text-mint">The AI understood: {r.name}</div>
             {r.summary && <p className="mt-2 text-lg text-slate-800">{r.summary}</p>}
             <div className="mt-4 flex flex-wrap gap-2">
-              <Chip>{r.symbol}</Chip>
-              <Chip>From {monthName(r.start)}</Chip>
-              {r.initial > 0 && <Chip>{money(r.initial)} at the start</Chip>}
-              {r.monthly > 0 && <Chip>{money(r.monthly)} every month</Chip>}
-              {r.dip_drop_pct && <Chip>+{money(r.dip_extra)} when {r.dip_drop_pct}% below the 12-month high</Chip>}
-              {r.stop_loss_pct && <Chip>Sell all if it falls {r.stop_loss_pct}% from its peak</Chip>}
+              <Chip source={src.symbol}>{r.symbol}</Chip>
+              <Chip source={src.start}>From {monthName(r.start)}</Chip>
+              {r.initial > 0 && <Chip source={src.initial}>{money(r.initial)} at the start</Chip>}
+              {r.monthly > 0 && <Chip source={src.monthly}>{money(r.monthly)} every month</Chip>}
+              {r.dip_drop_pct && <Chip source={src.dip_extra === "ai_guess" ? "ai_guess" : src.dip_drop_pct}>+{money(r.dip_extra)} when {r.dip_drop_pct}% below the 12-month high</Chip>}
+              {r.stop_loss_pct && <Chip source={src.stop_loss_pct}>Sell all if it falls {r.stop_loss_pct}% from its peak</Chip>}
             </div>
+            <InsightCard insight={result.insight} feature="strategy" title="How much to trust this test" className="mt-4" />
             {r.not_supported && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-slate-800">Couldn&rsquo;t test: {r.not_supported}</p>}
           </div>
 

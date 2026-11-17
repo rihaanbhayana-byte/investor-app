@@ -48,5 +48,6 @@ export const api = {
   stockMap: () => request("/stock-map"),
   guardrails: () => request("/guardrails"),
   matchInterests: (text) => post("/match-interests", { text }),
+  feedback: (body) => withLogin("/feedback", { method: "POST", body: JSON.stringify(body) }),
   practiceDoctor: (riskLevel) => withLogin("/practice/doctor", { method: "POST", body: JSON.stringify({ risk_level: riskLevel }) }),
 };

@@ -1,5 +1,6 @@
 "use client";
 
+import InsightCard from "@/components/InsightCard";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from "recharts";
@@ -28,9 +29,10 @@ function Dot({ cx, cy, fill, payload, dimmed, showLabel, onPick }) {
   );
 }
 
-function MapTooltip({ active, payload }) {
+function MapTooltip({ active, payload, clusters = [] }) {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
+  const own = clusters.find((c) => c.key === p.cluster)?.name;
   return (
     <div className="rounded-xl border border-line bg-ink/95 px-4 py-3 text-sm shadow-2xl">
       <div className="font-semibold">{p.symbol} · {p.name}</div>
@@ -39,6 +41,11 @@ function MapTooltip({ active, payload }) {
         <span>Swings (volatility)</span><span className="text-right font-semibold text-fg">{percent(p.annual_volatility)}</span>
         <span>Biggest drop</span><span className="text-right font-semibold text-fg">{percent(p.max_drawdown)}</span>
       </div>
+      {p.fit && (
+        <div className={`mt-2 border-t border-line pt-2 text-xs ${p.fit === "borderline" ? "text-gold" : "text-mint"}`}>
+          {p.fit === "borderline" ? `Between groups: ${own} and ${p.runner_up}` : `${p.fit_label} ${own}`} · fit {p.fit_score.toFixed(2)}
+        </div>
+      )}
     </div>
   );
 }
@@ -130,7 +137,7 @@ export default function StockMap() {
               label={{ value: "Yearly return →", angle: -90, position: "insideLeft", fill: "var(--color-muted)", fontSize: 12 }}
             />
             <ZAxis range={[60, 60]} />
-            <Tooltip content={<MapTooltip />} cursor={{ strokeDasharray: "4 4", stroke: "var(--color-line-strong)" }} />
+            <Tooltip content={<MapTooltip clusters={data.clusters} />} cursor={{ strokeDasharray: "4 4", stroke: "var(--color-line-strong)" }} />
             {data.clusters.map((c) => (
               <Scatter
                 key={c.key}
@@ -171,6 +178,7 @@ export default function StockMap() {
           </div>
         ))}
       </div>
+      <InsightCard insight={data.insight} feature="stock_map" title="How clear are these groups?" />
       <p className="text-xs text-slate-500">Hover a dot for details, or tap a group above to label its members. Bigger dots are funds. Click a dot to open it. {data.disclaimer}</p>
     </section>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import InsightCard from "@/components/InsightCard";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { money } from "@/lib/format";
@@ -54,11 +55,23 @@ function KeyBadge({ n }) {
   );
 }
 
-function SliderField({ id, label, value, setValue, min, max, cap = max, step, prefix = "", suffix = "" }) {
+const TAG_STYLE = {
+  said_it: "border-mint-line bg-mint-soft text-mint",
+  worked_out: "border-mint-line bg-mint-soft text-mint",
+  not_said: "border-line text-muted",
+  ai_guess: "border-amber-200 bg-amber-50 text-gold",
+  you: "border-line bg-slate-100 text-fg",
+};
+const TAG_TEXT = { said_it: "From your words", worked_out: "Worked out from your words", not_said: "Not mentioned", ai_guess: "AI guessed: check it", you: "You set this" };
+
+function SliderField({ id, label, value, setValue, min, max, cap = max, step, prefix = "", suffix = "", source }) {
   return (
-    <div className="rounded-2xl border border-line bg-ink p-5">
+    <div className={`rounded-2xl border bg-ink p-5 ${source === "ai_guess" ? "border-amber-200" : "border-line"}`}>
       <div className="flex items-center justify-between gap-4">
-        <label htmlFor={id} className="text-sm font-medium text-slate-700">{label}</label>
+        <div className="flex flex-col items-start gap-1.5">
+          <label htmlFor={id} className="text-sm font-medium text-slate-700">{label}</label>
+          {source && <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${TAG_STYLE[source]}`}>{TAG_TEXT[source]}</span>}
+        </div>
         <div className="flex items-baseline gap-0.5 rounded-xl px-2 py-1 font-display text-3xl font-bold tabular-nums focus-within:bg-slate-100">
           {prefix && <span className="text-muted">{prefix}</span>}
           <input
@@ -102,6 +115,13 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
   const [picked, setPicked] = useState(null);
   const [aiText, setAiText] = useState("");
   const [aiSummary, setAiSummary] = useState("");
+  const [aiCheck, setAiCheck] = useState(null); // where each number came from: the person's words, or an AI guess
+  const [touched, setTouched] = useState({});
+  const sourceOf = (field) => (touched[field] ? "you" : aiCheck?.sources?.[field]);
+  const edit = (field, setter) => (v) => {
+    setTouched((t) => ({ ...t, [field]: true }));
+    setter(v);
+  };
   const [aiError, setAiError] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
@@ -161,6 +181,8 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
       setMonthly(r.monthly_contribution);
       setYears(r.years);
       setAiSummary(r.summary);
+      setAiCheck({ sources: r.sources, insight: r.insight });
+      setTouched({});
       setTimeout(() => go(1), 1100);
     } catch (e) {
       setAiError(e.message);
@@ -322,9 +344,12 @@ export default function PlanWizard({ questions, startMode, initial, onClose, onF
                   For <span className="font-semibold text-fg">{goal}</span>. Drag the sliders or type a number. You can change this later.
                 </p>
                 <div className="mt-6 flex flex-col gap-3">
-                  <SliderField id="start" label="Start with" value={initialAmount} setValue={setInitialAmount} min={0} max={50000} cap={10000000} step={100} prefix="$" />
-                  <SliderField id="monthly" label="Add each month" value={monthly} setValue={setMonthly} min={0} max={5000} cap={100000} step={10} prefix="$" />
-                  <SliderField id="years" label="For how long" value={years} setValue={(v) => setYears(Math.min(50, Math.max(1, v)))} min={1} max={40} step={1} suffix={years === 1 ? "year" : "years"} />
+                  {aiCheck && mode === "ai" && (
+                    <InsightCard insight={aiCheck.insight} feature="goal_reader" title="How well the AI read you" />
+                  )}
+                  <SliderField id="start" label="Start with" value={initialAmount} setValue={edit("initial_amount", setInitialAmount)} min={0} max={50000} cap={10000000} step={100} prefix="$" source={mode === "ai" ? sourceOf("initial_amount") : undefined} />
+                  <SliderField id="monthly" label="Add each month" value={monthly} setValue={edit("monthly_contribution", setMonthly)} min={0} max={5000} cap={100000} step={10} prefix="$" source={mode === "ai" ? sourceOf("monthly_contribution") : undefined} />
+                  <SliderField id="years" label="For how long" value={years} setValue={edit("years", (v) => setYears(Math.min(50, Math.max(1, v))))} min={1} max={40} step={1} suffix={years === 1 ? "year" : "years"} source={mode === "ai" ? sourceOf("years") : undefined} />
                 </div>
                 {nothingToInvest ? (
                   <div role="alert" className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-slate-800">

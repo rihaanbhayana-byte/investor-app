@@ -1,5 +1,6 @@
 "use client";
 
+import InsightCard from "@/components/InsightCard";
 import Link from "next/link";
 import { useState } from "react";
 import { api } from "@/lib/api";
@@ -77,6 +78,7 @@ export default function InterestMatcher() {
       {result && !loading && (
         <div className="mt-6 flex flex-col gap-4">
           {result.matches.length === 0 && result.no_match_note && <p className="text-slate-800">{result.no_match_note}</p>}
+          {result.matches.length > 0 && <InsightCard insight={result.insight} feature="matcher" title="How sure are these picks?" />}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {result.matches.map((m, i) => (
               <Link
@@ -93,6 +95,14 @@ export default function InterestMatcher() {
                   </div>
                   <ReturnPill value={m.return_1y}>{percent(Math.abs(m.return_1y ?? 0))}</ReturnPill>
                 </div>
+                {m.match && (
+                  <span
+                    title={`Picked in ${m.votes} of ${m.runs} independent AI runs`}
+                    className={`self-start rounded-full border px-2 py-0.5 text-[11px] font-semibold ${m.match === "Strong match" ? "border-mint-line bg-mint-soft text-mint" : "border-amber-200 bg-amber-50 text-gold"}`}
+                  >
+                    {m.match} · {m.votes}/{m.runs} runs
+                  </span>
+                )}
                 <p className="text-sm leading-relaxed text-slate-800">{m.reason}</p>
                 <div className="mt-auto text-xs text-muted">{price(m.latest_price)} a share · 1-year change shown</div>
               </Link>

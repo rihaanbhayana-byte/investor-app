@@ -1,11 +1,13 @@
 "use client";
 
+import InsightCard from "@/components/InsightCard";
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { api } from "@/lib/api";
 
 export default function AIExplainer({ symbol }) {
   const [text, setText] = useState("");
+  const [insight, setInsight] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -15,6 +17,7 @@ export default function AIExplainer({ symbol }) {
     try {
       const result = await api.explainStock(symbol);
       setText(result.explanation);
+      setInsight(result.insight || null);
     } catch (e) {
       setError(e.message);
     }
@@ -57,6 +60,7 @@ export default function AIExplainer({ symbol }) {
           <ReactMarkdown>{text}</ReactMarkdown>
         </div>
       )}
+      {text && insight && <InsightCard insight={insight} feature="explain" title="Fact check" className="mt-4" />}
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </section>
   );

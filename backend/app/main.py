@@ -1,12 +1,12 @@
 """Investor App API. Run locally from the backend folder:  uvicorn app.main:app --reload"""
-from typing import Literal
+from typing import Literal, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from . import analytics, db, guardrails, risk
+from . import analytics, confidence, db, guardrails, risk
 
 app = FastAPI(title="Investor App API", version="1.0.0")
 
@@ -126,13 +126,35 @@ def get_portfolio(risk_level: RiskLevel):
 @app.post("/projection")
 def get_projection(request: ProjectionRequest):
     portfolio = load_portfolio(request.risk_level)
-    _, returns = analytics.portfolio_returns(weights_of(portfolio))
+    months, returns = analytics.portfolio_returns(weights_of(portfolio))
     yearly = analytics.project(returns, request.initial_amount, request.monthly_contribution, request.years)
+    final, odds = yearly[-1], yearly[-1]["odds"]
+    chance = odds["more_than_put_in"]
+    level = "high" if chance >= 0.85 else "medium" if chance >= 0.65 else "low"
+    years = request.years
+    insight = confidence.insight(
+        level,
+        f"{round(chance * 100)}% of futures end above what you put in",
+        f"Share of {odds['paths']:,} simulated futures, each built from random real months of "
+        f"{portfolio['name']} returns ({months[0]} to {months[-1]}, {len(returns)} months).",
+        value=chance,
+        why=[
+            f"In the likely case you'd have about ${final['median']:,.0f} after {years} year{'s' if years != 1 else ''}, from ${final['contributed']:,.0f} put in.",
+            f"In a bad case (1 future in 10) you'd have about ${final['low']:,.0f}.",
+            f"{round(odds['more_than_put_in_after_inflation'] * 100)}% of futures stay ahead of what you put in even after 2.5% yearly inflation.",
+            "Short plans are less certain: there's less time to recover from a crash." if years < 5 else "",
+        ],
+        based_on=[f"{len(returns)} months of real {portfolio['name']} returns ({months[0]} to {months[-1]})",
+                  f"{odds['paths']:,} simulated futures"],
+        assumptions=["Future months behave like random months since 2016 (a strong decade for stocks).",
+                     "2.5% yearly inflation", "No fees or taxes"],
+    )
     return {
         "risk_level": request.risk_level,
         "portfolio_name": portfolio["name"],
-        "final": yearly[-1],
+        "final": final,
         "yearly": yearly,
+        "insight": insight,
         "disclaimer": DISCLAIMER,
     }
 
@@ -301,11 +323,43 @@ def chat(request: ChatRequest, _: None = Depends(ai_rate_limit)):
     if request.plan:
         system += "\n\nThe user's current plan: " + json.dumps(request.plan)[:2000]
     messages = [{"role": "system", "content": system}] + history
+    trace = []
     try:
-        reply = ai.run_with_tools(messages, TOOL_SPECS, TOOL_FUNCTIONS)
+        reply = ai.run_with_tools(messages, TOOL_SPECS, TOOL_FUNCTIONS, trace=trace)
     except Exception as error:
         raise HTTPException(503, f"The AI coach is unavailable right now: {error}")
-    return {"reply": guardrails.check_output(reply), "guardrail": None, "notices": notices}
+    return {"reply": guardrails.check_output(reply), "guardrail": None, "notices": notices,
+            "insight": coach_insight(reply, trace, bool(request.plan))}
+
+
+def coach_insight(reply, trace, has_plan):
+    """Was this answer checked against real data? We record every data look-up the coach made."""
+    sources = []
+    for call in trace:
+        args, result = call["args"], call.get("result") or {}
+        if not call["ok"]:
+            continue
+        if call["tool"] == "get_stock":
+            latest = (result.get("latest_price") or {}).get("month")
+            sources.append(f"{args.get('symbol', '').upper()} prices and financials" + (f" (to {latest})" if latest else ""))
+        elif call["tool"] == "get_portfolio":
+            sources.append(f"{result.get('name', 'Model')} portfolio history")
+        elif call["tool"] == "run_projection":
+            sources.append("A fresh 5,000-future projection")
+        elif call["tool"] == "list_stocks":
+            sources.append("Our list of featured stocks")
+    if has_plan:
+        sources.append("Your saved plan")
+    sources = list(dict.fromkeys(sources))
+    has_numbers = bool(re.search(r"\d+(\.\d+)?\s?%|\$\s?\d", reply))
+    if sources:
+        return confidence.insight("high", "Checked against real data", "The coach looked up these data before answering.",
+                                  based_on=sources)
+    if has_numbers:
+        return confidence.insight("low", "Not checked against data",
+                                  "This answer quotes numbers but the coach didn't look up any data. Treat them as rough.",
+                                  why=["Ask \"use real data\" or name a stock to get checked numbers."])
+    return confidence.insight("medium", "General explanation", "No numbers to check: this is a general explanation.")
 
 
 # =====================================================================
@@ -347,12 +401,57 @@ def parse_goal(request: GoalText, _: None = Depends(ai_rate_limit)):
         data = ai.parse_json(reply.get("content") or "")
     except Exception as error:
         raise HTTPException(503, f"Could not read your goal: {error}")
-    return {
+    result = {
         "goal": data.get("goal") if data.get("goal") in GOAL_OPTIONS else GOAL_OPTIONS[0],
         "initial_amount": round(_number(data.get("initial_amount"))),
         "monthly_contribution": round(_number(data.get("monthly_contribution"))),
         "years": int(min(50, max(1, _number(data.get("years"), 10)))),
         "summary": str(data.get("summary", ""))[:300],
+    }
+    return {**result, **goal_reader_check(text, result)}
+
+
+GOAL_WORDS = {  # words that show the person named this goal themselves
+    "Grow my wealth": ["wealth", "grow", "rich", "invest", "save", "saving"],
+    "Retirement": ["retire", "pension", "old age"],
+    "Buying a home": ["house", "home", "apartment", "flat", "deposit", "mortgage", "condo"],
+    "Education": ["college", "university", "school", "education", "tuition", "degree"],
+    "A big purchase": ["car", "vehicle", "wedding", "purchase", "travel", "trip", "holiday", "vacation", "laptop"],
+}
+
+
+def goal_reader_check(text, result):
+    """Check the AI's reading against the person's own words: which numbers did they actually type?"""
+    said = confidence.numbers_in(text)
+    lower = text.lower()
+    ages = bool(re.search(r"\b(age|aged|years old|when i'?m|retire at|by \d{2}\b)", lower))
+    sources = {
+        "initial_amount": confidence.source_of(result["initial_amount"], said),
+        "monthly_contribution": confidence.source_of(
+            result["monthly_contribution"], said,
+            conversions=(lambda n: n * 52 / 12, lambda n: n / 12, lambda n: n * 26 / 12)),
+        "years": confidence.source_of(result["years"], said, default=10),
+    }
+    if sources["years"] == "ai_guess" and ages:
+        sources["years"] = "worked_out"
+    keywords = GOAL_WORDS.get(result["goal"], [])
+    sources["goal"] = "said_it" if any(w in lower for w in keywords) else "ai_guess"
+    from_words = sum(1 for v in sources.values() if v in ("said_it", "worked_out"))
+    guessed = [k for k, v in sources.items() if v == "ai_guess"]
+    nice = {"goal": "goal", "initial_amount": "starting amount", "monthly_contribution": "monthly amount", "years": "timeline"}
+    return {
+        "sources": sources,
+        "source_labels": {k: confidence.SOURCE_LABELS[v] for k, v in sources.items()},
+        "insight": confidence.insight(
+            confidence.level_from(from_words / 4),
+            f"{from_words} of 4 details came from your words",
+            "Code checks each number the AI filled in against the numbers you actually typed.",
+            value=from_words / 4,
+            why=[f"The AI guessed your {nice[k]}: please check it." for k in guessed]
+                + [f"Your {nice[k]} wasn't mentioned, so it starts at {'10 years' if k == 'years' else '$0'}." for k, v in sources.items() if v == "not_said"],
+            based_on=["Only the sentence you typed"],
+            assumptions=["Weekly amounts are turned into monthly ones (x 52 / 12)."] if sources["monthly_contribution"] == "worked_out" else [],
+        ),
     }
 
 
@@ -392,8 +491,40 @@ def explain_stock(symbol: str, _: None = Depends(ai_rate_limit)):
         text = ai.complete(messages, temperature=0.3).get("content") or ""
     except Exception as error:
         raise HTTPException(503, f"The AI explainer is unavailable right now: {error}")
-    _explain_cache[key] = text
-    return {"explanation": text}
+    _explain_cache[key] = {"explanation": text, "insight": explain_insight(text, data)}
+    return _explain_cache[key]
+
+
+def explain_insight(text, data):
+    """Fact-check the explanation: do the percentages it quotes match the real data?"""
+    stats = data.get("stats_over_price_history") or {}
+    first, last, year_ago = data.get("first_price_in_data"), data.get("latest_price"), data.get("price_1_year_ago")
+    truths = [stats.get(k) for k in ("annual_return", "annual_volatility", "max_drawdown", "best_12_months", "worst_12_months", "total_return")]
+    if first and last:
+        truths.append(last["close"] / first["close"] - 1)
+    if year_ago and last:
+        truths.append(last["close"] / year_ago["close"] - 1)
+    facts = data.get("financials_last_4_years") or []
+    for a, b in zip(facts, facts[1:]):
+        if a.get("revenue") and b.get("revenue"):
+            truths.append(b["revenue"] / a["revenue"] - 1)
+    matched, total = confidence.fact_check(text, truths)
+    years = [f["fiscal_year"] for f in facts if f.get("fiscal_year")]
+    based_on = [f"{data['symbol']} monthly prices, {first['month']} to {last['month']}" if first and last else ""]
+    if years:
+        based_on.append(f"SEC filings for fiscal years {years[0]} to {years[-1]}")
+    if total == 0:
+        return confidence.insight("medium", "No percentages to check", "Code compares every percentage in the answer with the real data.",
+                                  based_on=based_on)
+    share = matched / total
+    return confidence.insight(
+        confidence.level_from(share, high=0.9, medium=0.6),
+        f"{matched} of {total} percentages match the data",
+        "Code compares every percentage in the answer with values calculated from the price data and filings (within 1.5 points).",
+        value=share,
+        why=[] if matched == total else ["Some numbers didn't match exactly: they may be rounded or worked out another way. Check the chart."],
+        based_on=based_on,
+    )
 
 
 # =====================================================================
@@ -953,6 +1084,7 @@ def strategy_test(request: StrategyRequest, http_request: Request, _: None = Dep
         "event_count": len(events),
         "disclaimer": DISCLAIMER,
     }
+    result["insight"] = strategy_insight(text, rules, result, events, closes)
     try:
         verdict = ai.complete([
             {"role": "system", "content": VERDICT_PROMPT},
@@ -984,7 +1116,18 @@ def stock_map():
         closes = series.get(s["symbol"], [])
         if len(closes) >= 25:
             stats[s["symbol"]] = analytics.summarize(analytics.returns_from_closes(closes))
-    clusters, cluster_of, inertia = ml.stock_map(stats, k=4)
+    clusters, cluster_of, inertia, fit_of, overall = ml.stock_map(stats, k=4)
+    clear = sum(1 for f in fit_of.values() if f["fit"] == "clear")
+    map_insight = confidence.insight(
+        "high" if overall >= 0.5 else "medium" if overall >= 0.25 else "low",
+        f"Map quality: silhouette {overall:.2f}",
+        "Silhouette score runs from -1 to 1: how much closer each stock is to its own group than to the next group. "
+        "Above 0.5 = clear groups, 0.25-0.5 = fair, below 0.25 = groups overlap.",
+        value=max(0.0, overall),
+        why=[f"{clear} of {len(fit_of)} stocks clearly belong to their group; the rest sit between two groups."],
+        based_on=[f"Monthly prices for {len(stats)} stocks since 2016"],
+        assumptions=["Stocks are compared on 3 numbers only: yearly return, swings and biggest drop."],
+    )
     info = {s["symbol"]: s for s in securities}
     result = {
         "points": [
@@ -994,9 +1137,11 @@ def stock_map():
                 "annual_volatility": stats[symbol]["annual_volatility"],
                 "max_drawdown": stats[symbol]["max_drawdown"],
                 "cluster": cluster_of[symbol],
+                **fit_of[symbol],
             }
             for symbol in sorted(stats)
         ],
+        "insight": map_insight,
         "clusters": clusters,
         "method": (
             "k-means clustering (k = 4) on three numbers per stock from real monthly prices since 2016: "
@@ -1009,6 +1154,58 @@ def stock_map():
     _map_cache.clear()
     _map_cache[today] = result
     return result
+
+
+def strategy_insight(text, raw_rules, result, events, closes):
+    """Two measured things: did the AI read the rules from your words, and how much evidence is there?"""
+    r = result["rules"]
+    said = confidence.numbers_in(text)
+    lower = text.lower()
+    sources = {"symbol": "said_it" if r["symbol"].lower() in lower else "ai_guess"}
+    for key in ("initial", "monthly", "dip_drop_pct", "dip_extra", "stop_loss_pct"):
+        if r.get(key):
+            sources[key] = confidence.source_of(r[key], said)
+    if r["monthly"] == 100 and not raw_rules.get("monthly") and not raw_rules.get("initial"):
+        sources["monthly"] = "ai_guess"
+    if r.get("dip_extra") and not raw_rules.get("dip_extra"):
+        sources["dip_extra"] = "ai_guess"  # we assumed 2x the monthly amount
+    year = r["start"][:4]
+    sources["start"] = "said_it" if year in text else "not_said"
+    names = {"symbol": "what to buy", "initial": "starting amount", "monthly": "monthly amount", "dip_drop_pct": "dip size",
+             "dip_extra": "extra on a dip", "stop_loss_pct": "sell-off level", "start": "start date"}
+    guessed = [names[k] for k, v in sources.items() if v == "ai_guess"]
+    read_level = "high" if not guessed else "medium" if len(guessed) == 1 else "low"
+
+    triggers = sum(1 for e in events if e["type"] in ("dip", "stop_loss"))
+    has_rule = bool(r.get("dip_drop_pct") or r.get("stop_loss_pct"))
+    months = len(closes)
+    if not has_rule:
+        evidence, ev_label = ("high" if months >= 60 else "medium"), f"{months} months tested"
+    elif triggers >= 8 and months >= 60:
+        evidence, ev_label = "high", f"Rules fired {triggers} times in {months} months"
+    elif triggers >= 3:
+        evidence, ev_label = "medium", f"Rules fired only {triggers} times in {months} months"
+    else:
+        evidence, ev_label = "low", f"Rules fired just {triggers} time{'s' if triggers != 1 else ''}: too few to judge"
+    gap = result["strategy"]["profit"] - result["simple"]["profit"]
+    close_call = abs(gap) < 0.02 * max(result["simple"]["put_in"], 1)
+    rank = {"low": 0, "medium": 1, "high": 2}
+    overall = min(read_level, evidence, key=rank.get)
+    return {
+        **confidence.insight(
+            overall, ev_label + (" · AI guessed " + ", ".join(guessed) if guessed else ""),
+            "Two checks: code compares each rule with the numbers you typed, and counts how often your rules actually "
+            "fired in the test. Few firings = luck can explain the result.",
+            why=[
+                f"Your strategy ended ${abs(gap):,.0f} {'ahead of' if gap >= 0 else 'behind'} simply investing every month."
+                + (" That's within 2% of what you put in: too close to call." if close_call else ""),
+                f"The AI guessed: {', '.join(guessed)}. Check the rules above." if guessed else "Every rule came from your own words.",
+            ],
+            based_on=[f"{r['symbol']} monthly prices, {closes[0][0]} to {closes[-1][0]} ({months} months)"],
+            assumptions=["Trades happen at month-end prices, with no fees or taxes.", "The past doesn't promise the future."],
+        ),
+        "rule_sources": sources,
+    }
 
 
 # =====================================================================
@@ -1025,6 +1222,13 @@ matches list and explain kindly in no_match_note.
 LIST: """
 
 
+def _safe(fn, *args):
+    try:
+        return fn(*args)
+    except Exception as error:  # one failed run shouldn't sink the other
+        return str(error)
+
+
 class MatchRequest(BaseModel):
     text: str = Field(min_length=3, max_length=400)
 
@@ -1038,24 +1242,49 @@ def match_interests(request: MatchRequest, _: None = Depends(ai_rate_limit)):
         {"role": "system", "content": MATCH_PROMPT + json.dumps(listing)},
         {"role": "user", "content": text},
     ]
-    try:
+    def one_run(temperature):
         try:
-            reply = ai.complete(messages, temperature=0.2, json_mode=True)
+            reply = ai.complete(messages, temperature=temperature, json_mode=True)
         except RuntimeError:
-            reply = ai.complete(messages, temperature=0.2)
-        data = ai.parse_json(reply.get("content") or "")
-    except Exception as error:
-        raise HTTPException(503, f"The AI couldn't answer right now: {error}")
+            reply = ai.complete(messages, temperature=temperature)
+        return ai.parse_json(reply.get("content") or "")
+
+    # Ask twice, independently (different randomness). Picks that come up both times are strong matches:
+    # this is "self-consistency", a measured signal, unlike asking the AI how sure it is.
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(2) as pool:
+        runs = list(pool.map(lambda t: _safe(one_run, t), (0.2, 0.9)))
+    good_runs = [r for r in runs if isinstance(r, dict)]
+    if not good_runs:
+        raise HTTPException(503, f"The AI couldn't answer right now: {runs[0]}")
+    data = good_runs[0]
 
     by_symbol = {s["symbol"]: s for s in stocks}
-    matches, seen = [], set()
-    for m in data.get("matches") or []:
-        symbol = str(m.get("symbol", "")).upper()
-        if symbol in by_symbol and symbol not in seen:
-            seen.add(symbol)
-            matches.append({**by_symbol[symbol], "reason": str(m.get("reason") or "")[:200]})
+    votes, reasons = {}, {}
+    for run in good_runs:
+        for m in run.get("matches") or []:
+            symbol = str(m.get("symbol", "")).upper()
+            if symbol in by_symbol:  # unknown or made-up tickers are dropped
+                votes[symbol] = votes.get(symbol, 0) + 1
+                reasons.setdefault(symbol, str(m.get("reason") or "")[:200])
+    order = sorted(votes, key=lambda s: -votes[s])
+    runs_n = len(good_runs)
+    matches = [{**by_symbol[s], "reason": reasons[s], "votes": votes[s], "runs": runs_n,
+                "match": "Strong match" if votes[s] == runs_n and runs_n > 1 else "Possible match"} for s in order][:6]
+    agreed = sum(1 for m in matches if m["votes"] == runs_n)
+    share = agreed / len(matches) if matches else 0.0
+    insight = confidence.insight(
+        confidence.level_from(share, high=0.7, medium=0.4),
+        f"{agreed} of {len(matches)} picks agreed by both AI runs" if runs_n > 1 else "Single AI run",
+        "We ask the AI twice, independently. Picks that come up both times are strong matches; picks from only one run are possible matches.",
+        value=share,
+        why=["Liking a brand isn't a reason to invest on its own: check how the company actually makes money."],
+        based_on=["Your description", f"Names and industries of our {len(stocks)} featured stocks"],
+        assumptions=["Only our featured stocks are suggested. Search to find any other company."],
+    )
     return {
-        "matches": matches[:6],
+        "matches": matches,
+        "insight": insight,
         "fund_tip": str(data.get("fund_tip") or "")[:250],
         "no_match_note": str(data.get("no_match_note") or "")[:250],
         "disclaimer": "Educational only, not financial advice. Liking a brand isn't a reason to invest on its own.",
@@ -1199,7 +1428,24 @@ def practice_doctor(request: DoctorRequest, user_id: str = Depends(current_user)
     except Exception:
         tips = [c["detail"] for c in checks if c["status"] != "good"][:3]
 
-    return {**facts, "headline": headline, "tips": tips, "disclaimer": "Practice only. Educational, not financial advice."}
+    # fact-check the AI's tips against the portfolio's real numbers
+    truths = [cash_share, top_sector_share, invested_share] + [h["value"] / total for h in holdings] + [h["value"] / invested for h in holdings if invested]
+    truths += list((history or {}).values()) + [c for c in (biggest_single_share, fund_share)]
+    matched, quoted = confidence.fact_check(" ".join(tips), truths)
+    based = [f"Your {len(holdings)} holding{'s' if len(holdings) != 1 else ''} and cash, at the latest prices"]
+    if history and invested_weights:
+        based.append(f"{len(returns)} months of price history for this mix ({months[0]} to {months[-1]})")
+    insight = confidence.insight(
+        "high", "Fixed rules, not AI",
+        "The grade comes from 5 fixed checks, so the same portfolio always gets the same grade. The AI only writes the tips."
+        + (f" {matched} of {quoted} percentages in the tips match your portfolio." if quoted else ""),
+        why=[f"{c['name']}: {c['detail']}" for c in checks if c["status"] != "good"][:3] or ["Every check passed."],
+        based_on=based,
+        assumptions=([f"It's compared with your {risk.NAMES[level]} plan."] if level else
+                     ["You have no saved plan, so it isn't checked against a personality. Build a plan to add that check."])
+                    + ([] if history else ["Not enough shared price history to judge how bumpy this mix is."]),
+    )
+    return {**facts, "headline": headline, "tips": tips, "insight": insight, "disclaimer": "Practice only. Educational, not financial advice."}
 
 
 
@@ -1306,3 +1552,53 @@ def quote(symbol: str, request: Request):
         raise HTTPException(404, f"No recent price for {symbol}.")
     return {"symbol": symbol, "name": info["name"], "asset_type": info["asset_type"],
             "featured": info.get("featured", True), "price": price, "as_of": as_of}
+
+
+
+# =====================================================================
+# Feedback on AI answers (thumbs up / down) and a summary for the write-up
+# =====================================================================
+FEATURES = ("coach", "explain", "matcher", "strategy", "goal_reader", "personality", "projection", "doctor", "stock_map")
+
+
+class FeedbackRequest(BaseModel):
+    feature: Literal[FEATURES]
+    helpful: bool
+    confidence_level: Optional[Literal["high", "medium", "low"]] = None
+    note: Optional[str] = Field(default=None, max_length=200)
+
+
+@app.post("/feedback")
+def save_feedback(body: FeedbackRequest, request: Request, authorization: Optional[str] = Header(default=None)):
+    if guardrails.rate_limited(guardrails.client_ip(request)):
+        raise HTTPException(429, "Thanks! That's plenty of feedback for now.")
+    user = None
+    if authorization and authorization.lower().startswith("bearer "):
+        found = db.get_user(authorization.split(" ", 1)[1])
+        user = found["id"] if found else None
+    note = guardrails.redact(body.note)[0] if body.note else None
+    try:
+        db.admin("POST", "ai_feedback", json={"feature": body.feature, "helpful": body.helpful,
+                                               "confidence_level": body.confidence_level, "note": note, "user_id": user},
+                 prefer="return=minimal")
+    except RuntimeError as error:
+        raise HTTPException(503, f"Couldn't save feedback: {error}. Run database/feedback.sql in Supabase.")
+    return {"saved": True}
+
+
+@app.get("/ai-stats")
+def ai_stats():
+    """How helpful people found each AI feature, split by the confidence we showed. Great for the write-up."""
+    try:
+        rows = db.admin("GET", "ai_feedback", params={"select": "feature,helpful,confidence_level", "limit": 10000}) or []
+    except RuntimeError:
+        rows = []
+    summary = {}
+    for r in rows:
+        f = summary.setdefault(r["feature"], {"votes": 0, "helpful": 0, "by_confidence": {}})
+        f["votes"] += 1
+        f["helpful"] += r["helpful"]
+        c = f["by_confidence"].setdefault(r["confidence_level"] or "none", {"votes": 0, "helpful": 0})
+        c["votes"] += 1
+        c["helpful"] += r["helpful"]
+    return {"features": summary, "total_votes": len(rows)}

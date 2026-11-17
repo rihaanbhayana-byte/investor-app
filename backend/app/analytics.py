@@ -63,6 +63,14 @@ def project(returns, initial, monthly, years, paths=5000, seed=42):
         balances = balances * (1 + draws[:, month]) + monthly
         if (month + 1) % 12 == 0:
             result.append(_year_row((month + 1) // 12, balances, initial, monthly))
+    # Measured odds: the share of the simulated futures that ends above what was put in
+    put_in = initial + monthly * 12 * years
+    result[-1]["odds"] = {
+        "paths": paths,
+        "more_than_put_in": round(float(np.mean(balances > put_in)), 3),
+        "more_than_put_in_after_inflation": round(float(np.mean(balances / (1 + INFLATION) ** years > put_in)), 3),
+        "doubled": round(float(np.mean(balances > 2 * put_in)), 3) if put_in else 0.0,
+    }
     return result
 
 

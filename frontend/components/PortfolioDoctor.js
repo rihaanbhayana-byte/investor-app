@@ -1,5 +1,6 @@
 "use client";
 
+import InsightCard from "@/components/InsightCard";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { percent } from "@/lib/format";
@@ -111,6 +112,7 @@ export default function PortfolioDoctor({ hasHoldings, onResult }) {
                 </ul>
               </div>
             )}
+            <InsightCard insight={report.insight} feature="doctor" title="How this grade works" />
             <p className="text-xs text-slate-500">{report.disclaimer}</p>
           </div>
         </div>

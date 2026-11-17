@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfidenceChip, Feedback } from "@/components/InsightCard";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -108,7 +109,7 @@ export default function CoachPage() {
     setLoading(true);
     try {
       const result = await api.chat({ messages: next.slice(-12).map(({ role, content }) => ({ role, content })), plan });
-      setMessages([...next, { role: "assistant", content: result.reply, guardrail: result.guardrail, notices: result.notices || [] }]);
+      setMessages([...next, { role: "assistant", content: result.reply, guardrail: result.guardrail, notices: result.notices || [], insight: result.insight }]);
     } catch (e) {
       setMessages([...next, { role: "assistant", content: `Sorry, something went wrong: ${e.message}`, error: true }]);
     }
@@ -262,6 +263,13 @@ export default function CoachPage() {
                         )}
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
                       </div>
+                      {m.insight && !m.guardrail && (
+                        <div className="flex flex-wrap items-center gap-2 px-1 text-xs text-muted">
+                          <ConfidenceChip confidence={m.insight.confidence} />
+                          {m.insight.based_on?.length > 0 && <span>Used: {m.insight.based_on.join(" · ")}</span>}
+                          <span className="ml-auto"><Feedback feature="coach" level={m.insight.confidence.level} compact /></span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
