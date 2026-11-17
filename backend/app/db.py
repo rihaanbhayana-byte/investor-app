@@ -71,3 +71,24 @@ def get_user(access_token):
         timeout=15,
     )
     return response.json() if response.status_code == 200 else None
+
+
+def delete_auth_user(user_id):
+    """Delete a login (needs the SECRET key). Everything the user owns is removed too (on delete cascade)."""
+    if not SUPABASE_SECRET_KEY:
+        raise RuntimeError("SUPABASE_SECRET_KEY is missing from the backend settings.")
+    url = f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}"
+    response = _http.delete(url, headers={"apikey": SUPABASE_SECRET_KEY}, timeout=20)
+    if response.status_code in (401, 403):  # some key types also want the Authorization header
+        response = _http.delete(url, headers={"apikey": SUPABASE_SECRET_KEY, "Authorization": f"Bearer {SUPABASE_SECRET_KEY}"}, timeout=20)
+    if response.status_code not in (200, 204):
+        raise RuntimeError(f"Supabase said {response.status_code}: {response.text[:200]}")
+
+
+def list_auth_users(page=1, per_page=200):
+    """Logins with their email addresses (needs the SECRET key). Used only by the weekly email job."""
+    url = f"{SUPABASE_URL}/auth/v1/admin/users"
+    headers = {"apikey": SUPABASE_SECRET_KEY, "Authorization": f"Bearer {SUPABASE_SECRET_KEY}"}
+    response = _http.get(url, params={"page": page, "per_page": per_page}, headers=headers, timeout=20)
+    response.raise_for_status()
+    return response.json().get("users", [])

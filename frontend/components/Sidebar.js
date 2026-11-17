@@ -18,6 +18,7 @@ const ICON = {
   coach: "M21 12a8 8 0 0 1-12 7l-5 1 1-4A8 8 0 1 1 21 12z",
   learn: "M2 9l10-5 10 5-10 5zM6 11v5c3 3 9 3 12 0v-5",
   plans: "M4 5h16M4 12h16M4 19h10",
+  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
   star: "M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z",
   login: "M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3",
   logout: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9",
@@ -114,6 +115,12 @@ export function SidebarMenu({ active = "", onNavigate }) {
 
       <div className="flex flex-col gap-0.5">
         <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Account</div>
+        {user && (
+          <Link href="/profile" onClick={onNavigate} aria-current={isActive("/profile") ? "page" : undefined} className={`flex h-10 items-center gap-3 rounded-xl px-3 text-sm transition ${isActive("/profile") ? "bg-brand-soft font-semibold text-brand" : "font-medium text-muted hover:bg-surface-2 hover:text-fg"}`}>
+            <Icon name="user" />
+            Profile
+          </Link>
+        )}
         {user ? (
           <button type="button" onClick={logOut} className="flex h-10 items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-muted transition hover:bg-surface-2 hover:text-fg">
             <Icon name="logout" />

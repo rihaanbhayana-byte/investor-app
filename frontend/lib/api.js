@@ -24,6 +24,29 @@ async function withLogin(path, options = {}) {
   return request(path, { ...options, headers: token ? { Authorization: `Bearer ${token}` } : {} });
 }
 
+// Ask the backend for a PDF and save it.
+async function downloadPdf(path, body, filename, needsLogin = false) {
+  const headers = { "Content-Type": "application/json" };
+  if (needsLogin) {
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.access_token) headers.Authorization = `Bearer ${data.session.access_token}`;
+  }
+  const response = await fetch(`${API_URL}${path}`, { method: "POST", headers, body: JSON.stringify(body) });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(typeof err.detail === "string" ? err.detail : "Couldn't make the PDF. Please try again.");
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
 export const api = {
   questions: () => request("/questions"),
   riskProfile: (body) => post("/risk-profile", body),
@@ -52,5 +75,10 @@ export const api = {
   matchInterests: (text) => post("/match-interests", { text }),
   feedback: (body) => withLogin("/feedback", { method: "POST", body: JSON.stringify(body) }),
   matchPlan: (targets, useCash = 0, apply = false) => withLogin("/practice/match-plan", { method: "POST", body: JSON.stringify({ targets, use_cash: useCash, apply }) }),
+  planPdf: (body) => downloadPdf("/report/plan", body, "seedwise-plan.pdf"),
+  portfolioPdf: (body) => downloadPdf("/report/portfolio", body, "seedwise-portfolio.pdf", true),
+  account: () => withLogin("/account"),
+  setAccountPrefs: (prefs) => withLogin("/account/preferences", { method: "POST", body: JSON.stringify(prefs) }),
+  deleteAccount: () => withLogin("/account", { method: "DELETE" }),
   practiceDoctor: (riskLevel) => withLogin("/practice/doctor", { method: "POST", body: JSON.stringify({ risk_level: riskLevel }) }),
 };

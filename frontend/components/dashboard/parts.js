@@ -13,6 +13,7 @@ import { askCoach } from "@/lib/coach";
 import { money, price as fmtPrice } from "@/lib/format";
 import { addToWatchlist } from "@/lib/watchlist";
 import { PracticePlanButton } from "../PlanPractice";
+import { PlanPdfButton, PortfolioPdfButton } from "../DownloadPdf";
 
 export const card = "rounded-2xl border border-line bg-surface";
 
@@ -159,13 +160,13 @@ export function TopBar({ name, fullName, personality }) {
       <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
         <OmniSearch />
         <span className="hidden sm:block"><ThemeToggle /></span>
-        <div className="hidden items-center gap-2.5 md:flex">
+        <Link href="/profile" className="hidden items-center gap-2.5 rounded-xl px-1.5 py-1 transition hover:bg-surface-2 md:flex">
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">{initials}</span>
           <span className="leading-tight">
             <span className="block text-sm font-semibold">{fullName || name}</span>
             <span className="block text-xs text-muted">{personality || "No plan yet"}</span>
           </span>
-        </div>
+        </Link>
       </div>
     </div>
   );
@@ -462,7 +463,10 @@ export function HoldingsRow({ practice, quotes, plan }) {
     <section aria-labelledby="holdings-title" className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h2 id="holdings-title" className="text-base font-bold">Practice portfolio</h2>
-        <Link href="/practice" className="text-xs font-semibold text-brand">{list.length > 4 ? `See all ${list.length}` : "Open Practice"}</Link>
+        <span className="flex items-center gap-3">
+          {list.length > 0 && <PortfolioPdfButton label="Report" className="inline-flex items-center gap-1 text-xs font-semibold text-brand disabled:opacity-60" />}
+          <Link href="/practice" className="text-xs font-semibold text-brand">{list.length > 4 ? `See all ${list.length}` : "Open Practice"}</Link>
+        </span>
       </div>
       {list.length === 0 ? (
         <div className={`${card} flex flex-wrap items-center justify-between gap-4 p-5`}>
@@ -566,6 +570,8 @@ export function PlanSummary({ plan, latest }) {
         <Link href="/plan" className="hover:underline">Why? · Based on · How we measured it</Link>
         <span className="text-muted">·</span>
         <Link href="/plans" className="hover:underline">All my plans</Link>
+        <span className="text-muted">·</span>
+        <PlanPdfButton plan={{ goal: plan.goal, risk_level: plan.risk_level, initial_amount: plan.initial_amount, monthly_contribution: plan.monthly_contribution, years: plan.years }} label="Download PDF" className="inline-flex items-center gap-1 hover:underline disabled:opacity-60" />
         <span className="text-muted">·</span>
         <button type="button" onClick={() => askCoach("Explain my plan in simple words")} className="hover:underline">Ask AI to explain it</button>
       </div>

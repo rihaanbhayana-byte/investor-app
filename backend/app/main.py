@@ -1429,7 +1429,12 @@ class DoctorRequest(BaseModel):
 
 @app.post("/practice/doctor")
 def practice_doctor(request: DoctorRequest, user_id: str = Depends(current_user), _: None = Depends(ai_rate_limit)):
-    state = practice_state(user_id)
+    return run_doctor(user_id, request.risk_level, use_ai=True)
+
+
+def run_doctor(user_id, risk_level=None, use_ai=True, state=None):
+    """The Portfolio Doctor: fixed rules grade the portfolio; the AI (optional) only writes the tips."""
+    state = state or practice_state(user_id)
     total = state["total"]
     holdings = state["holdings"]
     if not holdings:
@@ -1506,7 +1511,7 @@ def practice_doctor(request: DoctorRequest, user_id: str = Depends(current_user)
     else:
         check("Cash", "good", f"Only {cash_share:.0%} is sitting in cash.")
 
-    level = request.risk_level
+    level = risk_level
     if history and level:
         target = TARGET_VOLATILITY[level]
         ratio = history["volatility"] / target
@@ -1535,6 +1540,8 @@ def practice_doctor(request: DoctorRequest, user_id: str = Depends(current_user)
     }
     headline, tips = "", []
     try:
+        if not use_ai:
+            raise RuntimeError("rules only")
         try:
             reply = ai.complete([{"role": "system", "content": DOCTOR_PROMPT}, {"role": "user", "content": json.dumps(facts)}], temperature=0.3, json_mode=True)
         except RuntimeError:
@@ -1808,3 +1815,113 @@ def ai_stats():
         c["votes"] += 1
         c["helpful"] += r["helpful"]
     return {"features": summary, "total_votes": len(rows)}
+
+
+# =====================================================================
+# PDF reports: an action plan, and a practice portfolio report
+# =====================================================================
+from fastapi.responses import Response  # noqa: E402
+from . import reports  # noqa: E402
+
+
+class PlanReportRequest(BaseModel):
+    goal: str = Field(min_length=1, max_length=60)
+    risk_level: RiskLevel
+    initial_amount: float = Field(ge=0, le=10_000_000)
+    monthly_contribution: float = Field(ge=0, le=1_000_000)
+    years: int = Field(ge=1, le=50)
+    name: Optional[str] = Field(default=None, max_length=60)
+
+
+def _pdf(content, filename):
+    return Response(content, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"', "Cache-Control": "no-store"})
+
+
+def _safe_name(name):
+    clean = guardrails.redact((name or "").strip())[0]
+    return re.sub(r"[^\w .'-]", "", clean)[:60] or None
+
+
+@app.post("/report/plan")
+def report_plan(body: PlanReportRequest, request: Request):
+    """Download the plan as a polished PDF: projection, fund-by-fund amounts and a dated action checklist."""
+    if guardrails.rate_limited(guardrails.client_ip(request)):
+        raise HTTPException(429, "That's a lot of downloads. Please wait a minute.")
+    portfolio = get_portfolio(body.risk_level)
+    projection = get_projection(ProjectionRequest(risk_level=body.risk_level, initial_amount=body.initial_amount,
+                                                  monthly_contribution=body.monthly_contribution, years=body.years))
+    goal = re.sub(r"[^\w .,'&-]", "", body.goal)[:60] or "My goal"
+    pdf = reports.plan_pdf({"name": _safe_name(body.name), "goal": goal, "years": body.years,
+                            "initial": body.initial_amount, "monthly": body.monthly_contribution,
+                            "portfolio": portfolio, "projection": projection})
+    return _pdf(pdf, f"seedwise-plan-{date.today():%Y-%m-%d}.pdf")
+
+
+class PortfolioReportRequest(BaseModel):
+    risk_level: Optional[RiskLevel] = None
+    targets: Optional[list[PlanTarget]] = Field(default=None, max_length=15)
+    plan_name: Optional[str] = Field(default=None, max_length=60)
+    goal: Optional[str] = Field(default=None, max_length=60)
+    name: Optional[str] = Field(default=None, max_length=60)
+
+
+@app.post("/report/portfolio")
+def report_portfolio(body: PortfolioReportRequest, request: Request, user_id: str = Depends(current_user)):
+    """Download the practice portfolio as a PDF: holdings, vs the S&P 500, the doctor's grade, drift and next steps."""
+    if guardrails.rate_limited(guardrails.client_ip(request)):
+        raise HTTPException(429, "That's a lot of downloads. Please wait a minute.")
+    state = practice_state(user_id)
+    doctor = run_doctor(user_id, body.risk_level, use_ai=False, state=state) if state["holdings"] else None
+    plan = None
+    if body.targets:
+        match = practice_match_plan(MatchPlanRequest(targets=body.targets), request, user_id) if state["holdings"] else None
+        plan = {"portfolio": _safe_name(body.plan_name), "goal": _safe_name(body.goal), "match": match}
+    pdf = reports.portfolio_pdf({"name": _safe_name(body.name), "state": state, "doctor": doctor, "plan": plan})
+    return _pdf(pdf, f"seedwise-portfolio-{date.today():%Y-%m-%d}.pdf")
+
+
+# =====================================================================
+# Account: settings and deleting your account
+# =====================================================================
+MISSING_ACCOUNT_SQL = "Run database/account.sql in Supabase to turn on profile settings."
+
+
+@app.get("/account")
+def get_account(user_id: str = Depends(current_user)):
+    try:
+        rows = db.admin("GET", "profiles", {"select": "full_name,weekly_email,created_at", "id": f"eq.{user_id}"})
+    except RuntimeError as error:
+        if "weekly_email" in str(error):
+            return {"weekly_email": False, "setup_needed": MISSING_ACCOUNT_SQL}
+        raise HTTPException(503, str(error))
+    return {**(rows[0] if rows else {}), "weekly_email": bool(rows and rows[0].get("weekly_email"))}
+
+
+class AccountPrefs(BaseModel):
+    weekly_email: bool
+
+
+@app.post("/account/preferences")
+def set_account_prefs(body: AccountPrefs, user_id: str = Depends(current_user)):
+    try:
+        db.admin("POST", "profiles", {"on_conflict": "id"}, json={"id": user_id, "weekly_email": body.weekly_email},
+                 prefer="resolution=merge-duplicates,return=minimal")
+    except RuntimeError as error:
+        raise HTTPException(503, MISSING_ACCOUNT_SQL if "weekly_email" in str(error) else str(error))
+    return {"weekly_email": body.weekly_email}
+
+
+@app.delete("/account")
+def delete_account(request: Request, user_id: str = Depends(current_user)):
+    """Delete the login and everything that belongs to it: plans, practice portfolio, watchlist, profile."""
+    if guardrails.rate_limited(guardrails.client_ip(request)):
+        raise HTTPException(429, "Please wait a minute and try again.")
+    try:
+        db.delete_auth_user(user_id)
+    except RuntimeError as error:
+        raise HTTPException(503, f"Couldn't delete the account: {error}")
+    for token, (uid, _) in list(_user_cache.items()):  # forget any cached login for this user
+        if uid == user_id:
+            _user_cache.pop(token, None)
+    return {"deleted": True}

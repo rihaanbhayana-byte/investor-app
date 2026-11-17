@@ -4,6 +4,7 @@ import InsightCard from "@/components/InsightCard";
 import Link from "next/link";
 import { PracticePlanButton } from "./PlanPractice";
 import WhatIf from "./WhatIf";
+import { PlanPdfButton } from "./DownloadPdf";
 import { useEffect, useState } from "react";
 import GrowthChart from "@/components/GrowthChart";
 import { LEVEL_LABELS, money, percent } from "@/lib/format";
@@ -127,6 +128,7 @@ export default function PlanResults({ result, goal, years, inputs, saved, onStar
           <div className="text-sm text-muted">Put $10,000 of practice money into this exact mix and watch it move with real prices.</div>
         </div>
         <PracticePlanButton plan={{ goal, portfolio: portfolio.name, risk_level: risk.risk_level, holdings: portfolio.holdings }} />
+        {inputs && <PlanPdfButton plan={{ goal, risk_level: risk.risk_level, initial_amount: inputs.initialAmount, monthly_contribution: inputs.monthly, years }} className="inline-flex items-center gap-2 rounded-xl border border-line px-5 py-3 text-sm font-semibold transition hover:border-brand hover:text-brand disabled:opacity-60" />}
         <Link href="/dashboard" className="rounded-xl border border-line px-5 py-3 text-sm font-semibold transition hover:border-brand hover:text-brand">Go to dashboard</Link>
       </div>
 

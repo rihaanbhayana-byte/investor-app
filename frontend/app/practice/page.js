@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { money, percent, price } from "@/lib/format";
 import PortfolioDoctor from "@/components/PortfolioDoctor";
 import { PlanTracker } from "@/components/PlanPractice";
+import { PortfolioPdfButton } from "@/components/DownloadPdf";
 import { Kpi, Pill } from "@/components/dashboard/parts";
 import { Avatar, ReturnPill, RISE, SERIES_COLORS, Segmented, useCountUp } from "@/components/ui";
 
@@ -163,13 +164,16 @@ export default function PracticePage() {
         {confirmReset ? (
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted">Start over with $10,000?</span>
-            <button onClick={reset} disabled={busy} className="rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-ink">Reset</button>
+            <button onClick={reset} disabled={busy} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white">Reset</button>
             <button onClick={() => setConfirmReset(false)} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm">Cancel</button>
           </div>
         ) : (
-          <button onClick={() => setConfirmReset(true)} className="rounded-xl border border-line px-5 py-2.5 text-sm text-muted transition hover:border-slate-300 hover:text-fg">
-            Reset portfolio
-          </button>
+          <div className="flex flex-wrap items-start gap-2">
+            {state.holdings.length > 0 && <PortfolioPdfButton />}
+            <button onClick={() => setConfirmReset(true)} className="rounded-xl border border-line px-4 py-2.5 text-sm text-muted transition hover:border-slate-300 hover:text-fg">
+              Reset portfolio
+            </button>
+          </div>
         )}
       </div>
 

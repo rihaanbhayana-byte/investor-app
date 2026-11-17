@@ -1,0 +1,31 @@
+name: Weekly email
+
+on:
+  schedule:
+    # 13:05 UTC every Monday = early morning in the US, evening in India
+    - cron: "5 13 * * 1"
+  workflow_dispatch: # adds a "Run workflow" button for a manual test
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install packages
+        run: pip install -r data-pipeline/requirements.txt
+
+      - name: Send the weekly emails
+        run: python data-pipeline/weekly_email.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
