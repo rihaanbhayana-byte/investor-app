@@ -85,7 +85,9 @@ export default function LoginPage() {
     setLoading(false);
     if (result.error) return setError(friendly(result.error.message));
     if (mode === "forgot") return setInfo(`If there's an account for ${email.trim()}, a reset link is on its way. Check your inbox (and spam).`);
-    router.push(mode === "signup" ? "/plan" : "/dashboard");
+    const next = new URLSearchParams(window.location.search).get("next") || "";
+    const safe = next.startsWith("/") && !next.startsWith("//") ? next : null; // only pages on this site
+    router.push(safe || (mode === "signup" ? "/plan" : "/dashboard"));
   }
 
   const signup = mode === "signup";

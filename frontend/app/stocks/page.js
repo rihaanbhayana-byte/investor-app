@@ -1,5 +1,6 @@
 "use client";
 
+import StarButton from "@/components/StarButton";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -40,6 +41,7 @@ function StockCard({ s, index }) {
           </div>
           <div className="truncate text-sm text-muted">{s.name}</div>
         </div>
+        <StarButton symbol={s.symbol} price={s.latest_price} size="sm" />
       </div>
       <div className="flex items-end justify-between gap-3">
         <div>

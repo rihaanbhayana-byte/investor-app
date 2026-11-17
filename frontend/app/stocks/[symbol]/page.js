@@ -9,6 +9,7 @@ import AIExplainer from "@/components/AIExplainer";
 import { Avatar, ChartTooltip, ReturnPill, RISE, Segmented, monthName } from "@/components/ui";
 import { api } from "@/lib/api";
 import { setPageContext } from "@/lib/coach";
+import StarButton from "@/components/StarButton";
 import { bigMoney, percent, price } from "@/lib/format";
 
 const RANGES = [
@@ -95,6 +96,7 @@ export default function StockPage() {
               <span className="rounded-full border border-line px-2.5 py-1 text-muted">{stock.asset_type === "etf" ? "Fund (ETF)" : "Stock"}</span>
               {stock.sector && stock.sector !== "Live data" && <span className="rounded-full border border-line px-2.5 py-1 text-muted">{stock.sector}</span>}
               {(stock.live || stock.featured === false) && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-brand">Added by search</span>}
+              <StarButton symbol={stock.symbol} price={latest?.close} className="ml-1" />
             </div>
           </div>
         </div>

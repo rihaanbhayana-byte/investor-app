@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { api } from "@/lib/api";
-import { askCoach, setPageContext } from "@/lib/coach";
-import { money, percent } from "@/lib/format";
-import { Avatar, ReturnPill, RISE } from "@/components/ui";
+import { setPageContext } from "@/lib/coach";
+import { money } from "@/lib/format";
+import { RISE } from "@/components/ui";
+import { useWatchlist } from "@/lib/watchlist";
+import { DoctorSummary, FeaturedChart, HoldingsRow, KpiRow, MoversCard, PlanSummary, TopBar } from "@/components/dashboard/parts";
 
 const PERSONALITY = {
   conservative: { name: "Steady Saver", color: "var(--color-sky)", bg: "bg-sky-soft" },
@@ -111,42 +113,6 @@ function PlanCard({ plan, onDelete, index }) {
   );
 }
 
-const card = "rounded-3xl border border-line bg-surface p-6";
-const ASK_IDEAS = ["Explain my plan in simple words", "How is my practice portfolio doing?", "What should a beginner learn first?"];
-
-// The AI comes first: ask anything, answered in the side panel.
-function AskBox() {
-  const [q, setQ] = useState("");
-  return (
-    <section className={`${card} bg-glow`} aria-labelledby="ask-title">
-      <div className="flex items-center gap-2 text-[13px] font-semibold text-brand">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" /></svg>
-        Seedwise AI
-      </div>
-      <h2 id="ask-title" className="mt-1.5 text-xl font-bold">What would you like to know?</h2>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (q.trim()) askCoach(q.trim());
-          setQ("");
-        }}
-        className="mt-4 flex flex-wrap gap-2 sm:flex-nowrap"
-      >
-        <label htmlFor="ask" className="sr-only">Ask Seedwise AI</label>
-        <input id="ask" value={q} onChange={(e) => setQ(e.target.value)} maxLength={1500} placeholder="Ask about your plan, a stock, or any money question…" className="min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 py-3 text-fg placeholder:text-slate-500 focus:border-brand focus:outline-none" />
-        <button disabled={!q.trim()} className="w-full rounded-xl bg-brand px-5 py-3 font-semibold text-brand-ink transition hover:bg-brand-light disabled:opacity-50 sm:w-auto">Ask</button>
-      </form>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {ASK_IDEAS.map((idea) => (
-          <button key={idea} type="button" onClick={() => askCoach(idea)} className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-brand hover:text-brand">
-            {idea}
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function readFlag(key) {
   try {
     const v = JSON.parse(localStorage.getItem(key) || "null");
@@ -156,218 +122,42 @@ function readFlag(key) {
   }
 }
 
-// "What should I do next?" Simple rules from what the person has already done. No AI needed.
-function NextSteps({ hasPlan, practice }) {
-  const [flags, setFlags] = useState({ doctor: false, learn: false, coach: false });
-  useEffect(() => {
-    setFlags({ doctor: readFlag("seedwise-doctor-done"), learn: readFlag("seedwise-learn"), coach: readFlag("seedwise-coach-used") });
-  }, []);
-  const steps = [
-    { done: hasPlan, title: "Build your plan", text: "Your goal, personality and projection.", href: "/plan" },
-    { done: (practice?.trade_count ?? 0) > 0, title: "Make a practice trade", text: "Try your plan with $10,000 of play money.", href: "/practice" },
-    { done: flags.doctor, title: "Run the Portfolio Doctor", text: "Get a grade and 3 tips for your practice portfolio.", href: "/practice" },
-    { done: flags.learn, title: "Finish a Learn lesson", text: "7 short lessons, each with a quiz.", href: "/learn" },
-    { done: flags.coach, title: "Ask the AI a question", text: "It looks up real data before answering.", ask: true },
-  ];
-  const done = steps.filter((s) => s.done).length;
-  const next = steps.find((s) => !s.done);
-  return (
-    <section className={`${card} flex flex-col gap-4`} aria-labelledby="steps-title">
-      <div className="flex items-center justify-between">
-        <h2 id="steps-title" className="text-base font-bold">Your next steps</h2>
-        <span className="text-sm font-semibold text-muted">{done} of {steps.length}</span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={done} aria-label="Steps done">
-        <div className="h-full rounded-full bg-brand transition-[width] duration-700" style={{ width: `${(done / steps.length) * 100}%` }} />
-      </div>
-      <ol className="flex flex-col gap-1">
-        {steps.map((s) => {
-          const isNext = s === next;
-          const body = (
-            <>
-              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${s.done ? "border-gain bg-gain text-white" : isNext ? "border-brand text-brand" : "border-line-strong text-muted"}`} aria-hidden="true">
-                {s.done ? "✓" : ""}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className={`block text-sm font-semibold ${s.done ? "text-muted line-through" : ""}`}>{s.title}</span>
-                {!s.done && <span className="block text-xs text-muted">{s.text}</span>}
-              </span>
-              {isNext && <span className="shrink-0 text-xs font-semibold text-brand">Start →</span>}
-            </>
-          );
-          const cls = `flex items-center gap-3 rounded-xl px-2 py-2.5 text-left transition ${isNext ? "bg-brand-soft" : "hover:bg-surface-2"}`;
-          return (
-            <li key={s.title}>
-              {s.ask ? (
-                <button type="button" onClick={() => askCoach()} className={`w-full ${cls}`}>{body}<span className="sr-only">{s.done ? "(done)" : ""}</span></button>
-              ) : (
-                <Link href={s.href} className={cls}>{body}<span className="sr-only">{s.done ? "(done)" : ""}</span></Link>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-    </section>
-  );
-}
-
-function PracticeSummary({ practice }) {
-  if (!practice) return <div className={`${card} h-64 animate-pulse`} />;
-  const start = 10000;
-  const change = practice.total - start;
-  const vsSp = practice.sp500_value != null ? practice.total - practice.sp500_value : null;
-  return (
-    <section className={`${card} flex flex-col gap-5`} aria-labelledby="practice-title">
-      <div className="flex items-center justify-between">
-        <h2 id="practice-title" className="text-base font-bold">Practice portfolio</h2>
-        <Link href="/practice" className="text-sm font-semibold text-brand">Open Practice</Link>
-      </div>
-      <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
-        <div>
-          <div className="text-xs text-muted">Worth today</div>
-          <div className="text-3xl font-bold tracking-tight tabular-nums">{money(practice.total)}</div>
-        </div>
-        <ReturnPill value={change / start}>{change >= 0 ? "+" : "−"}{money(Math.abs(change))} ({percent(Math.abs(change / start))})</ReturnPill>
-        {vsSp != null && practice.trade_count > 0 && (
-          <span className={`text-sm font-semibold ${vsSp >= 0 ? "text-gain" : "text-loss"}`}>
-            {Math.abs(vsSp) < 0.5 ? "Even with the S&P 500" : `${vsSp > 0 ? "Ahead of" : "Behind"} the S&P 500 by ${money(Math.abs(vsSp))}`}
-          </span>
-        )}
-      </div>
-      {practice.holdings.length === 0 ? (
-        <p className="rounded-2xl bg-surface-2 px-4 py-3 text-sm text-muted">No investments yet. You have {money(practice.cash)} of play money to try your plan.</p>
-      ) : (
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {practice.holdings.slice(0, 4).map((h) => (
-            <li key={h.symbol} className="flex items-center gap-3 rounded-2xl bg-surface-2 px-3 py-2.5">
-              <Avatar symbol={h.symbol} size={34} />
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold">{h.symbol}</span>
-                <span className="block truncate text-xs text-muted">{money(h.value)}</span>
-              </span>
-              <span className={`text-sm font-semibold tabular-nums ${h.gain >= 0 ? "text-gain" : "text-loss"}`}>{h.gain >= 0 ? "+" : "−"}{percent(Math.abs(h.gain_pct))}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="text-xs text-muted">Cash left: {money(practice.cash)} · {practice.trade_count} trade{practice.trade_count === 1 ? "" : "s"}</div>
-    </section>
-  );
-}
-
-function MyPlanCard({ latest }) {
-  const [plan, setPlan] = useState(undefined);
-  useEffect(() => {
-    try {
-      setPlan(JSON.parse(localStorage.getItem("lastPlan") || "null"));
-    } catch {
-      setPlan(null);
-    }
-  }, []);
-  if (plan === undefined) return <div className={`${card} h-56 animate-pulse`} />;
-  if (!plan)
-    return (
-      <section className={`${card} flex flex-col items-start gap-3`}>
-        <h2 className="text-base font-bold">Your plan</h2>
-        {latest ? (
-          <>
-            <p className="text-sm text-muted">
-              Your latest saved plan: <span className="font-semibold text-fg">{latest.goal}</span>, {money(latest.initial_amount)} + {money(latest.monthly_contribution)}/month for {latest.horizon_years} years.
-            </p>
-            <Link href={`/plan?id=${latest.id}`} className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-brand-ink transition hover:bg-brand-light">See its projection →</Link>
-          </>
-        ) : (
-          <>
-            <p className="text-sm text-muted">Tell the AI your goal and get a plan in about 2 minutes.</p>
-            <Link href="/plan" className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-brand-ink transition hover:bg-brand-light">Build my plan →</Link>
-          </>
-        )}
-      </section>
-    );
-  const f = plan.projected_final || {};
-  const chance = f.odds?.more_than_put_in;
-  return (
-    <section className={`${card} flex flex-col gap-4`} aria-labelledby="plan-title">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="plan-title" className="text-base font-bold">Your plan · {plan.goal}</h2>
-        <span className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand">{plan.portfolio}</span>
-      </div>
-      <div className="flex flex-wrap gap-8">
-        <div>
-          <div className="text-xs text-muted">Likely value in {plan.years} year{plan.years === 1 ? "" : "s"}</div>
-          <div className="text-3xl font-bold tracking-tight tabular-nums">{f.median != null ? money(f.median) : "–"}</div>
-        </div>
-        <div>
-          <div className="text-xs text-muted">You put in</div>
-          <div className="text-3xl font-bold tracking-tight tabular-nums text-muted">{f.contributed != null ? money(f.contributed) : "–"}</div>
-        </div>
-      </div>
-      {chance != null && (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex flex-wrap justify-between gap-2 text-sm">
-            <span className="font-semibold">How likely is this?</span>
-            <span className="text-muted">{Math.round(chance * 100)}% of 5,000 futures end above what you put in</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-brand" style={{ width: `${chance * 100}%` }} /></div>
-        </div>
-      )}
-      <div className="flex flex-wrap gap-3 text-sm font-semibold">
-        <a href="#plans" className="text-brand">See all my plans</a>
-        <button type="button" onClick={() => askCoach("Explain my plan in simple words")} className="text-brand">Ask AI to explain it</button>
-      </div>
-    </section>
-  );
-}
-
-function Movers() {
-  const [stocks, setStocks] = useState(null);
-  useEffect(() => {
-    api.stocks().then((list) => setStocks(list.filter((s) => s.return_1y != null))).catch(() => setStocks([]));
-  }, []);
-  const top = stocks ? [...stocks].sort((a, b) => Math.abs(b.return_1y) - Math.abs(a.return_1y)).slice(0, 5) : [];
-  return (
-    <section className={`${card} flex flex-col gap-2`} aria-labelledby="movers-title">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 id="movers-title" className="text-base font-bold">Biggest movers · 1 year</h2>
-        <Link href="/stocks" className="text-sm font-semibold text-brand">All stocks</Link>
-      </div>
-      {stocks === null
-        ? [0, 1, 2, 3, 4].map((i) => <div key={i} className="h-12 animate-pulse rounded-xl bg-surface-2" />)
-        : top.map((s) => (
-            <Link key={s.symbol} href={`/stocks/${s.symbol}`} className="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-surface-2">
-              <Avatar symbol={s.symbol} size={34} />
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold">{s.symbol}</span>
-                <span className="block truncate text-xs text-muted">{s.name}</span>
-              </span>
-              <span className="text-right">
-                <span className="block text-sm font-semibold tabular-nums">{money(s.latest_price)}</span>
-                <span className={`block text-xs font-semibold tabular-nums ${s.return_1y >= 0 ? "text-gain" : "text-loss"}`}>{s.return_1y >= 0 ? "+" : "−"}{percent(Math.abs(s.return_1y))}</span>
-              </span>
-            </Link>
-          ))}
-    </section>
-  );
-}
-
-function greeting() {
-  const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-}
-
 export default function DashboardPage() {
   const [plans, setPlans] = useState(null);
   const [name, setName] = useState("");
   const [loggedIn, setLoggedIn] = useState(true);
   const [error, setError] = useState("");
   const [practice, setPractice] = useState(null);
-  const [today, setToday] = useState({ date: "", hello: "Welcome back" }); // read the clock in the browser, not at build time
-  useEffect(() => {
-    setToday({ date: new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }), hello: greeting() });
-  }, []);
+  const [fullName, setFullName] = useState("");
+  const [lastPlan, setLastPlan] = useState(undefined);
+  const [movers, setMovers] = useState(null);
+  const [quotes, setQuotes] = useState({});
+  const [flags, setFlags] = useState({});
+  const watch = useWatchlist();
 
   useEffect(() => {
-    setPageContext("Dashboard (home): their plan, practice portfolio and next steps");
+    try {
+      setLastPlan(JSON.parse(localStorage.getItem("lastPlan") || "null"));
+    } catch {
+      setLastPlan(null);
+    }
+    const readFlags = () => setFlags({ checkup: readFlag("seedwise-doctor-done"), student: readFlag("seedwise-learn"), curious: readFlag("seedwise-coach-used") });
+    readFlags();
+    window.addEventListener("seedwise:badges", readFlags);
+    api.stocks().then((list) => setMovers(list.filter((s) => s.return_1y != null).sort((a, b) => Math.abs(b.return_1y) - Math.abs(a.return_1y)).slice(0, 6))).catch(() => setMovers([]));
+    return () => window.removeEventListener("seedwise:badges", readFlags);
+  }, []);
+
+  // one request for every price on the page: holdings, watchlist, movers and the S&P 500
+  const symbols = [...new Set([...(practice?.holdings || []).map((h) => h.symbol), ...watch.items.slice(0, 8).map((w) => w.symbol), ...(movers || []).map((m) => m.symbol), "VOO"])].slice(0, 40);
+  const symbolsKey = symbols.sort().join(",");
+  useEffect(() => {
+    if (!practice || movers === null || !watch.ready) return;
+    api.quotes(symbolsKey.split(",")).then((list) => setQuotes(Object.fromEntries(list.map((q) => [q.symbol, q])))).catch(() => {});
+  }, [symbolsKey, practice, movers, watch.ready]);
+
+  useEffect(() => {
+    setPageContext("Dashboard (home): their practice portfolio, plan, watchlist and badges");
     return () => setPageContext("");
   }, []);
 
@@ -380,6 +170,7 @@ export default function DashboardPage() {
       }
       const fullName = sessionData.session.user?.user_metadata?.full_name || "";
       setName(fullName.split(" ")[0]);
+      setFullName(fullName || sessionData.session.user?.email?.split("@")[0] || "");
       api.practice().then(setPractice).catch(() => setPractice({ total: 10000, cash: 10000, holdings: [], trade_count: 0, sp500_value: null }));
       const { data, error } = await supabase
         .from("investment_plans")
@@ -416,31 +207,43 @@ export default function DashboardPage() {
     );
   }
 
+  // the big chart: your biggest holding, else your first watched stock, else the S&P 500
+  const featured = !practice || !watch.ready
+    ? null
+    : practice.holdings?.[0]
+      ? { symbol: practice.holdings[0].symbol, reason: "Your biggest holding" }
+      : watch.items[0]
+        ? { symbol: watch.items[0].symbol, reason: "From your watchlist" }
+        : { symbol: "VOO", reason: "The S&P 500" };
+
+  const earned = {
+    planner: (plans?.length ?? 0) > 0 || Boolean(lastPlan),
+    "first-trade": (practice?.trade_count ?? 0) > 0,
+    watcher: watch.items.length > 0,
+    diversified: (practice?.holdings?.length ?? 0) >= 5,
+    ...flags,
+  };
+
   const totalMonthly = (plans || []).reduce((sum, p) => sum + Number(p.monthly_contribution), 0);
   const longest = (plans || []).reduce((max, p) => Math.max(max, p.horizon_years), 0);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <style>{RISE}</style>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="min-h-5 text-sm text-muted">{today.date}</div>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">{today.hello}{name ? `, ${name}` : ""}</h1>
-        </div>
-        <Link href="/plan" className="rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-brand-ink transition hover:bg-brand-light">+ New plan</Link>
+      <TopBar name={name} fullName={fullName} personality={lastPlan?.portfolio} />
+
+      <KpiRow practice={practice} quotes={quotes} earned={earned} />
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]">
+        {featured ? <FeaturedChart symbol={featured.symbol} reason={featured.reason} /> : <div className="h-[420px] animate-pulse rounded-2xl border border-line bg-surface" />}
+        <MoversCard movers={movers} watch={watch.items} watchReady={watch.ready} quotes={quotes} />
       </div>
 
-      <AskBox />
+      <HoldingsRow practice={practice} quotes={quotes} />
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col gap-5">
-          <MyPlanCard latest={plans?.[0]} />
-          <PracticeSummary practice={practice} />
-        </div>
-        <div className="flex min-w-0 flex-col gap-5">
-          <NextSteps hasPlan={(plans?.length ?? 0) > 0} practice={practice} />
-          <Movers />
-        </div>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <PlanSummary plan={lastPlan} latest={plans?.[0]} />
+        <DoctorSummary practice={practice} />
       </div>
 
       <div id="plans" className="scroll-mt-6 flex flex-wrap items-end justify-between gap-3 pt-2">

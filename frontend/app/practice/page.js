@@ -57,6 +57,10 @@ export default function PracticePage() {
   const [state, setState] = useState(null);
   const [stocks, setStocks] = useState([]);
   const [symbol, setSymbol] = useState("VOO");
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("symbol");
+    if (wanted && /^[A-Za-z][A-Za-z.\-]{0,9}$/.test(wanted)) setSymbol(wanted.toUpperCase());
+  }, []);
   const [side, setSide] = useState("buy");
   const [dollarsText, setDollarsText] = useState("1000");
   const dollars = Number(dollarsText) || 0;

@@ -39,7 +39,8 @@ export default function PortfolioDoctor({ hasHoldings, onResult, stale = false }
       setReport(r);
       onResult?.(r);
       try {
-        localStorage.setItem("seedwise-doctor-done", "true"); // ticks "Run the Portfolio Doctor" on the dashboard
+        localStorage.setItem("seedwise-doctor-done", "true"); // earns the "Check-up" badge on the dashboard
+        localStorage.setItem("seedwise-doctor-last", JSON.stringify({ grade: r.grade, score: r.score, checks: r.checks, at: new Date().toISOString() }));
       } catch {}
     } catch (e) {
       setError(e.message);

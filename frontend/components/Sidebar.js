@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { askCoach } from "../lib/coach";
+import Bell from "./Bell";
 import Logo from "./Logo";
 import ThemeToggle from "./ThemeToggle";
 
@@ -16,6 +17,8 @@ const ICON = {
   tools: "M14 7a4 4 0 0 1-5 5l-6 6 3 3 6-6a4 4 0 0 1 5-5l-3 3-2-2 3-3z",
   coach: "M21 12a8 8 0 0 1-12 7l-5 1 1-4A8 8 0 1 1 21 12z",
   learn: "M2 9l10-5 10 5-10 5zM6 11v5c3 3 9 3 12 0v-5",
+  plans: "M4 5h16M4 12h16M4 19h10",
+  star: "M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z",
   login: "M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3",
   logout: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9",
 };
@@ -23,10 +26,12 @@ const ICON = {
 export const APP_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: "home" },
   { href: "/plan", label: "Build my plan", icon: "plan" },
+  { href: "/dashboard#plans", label: "My plans", icon: "plans" },
   { href: "/practice", label: "Practice", icon: "practice" },
   { href: "/stocks", label: "Stocks", icon: "stocks" },
+  { href: "/watchlist", label: "Watchlist", icon: "star" },
   { href: "/tools", label: "Tools", icon: "tools" },
-  { href: "/coach", label: "AI Coach", icon: "coach" },
+  { href: "/coach", label: "AI Coach", icon: "coach", tag: "AI" },
   { href: "/learn", label: "Learn", icon: "learn" },
 ];
 
@@ -63,10 +68,13 @@ export function SidebarMenu({ active = "", onNavigate }) {
   const isActive = (href) => active === href || (href !== "/" && active.startsWith(href + "/"));
   return (
     <div className="flex h-full flex-col gap-6 px-4 py-6">
-      <Link href="/" onClick={onNavigate} className="flex items-center gap-2.5 px-2">
-        <Logo size={32} />
-        <span className="text-[19px] font-bold tracking-tight">Seedwise</span>
-      </Link>
+      <div className="flex items-center justify-between gap-2">
+        <Link href="/" onClick={onNavigate} className="flex items-center gap-2.5 px-2">
+          <Logo size={32} />
+          <span className="text-[19px] font-bold tracking-tight">Seedwise</span>
+        </Link>
+        {!onNavigate && <Bell placement="sidebar" />}
+      </div>
 
       <button
         type="button"
@@ -98,6 +106,7 @@ export function SidebarMenu({ active = "", onNavigate }) {
             >
               <Icon name={l.icon} />
               {l.label}
+              {l.tag && <span className="ml-auto rounded-md bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold text-brand">{l.tag}</span>}
             </Link>
           );
         })}

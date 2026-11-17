@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { askCoach } from "../lib/coach";
+import Bell from "./Bell";
 import Logo from "./Logo";
 import { SidebarMenu } from "./Sidebar";
 
@@ -28,10 +29,11 @@ export default function MobileBar() {
           <Logo size={28} />
           <span className="text-[17px] font-bold tracking-tight">Seedwise</span>
         </Link>
+        <span className="ml-auto"><Bell placement="mobile" /></span>
         <button
           type="button"
           onClick={() => askCoach()}
-          className="ml-auto flex h-9 items-center gap-1.5 rounded-xl bg-brand px-3.5 text-sm font-semibold text-brand-ink"
+          className="flex h-9 items-center gap-1.5 rounded-xl bg-brand px-3.5 text-sm font-semibold text-brand-ink"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" /></svg>
           Ask AI

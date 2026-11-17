@@ -1588,6 +1588,95 @@ def quote(symbol: str, request: Request):
 
 
 
+CANDLE_RANGES = {"1M": (31, "day"), "6M": (183, "day"), "1Y": (366, "week"), "5Y": (5 * 366, "month"), "ALL": (None, "month")}
+
+
+@app.get("/candles/{symbol}")
+def candles(symbol: str, request: Request, range: Literal["1M", "6M", "1Y", "5Y", "ALL"] = "1Y"):
+    """Open/high/low/close + volume for the dashboard chart.
+
+    Daily candles for short ranges; grouped into weeks (1Y) or months (5Y, All) so the chart stays readable.
+    """
+    symbol = ensure_security(symbol, request)
+    days, group = CANDLE_RANGES[range]
+    params = {"select": "date,open,high,low,close,volume", "symbol": f"eq.{symbol}", "order": "date"}
+    if days:
+        params["date"] = f"gte.{(date.today() - timedelta(days=days)).isoformat()}"
+    rows = db.select("daily_prices", params)
+    bars = []
+    for r in rows:
+        c = float(r["close"])
+        o, h, lo = (float(r[k]) if r.get(k) is not None else c for k in ("open", "high", "low"))
+        d = date.fromisoformat(r["date"])
+        key = d.isoformat() if group == "day" else (d - timedelta(days=d.weekday())).isoformat() if group == "week" else d.isoformat()[:7]
+        if bars and bars[-1]["key"] == key:
+            b = bars[-1]
+            b["high"], b["low"], b["close"], b["date"] = max(b["high"], h), min(b["low"], lo), c, r["date"]
+            b["volume"] += int(r.get("volume") or 0)
+        else:
+            bars.append({"key": key, "date": r["date"], "open": o, "high": max(h, o, c), "low": min(lo, o, c), "close": c, "volume": int(r.get("volume") or 0)})
+    for b in bars:
+        b.pop("key")
+        for k in ("open", "high", "low", "close"):
+            b[k] = round(b[k], 2)
+    last = rows[-1] if rows else None
+    prev = rows[-2] if len(rows) > 1 else None
+    info = db.select("securities", {"select": "name,asset_type", "symbol": f"eq.{symbol}"})[0]
+    return {
+        "symbol": symbol, "name": info["name"], "asset_type": info["asset_type"], "range": range, "group": group,
+        "price": round(float(last["close"]), 2) if last else None,
+        "as_of": last["date"] if last else None,
+        "change_1d": round(float(last["close"]) - float(prev["close"]), 2) if prev else None,
+        "change_1d_pct": round(float(last["close"]) / float(prev["close"]) - 1, 4) if prev else None,
+        "bars": bars,
+    }
+
+
+@app.get("/quotes")
+def quotes(symbols: str = Query(..., max_length=400)):
+    """Prices for a watchlist: latest close, day and week change, 1-year change and a 30-day sparkline.
+
+    Read straight from our database (refreshed every night), so it's fast and free.
+    Symbols we don't have yet are skipped: they get added the first time someone opens their page.
+    """
+    wanted = []
+    for raw in symbols.upper().split(","):
+        sym = raw.strip()
+        if re.fullmatch(r"[A-Z][A-Z.\-]{0,9}", sym) and sym not in wanted:
+            wanted.append(sym)
+    wanted = wanted[:40]
+    if not wanted:
+        return []
+    info = {r["symbol"]: r for r in db.select("securities", {
+        "select": "symbol,name,asset_type", "symbol": f"in.({','.join(wanted)})"})}
+    found = [s for s in wanted if s in info]
+    if not found:
+        return []
+    since = (date.today() - timedelta(days=50)).isoformat()
+    days = defaultdict(list)
+    for r in db.select("daily_prices", {"select": "symbol,date,close", "symbol": f"in.({','.join(found)})",
+                                        "date": f"gte.{since}", "order": "date"}):
+        days[r["symbol"]].append((r["date"], float(r["close"])))
+    monthly = analytics.monthly_closes(found)
+    out = []
+    for sym in found:
+        d = days.get(sym, [])
+        m = monthly.get(sym, [])
+        price, as_of = (d[-1][1], d[-1][0]) if d else ((m[-1][1], m[-1][0]) if m else (None, None))
+        if price is None:
+            continue
+        def change(back):
+            return round(price / d[-1 - back][1] - 1, 4) if len(d) > back and d[-1 - back][1] else None
+        out.append({
+            "symbol": sym, "name": info[sym]["name"], "asset_type": info[sym]["asset_type"],
+            "price": round(price, 2), "as_of": as_of,
+            "change_1d": change(1), "change_1w": change(5),
+            "return_1y": round(m[-1][1] / m[-13][1] - 1, 4) if len(m) >= 13 and m[-13][1] else None,
+            "spark": [round(c, 2) for _, c in d[-30:]],
+        })
+    return out
+
+
 # =====================================================================
 # Feedback on AI answers (thumbs up / down) and a summary for the write-up
 # =====================================================================
