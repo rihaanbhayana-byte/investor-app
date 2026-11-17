@@ -43,6 +43,7 @@ PERSONALITIES = {
     "rocket": ("Rockets", "The biggest growth since 2016, with big swings along the way."),
     "grower": ("Solid growers", "Good growth with moderate ups and downs."),
     "bumpy": ("Bumpy rides", "Lots of ups and downs, but less reward for the stress."),
+    "middle": ("Middle of the road", "Average growth with average ups and downs."),
 }
 
 
@@ -58,11 +59,14 @@ def name_clusters(centres_raw):
     names[rocket] = "rocket"
     remaining.remove(rocket)
     if remaining:
-        # of what's left, return earned per unit of volatility decides grower vs bumpy
+        # of what's left, return earned per unit of volatility decides grower vs bumpy;
+        # with 5 groups, the one in between is "middle of the road"
         ranked = sorted(remaining, key=lambda j: centres_raw[j][0] / max(centres_raw[j][1], 1e-6), reverse=True)
         names[ranked[0]] = "grower"
-        for j in ranked[1:]:
-            names[j] = "bumpy"
+        if len(ranked) > 1:
+            names[ranked[-1]] = "bumpy"
+        for j in ranked[1:-1]:
+            names[j] = "middle"
     return names
 
 
@@ -93,7 +97,7 @@ def stock_map(stats_by_symbol, k=4):
             "avg_drop": round(float(-centres_raw[j][2]), 4),
             "members": members,
         })
-    order = {"steady": 0, "grower": 1, "rocket": 2, "bumpy": 3}
+    order = {"steady": 0, "grower": 1, "middle": 2, "rocket": 3, "bumpy": 4}
     clusters.sort(key=lambda c: order[c["key"]])
     cluster_of = {symbol: names[labels[i]] for i, symbol in enumerate(symbols)}
 

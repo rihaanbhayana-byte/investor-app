@@ -1,5 +1,6 @@
 "use client";
 
+import SymbolSearch from "@/components/SymbolSearch";
 import InsightCard from "@/components/InsightCard";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -63,6 +64,89 @@ function ResultCard({ title, data, winner, color }) {
   );
 }
 
+// Change any rule the AI read, then re-test straight away. No AI is used for the re-run.
+function RuleEditor({ rules, onRun, busy }) {
+  const [draft, setDraft] = useState(() => ({
+    symbol: rules.symbol,
+    start_year: Number(rules.start.slice(0, 4)),
+    initial: rules.initial || 0,
+    monthly: rules.monthly || 0,
+    dip_on: Boolean(rules.dip_drop_pct),
+    dip_drop_pct: rules.dip_drop_pct || 10,
+    dip_extra: rules.dip_extra || Math.max(100, 2 * (rules.monthly || 100)),
+    stop_on: Boolean(rules.stop_loss_pct),
+    stop_loss_pct: rules.stop_loss_pct || 20,
+  }));
+  const set = (key) => (e) => setDraft((d) => ({ ...d, [key]: e.target.type === "checkbox" ? e.target.checked : Number(e.target.value.replace(/[^0-9.]/g, "")) || 0 }));
+  const nothing = !draft.initial && !draft.monthly;
+  const field = "w-full rounded-xl border border-line bg-ink px-3 py-2 tabular-nums text-fg focus:border-mint focus:outline-none";
+  const label = "text-xs font-semibold text-muted";
+
+  function submit(e) {
+    e.preventDefault();
+    if (nothing) return;
+    onRun({
+      name: rules.name,
+      symbol: draft.symbol,
+      start_year: draft.start_year,
+      initial: draft.initial,
+      monthly: draft.monthly,
+      dip_drop_pct: draft.dip_on ? Math.min(90, Math.max(1, draft.dip_drop_pct)) : null,
+      dip_extra: draft.dip_on ? draft.dip_extra : null,
+      stop_loss_pct: draft.stop_on ? Math.min(90, Math.max(1, draft.stop_loss_pct)) : null,
+    });
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-4 grid gap-4 rounded-2xl border border-line bg-surface-2 p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="sm:col-span-2">
+        <div className={label}>What to buy</div>
+        <div className="mt-1 flex items-center gap-2">
+          <span className="rounded-xl border border-mint-line bg-mint-soft px-3 py-2 font-semibold text-mint">{draft.symbol}</span>
+          <SymbolSearch size="sm" className="flex-1" placeholder="Change it…" label="Change the stock or fund" onSelect={(item) => setDraft((d) => ({ ...d, symbol: item.symbol }))} />
+        </div>
+      </div>
+      <label>
+        <span className={label}>Start in</span>
+        <select value={draft.start_year} onChange={set("start_year")} className={`mt-1 ${field}`}>
+          {Array.from({ length: 9 }, (_, i) => 2016 + i).map((y) => <option key={y}>{y}</option>)}
+        </select>
+      </label>
+      <label>
+        <span className={label}>Start with ($)</span>
+        <input inputMode="numeric" value={draft.initial} onChange={set("initial")} className={`mt-1 ${field}`} />
+      </label>
+      <label>
+        <span className={label}>Every month ($)</span>
+        <input inputMode="numeric" value={draft.monthly} onChange={set("monthly")} className={`mt-1 ${field}`} />
+      </label>
+      <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap items-end gap-3">
+        <label className="flex items-center gap-2 pb-2 text-sm">
+          <input type="checkbox" checked={draft.dip_on} onChange={set("dip_on")} className="h-4 w-4 accent-mint" /> Buy extra on a dip
+        </label>
+        {draft.dip_on && (
+          <>
+            <label className="w-28"><span className={label}>Drop of (%)</span><input inputMode="numeric" value={draft.dip_drop_pct} onChange={set("dip_drop_pct")} className={`mt-1 ${field}`} /></label>
+            <label className="w-32"><span className={label}>Extra ($)</span><input inputMode="numeric" value={draft.dip_extra} onChange={set("dip_extra")} className={`mt-1 ${field}`} /></label>
+          </>
+        )}
+        <label className="flex items-center gap-2 pb-2 text-sm">
+          <input type="checkbox" checked={draft.stop_on} onChange={set("stop_on")} className="h-4 w-4 accent-mint" /> Sell all after a fall
+        </label>
+        {draft.stop_on && (
+          <label className="w-28"><span className={label}>Fall of (%)</span><input inputMode="numeric" value={draft.stop_loss_pct} onChange={set("stop_loss_pct")} className={`mt-1 ${field}`} /></label>
+        )}
+      </div>
+      <div className="flex flex-col justify-end gap-1 sm:col-span-2 lg:col-span-4 sm:flex-row sm:items-center sm:justify-between">
+        <span className="text-xs text-muted">{nothing ? "Add a starting or monthly amount." : "Re-runs instantly on real prices. No AI needed."}</span>
+        <button disabled={busy || nothing} className="rounded-full bg-mint px-6 py-2.5 font-semibold text-mint-ink transition hover:bg-mint-light disabled:opacity-40">
+          {busy ? "Re-testing…" : "Re-run with my rules →"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export default function StrategyLab() {
   const [text, setText] = useState("");
   const [result, setResult] = useState(null);
@@ -70,6 +154,20 @@ export default function StrategyLab() {
   const [loading, setLoading] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [showAll, setShowAll] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [rerunning, setRerunning] = useState(false);
+
+  async function rerun(rules) {
+    setRerunning(true);
+    setError("");
+    try {
+      setResult(await api.strategyTest(text, rules));
+      setEditing(false);
+    } catch (err) {
+      setError(err.message);
+    }
+    setRerunning(false);
+  }
 
   useEffect(() => {
     if (!loading) return;
@@ -144,7 +242,12 @@ export default function StrategyLab() {
       {result && !loading && (
         <div className="flex flex-col gap-6 motion-safe:animate-[sw-rise_0.4s_ease-out_both]">
           <div className="rounded-3xl border border-line bg-surface p-6">
-            <div className="text-sm font-semibold text-mint">The AI understood: {r.name}</div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-mint">{r.edited ? `Your edited rules: ${r.name}` : `The AI understood: ${r.name}`}</div>
+              <button type="button" onClick={() => setEditing(!editing)} aria-expanded={editing} className="rounded-full border border-line px-4 py-1.5 text-sm font-semibold text-fg transition hover:border-mint hover:text-mint">
+                {editing ? "Close editor" : "Not right? Edit the rules"}
+              </button>
+            </div>
             {r.summary && <p className="mt-2 text-lg text-slate-800">{r.summary}</p>}
             <div className="mt-4 flex flex-wrap gap-2">
               <Chip source={src.symbol}>{r.symbol}</Chip>
@@ -154,6 +257,7 @@ export default function StrategyLab() {
               {r.dip_drop_pct && <Chip source={src.dip_extra === "ai_guess" ? "ai_guess" : src.dip_drop_pct}>+{money(r.dip_extra)} when {r.dip_drop_pct}% below the 12-month high</Chip>}
               {r.stop_loss_pct && <Chip source={src.stop_loss_pct}>Sell all if it falls {r.stop_loss_pct}% from its peak</Chip>}
             </div>
+            {editing && <RuleEditor key={JSON.stringify(r)} rules={r} onRun={rerun} busy={rerunning} />}
             <InsightCard insight={result.insight} feature="strategy" title="How much to trust this test" className="mt-4" />
             {r.not_supported && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-slate-800">Couldn&rsquo;t test: {r.not_supported}</p>}
           </div>

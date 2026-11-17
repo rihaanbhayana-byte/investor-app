@@ -267,6 +267,16 @@ export default function CoachPage() {
                         <div className="flex flex-wrap items-center gap-2 px-1 text-xs text-muted">
                           <ConfidenceChip confidence={m.insight.confidence} />
                           {m.insight.based_on?.length > 0 && <span>Used: {m.insight.based_on.join(" · ")}</span>}
+                          {m.insight.confidence.level === "low" && i === messages.length - 1 && (
+                            <button
+                              type="button"
+                              onClick={() => send("Please check that answer against real data from the app and show the numbers you used.")}
+                              disabled={loading}
+                              className="rounded-full border border-mint-line px-2.5 py-1 font-semibold text-mint transition hover:bg-mint-soft disabled:opacity-50"
+                            >
+                              Check it with real data
+                            </button>
+                          )}
                           <span className="ml-auto"><Feedback feature="coach" level={m.insight.confidence.level} compact /></span>
                         </div>
                       )}

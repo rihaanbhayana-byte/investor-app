@@ -62,6 +62,7 @@ export default function SymbolSearch({
   const [active, setActive] = useState(0);
   const listId = useId();
   const latest = useRef(0);
+  const enterWaiting = useRef(false); // Enter pressed before suggestions arrived: pick the best one when they do
   const box = useRef(null);
 
   useEffect(() => setRecent(readRecent()), []);
@@ -77,7 +78,16 @@ export default function SymbolSearch({
     const ticket = ++latest.current;
     const timer = setTimeout(() => {
       findSymbols(q)
-        .then((rows) => ticket === latest.current && (setResults(rows), setActive(0)))
+        .then((rows) => {
+          if (ticket !== latest.current) return;
+          setResults(rows);
+          setActive(0);
+          const visible = rows.filter((r) => !exclude.includes(r.symbol));
+          if (enterWaiting.current && visible.length) {
+            enterWaiting.current = false;
+            chooseRef.current(visible[0]);
+          }
+        })
         .catch(() => ticket === latest.current && setResults([]))
         .finally(() => ticket === latest.current && setLoading(false));
     }, 120);
@@ -101,7 +111,11 @@ export default function SymbolSearch({
   const shown = (typing ? results : recent.length ? recent : POPULAR).filter((r) => !exclude.includes(r.symbol));
   const heading = typing ? null : recent.length ? "Recent" : "Popular";
 
+  const chooseRef = useRef(null);
+  chooseRef.current = (item) => choose(item);
+
   function choose(item) {
+    enterWaiting.current = false;
     remember({ symbol: item.symbol, name: item.name, asset_type: item.asset_type, featured: item.featured });
     setRecent(readRecent());
     setOpen(false);
@@ -118,7 +132,10 @@ export default function SymbolSearch({
       e.preventDefault();
       setActive((a) => Math.max(a - 1, 0));
     } else if (e.key === "Enter") {
-      if (open && shown[active]) {
+      if (typing && loading) {
+        e.preventDefault();
+        enterWaiting.current = true; // suggestions are on their way
+      } else if (open && shown[active]) {
         e.preventDefault();
         choose(shown[active]);
       } else if (typing && /^[A-Za-z.]{1,6}$/.test(query.trim())) {

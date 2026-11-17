@@ -88,7 +88,9 @@ function Box({ label, value, highlight }) {
   );
 }
 
-export default function PlanResults({ result, goal, years, saved, onStartOver }) {
+const PERSONALITY_NAMES = { conservative: "Steady Saver", moderate: "Balanced Builder", aggressive: "Growth Seeker" };
+
+export default function PlanResults({ result, goal, years, saved, onStartOver, onChangePersonality, switching = false }) {
   const { risk, portfolio, projection } = result;
   const final = projection.final;
   const stats = portfolio.stats;
@@ -126,24 +128,50 @@ export default function PlanResults({ result, goal, years, saved, onStartOver })
             <PersonalityIcon level={risk.risk_level} />
           </div>
           <h1 className="font-display text-4xl font-bold tracking-tight">{portfolio.name}</h1>
-          <p className="leading-relaxed text-slate-700">{risk.explanation}</p>
-          <div className="mt-2 flex flex-col gap-2">
+          <p className="leading-relaxed text-slate-700">{risk.chosen ? portfolio.description : risk.explanation}</p>
+          {risk.chosen && (
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-slate-800">
+              <span className="font-semibold">You chose this.</span> The quiz suggested {PERSONALITY_NAMES[risk.quiz_level]}.{" "}
+              <button type="button" onClick={() => onChangePersonality?.(risk.quiz_level)} disabled={switching} className="font-semibold text-mint underline underline-offset-2">
+                Go back
+              </button>
+            </p>
+          )}
+          <div className="mt-1 text-sm text-muted">Not quite you? Pick another and the plan updates.</div>
+          <div className={`flex flex-col gap-2 transition-opacity ${switching ? "opacity-50" : ""}`} aria-busy={switching}>
             {[
               ["conservative", "Steady Saver", "Mostly bonds. Calm ride."],
               ["moderate", "Balanced Builder", "Stocks and bonds mixed."],
               ["aggressive", "Growth Seeker", "Mostly stocks. Bumpier, more growth."],
             ].map(([level, name, note]) => {
               const me = risk.risk_level === level;
+              const quiz = (risk.quiz_level ?? risk.risk_level) === level;
               return (
-                <div
+                <button
+                  type="button"
                   key={level}
-                  className={`flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm ${
-                    me ? "border border-mint bg-mint/10" : "border border-line bg-ink/50 text-muted"
+                  disabled={me || switching || !onChangePersonality}
+                  aria-pressed={me}
+                  onClick={() => onChangePersonality?.(level)}
+                  className={`group flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-left text-sm transition ${
+                    me ? "border border-mint bg-mint/10" : "border border-line bg-ink/50 text-muted hover:border-mint/50 hover:text-fg"
                   }`}
                 >
-                  <span className={me ? "font-semibold text-fg" : ""}>{name}</span>
-                  <span className="text-right text-xs">{me ? <span className="font-semibold text-mint">You are here</span> : note}</span>
-                </div>
+                  <span className={me ? "font-semibold text-fg" : ""}>
+                    {name}
+                    {quiz && !me && <span className="ml-2 text-[11px] font-semibold text-gold">quiz pick</span>}
+                  </span>
+                  <span className="text-right text-xs">
+                    {me ? (
+                      <span className="font-semibold text-mint">{switching ? "Updating…" : "You are here"}</span>
+                    ) : (
+                      <>
+                        <span className="group-hover:hidden">{note}</span>
+                        <span className="hidden font-semibold text-mint group-hover:inline">Switch to this →</span>
+                      </>
+                    )}
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -155,7 +183,7 @@ export default function PlanResults({ result, goal, years, saved, onStartOver })
               {LEVEL_LABELS[risk.risk_level]} · {risk.score} / {risk.max_score}
             </span>
           </div>
-          <InsightCard insight={risk.insight} feature="personality" title="How well this fits you" />
+          <InsightCard insight={risk.insight} feature="personality" title={risk.chosen ? "How well the quiz pick fit you" : "How well this fits you"} />
         </div>
 
         <div className="min-w-0 flex-[2_1_520px] rounded-3xl border border-line bg-surface p-8 motion-safe:animate-[sw-rise_0.6s_ease-out_0.15s_both]">

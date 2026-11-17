@@ -71,6 +71,8 @@ export default function PlanPage() {
   const [plan, setPlan] = useState({ goal: GOALS[0], initialAmount: 1000, monthly: 100, years: 10, answers: {} });
   const [result, setResult] = useState(null);
   const [saved, setSaved] = useState(null);
+  const [savedId, setSavedId] = useState(null); // the saved plan's row, so a personality change can update it
+  const [switching, setSwitching] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -78,6 +80,49 @@ export default function PlanPage() {
     const id = new URLSearchParams(window.location.search).get("id");
     if (id) openSavedPlan(id);
   }, []);
+
+  // "Not quite me": the person can override the quiz's personality; the plan recalculates and re-saves.
+  async function changePersonality(level) {
+    if (!result || level === result.risk.risk_level) return;
+    setSwitching(true);
+    try {
+      const [portfolio, projection] = await Promise.all([
+        api.portfolio(level),
+        api.projection({ risk_level: level, initial_amount: plan.initialAmount, monthly_contribution: plan.monthly, years: plan.years }),
+      ]);
+      const quizLevel = result.risk.quiz_level ?? result.risk.risk_level;
+      const risk = { ...result.risk, risk_level: level, quiz_level: quizLevel, chosen: level !== quizLevel };
+      const answers = { ...plan.answers, _chosen_level: risk.chosen ? level : undefined };
+      if (!risk.chosen) delete answers._chosen_level;
+      setPlan({ ...plan, answers });
+      setResult({ risk, portfolio, projection });
+      rememberPlan(plan, risk, portfolio, projection);
+      if (savedId) {
+        const { error } = await supabase.from("investment_plans").update({ risk_level: level, risk_answers: answers }).eq("id", savedId);
+        if (error) setError(`Couldn't update your saved plan: ${error.message}`);
+      }
+    } catch (e) {
+      setError(e.message);
+    }
+    setSwitching(false);
+  }
+
+  function rememberPlan(p, risk, portfolio, projection) {
+    localStorage.setItem(
+      "lastPlan",
+      JSON.stringify({
+        goal: p.goal,
+        years: p.years,
+        initial_amount: p.initialAmount,
+        monthly_contribution: p.monthly,
+        risk_level: risk.risk_level,
+        risk_score: risk.score,
+        portfolio: portfolio.name,
+        holdings: portfolio.holdings.map((h) => ({ symbol: h.symbol, weight: h.weight })),
+        projected_final: projection.final,
+      })
+    );
+  }
 
   async function openSavedPlan(id) {
     setPhase("loading");
@@ -88,6 +133,7 @@ export default function PlanPage() {
       setPhase("intro");
       return;
     }
+    setSavedId(id);
     const ok = await buildResults(
       {
         goal: data.goal,
@@ -110,7 +156,11 @@ export default function PlanPage() {
     window.scrollTo({ top: 0 });
     try {
       const work = (async () => {
-        const risk = await api.riskProfile({ answers: p.answers, horizon_years: p.years });
+        const { _chosen_level: chosenLevel, ...quizAnswers } = p.answers || {};
+        let risk = await api.riskProfile({ answers: quizAnswers, horizon_years: p.years });
+        if (chosenLevel && chosenLevel !== risk.risk_level) {
+          risk = { ...risk, quiz_level: risk.risk_level, risk_level: chosenLevel, chosen: true };
+        }
         const [portfolio, projection] = await Promise.all([
           api.portfolio(risk.risk_level),
           api.projection({ risk_level: risk.risk_level, initial_amount: p.initialAmount, monthly_contribution: p.monthly, years: p.years }),
@@ -120,20 +170,7 @@ export default function PlanPage() {
       const [{ risk, portfolio, projection }] = await Promise.all([work, wait(reopening ? 400 : 2400)]);
 
       setResult({ risk, portfolio, projection });
-      localStorage.setItem(
-        "lastPlan",
-        JSON.stringify({
-          goal: p.goal,
-          years: p.years,
-          initial_amount: p.initialAmount,
-          monthly_contribution: p.monthly,
-          risk_level: risk.risk_level,
-          risk_score: risk.score,
-          portfolio: portfolio.name,
-          holdings: portfolio.holdings.map((h) => ({ symbol: h.symbol, weight: h.weight })),
-          projected_final: projection.final,
-        })
-      );
+      rememberPlan(p, risk, portfolio, projection);
       setPhase("results");
       if (save) await savePlan(p, risk);
       return true;
@@ -150,7 +187,7 @@ export default function PlanPage() {
       setSaved("login");
       return;
     }
-    const { error } = await supabase.from("investment_plans").insert({
+    const { data: row, error } = await supabase.from("investment_plans").insert({
       user_id: data.user.id,
       goal: p.goal,
       horizon_years: p.years,
@@ -159,12 +196,16 @@ export default function PlanPage() {
       risk_answers: p.answers,
       risk_score: risk.score,
       risk_level: risk.risk_level,
-    });
+    }).select("id").single();
     if (error) setError(`Could not save your plan: ${error.message}`);
-    else setSaved("saved");
+    else {
+      setSaved("saved");
+      setSavedId(row.id);
+    }
   }
 
   function startOver() {
+    setSavedId(null);
     setPhase("intro");
     setResult(null);
     setSaved(null);
@@ -213,7 +254,7 @@ export default function PlanPage() {
       {phase === "loading" && <Loading />}
 
       {phase === "results" && result && (
-        <PlanResults result={result} goal={plan.goal} years={plan.years} saved={saved} onStartOver={startOver} />
+        <PlanResults result={result} goal={plan.goal} years={plan.years} saved={saved} onStartOver={startOver} onChangePersonality={changePersonality} switching={switching} />
       )}
 
       {wizardMode && questions.length > 0 && (

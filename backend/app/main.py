@@ -159,7 +159,6 @@ def get_projection(request: ProjectionRequest):
     }
 
 
-@app.get("/stocks")
 def featured_securities(columns="symbol,name,asset_type,sector"):
     """Our 36 hand-picked stocks. Stocks users add by searching are stored too, but aren't listed here."""
     try:
@@ -169,6 +168,7 @@ def featured_securities(columns="symbol,name,asset_type,sector"):
         return db.select("securities", {"select": columns, "order": "symbol"})
 
 
+@app.get("/stocks")
 def get_stocks():
     securities = featured_securities()
     series = analytics.monthly_closes([s["symbol"] for s in securities])
@@ -1008,8 +1008,22 @@ bullet points: how the strategy did, how it compared with simple monthly investi
 Use round numbers. Mention that past results don't guarantee future ones. Do not tell the user to buy or sell anything."""
 
 
+class StrategyRules(BaseModel):
+    """Rules the person edited by hand: re-running with these skips the AI completely."""
+    name: Optional[str] = Field(default=None, max_length=60)
+    symbol: str = Field(min_length=1, max_length=8)
+    initial: float = Field(default=0, ge=0, le=10_000_000)
+    monthly: float = Field(default=0, ge=0, le=1_000_000)
+    dip_drop_pct: Optional[float] = Field(default=None, ge=1, le=90)
+    dip_extra: Optional[float] = Field(default=None, ge=0, le=1_000_000)
+    stop_loss_pct: Optional[float] = Field(default=None, ge=1, le=90)
+    start_year: int = Field(default=2016, ge=2016, le=2024)
+    summary: Optional[str] = Field(default=None, max_length=300)
+
+
 class StrategyRequest(BaseModel):
     text: str = Field(min_length=5, max_length=600)
+    rules: Optional[StrategyRules] = None
 
 
 def _optional_number(value, low, high):
@@ -1023,19 +1037,25 @@ def _optional_number(value, low, high):
 @app.post("/strategy-test")
 def strategy_test(request: StrategyRequest, http_request: Request, _: None = Depends(ai_rate_limit)):
     text = screen_or_reject(request.text)
-    allowed = [s["symbol"] for s in featured_securities("symbol")]
-    messages = [
-        {"role": "system", "content": STRATEGY_PROMPT + json.dumps(allowed)},
-        {"role": "user", "content": text},
-    ]
-    try:
+    edited_by_user = request.rules is not None
+    if edited_by_user:
+        rules = request.rules.model_dump()
+        if rules["initial"] == 0 and rules["monthly"] == 0:
+            raise HTTPException(400, "Add a starting amount or a monthly amount to test.")
+    else:
+        allowed = [s["symbol"] for s in featured_securities("symbol")]
+        messages = [
+            {"role": "system", "content": STRATEGY_PROMPT + json.dumps(allowed)},
+            {"role": "user", "content": text},
+        ]
         try:
-            reply = ai.complete(messages, temperature=0, json_mode=True)
-        except RuntimeError:
-            reply = ai.complete(messages, temperature=0)
-        rules = ai.parse_json(reply.get("content") or "")
-    except Exception as error:
-        raise HTTPException(503, f"The AI couldn't read that strategy right now: {error}")
+            try:
+                reply = ai.complete(messages, temperature=0, json_mode=True)
+            except RuntimeError:
+                reply = ai.complete(messages, temperature=0)
+            rules = ai.parse_json(reply.get("content") or "")
+        except Exception as error:
+            raise HTTPException(503, f"The AI couldn't read that strategy right now: {error}")
 
     try:
         symbol = ensure_security(str(rules.get("symbol") or "VOO"), http_request)
@@ -1084,7 +1104,8 @@ def strategy_test(request: StrategyRequest, http_request: Request, _: None = Dep
         "event_count": len(events),
         "disclaimer": DISCLAIMER,
     }
-    result["insight"] = strategy_insight(text, rules, result, events, closes)
+    result["insight"] = strategy_insight(text, rules, result, events, closes, edited_by_user)
+    result["rules"]["edited"] = edited_by_user
     try:
         verdict = ai.complete([
             {"role": "system", "content": VERDICT_PROMPT},
@@ -1105,8 +1126,8 @@ _map_cache = {}
 
 
 @app.get("/stock-map")
-def stock_map():
-    today = date.today().isoformat()
+def stock_map(k: int = Query(4, ge=3, le=5)):
+    today = f"{date.today().isoformat()}-k{k}"
     if today in _map_cache:
         return _map_cache[today]
     securities = featured_securities()
@@ -1116,7 +1137,7 @@ def stock_map():
         closes = series.get(s["symbol"], [])
         if len(closes) >= 25:
             stats[s["symbol"]] = analytics.summarize(analytics.returns_from_closes(closes))
-    clusters, cluster_of, inertia, fit_of, overall = ml.stock_map(stats, k=4)
+    clusters, cluster_of, inertia, fit_of, overall = ml.stock_map(stats, k=k)
     clear = sum(1 for f in fit_of.values() if f["fit"] == "clear")
     map_insight = confidence.insight(
         "high" if overall >= 0.5 else "medium" if overall >= 0.25 else "low",
@@ -1144,21 +1165,27 @@ def stock_map():
         "insight": map_insight,
         "clusters": clusters,
         "method": (
-            "k-means clustering (k = 4) on three numbers per stock from real monthly prices since 2016: "
+            f"k-means clustering (k = {k}) on three numbers per stock from real monthly prices since 2016: "
             "average yearly return, volatility and biggest drop. The numbers are standardised first, "
             "and the algorithm finds the groups by itself."
         ),
         "inertia": inertia,
         "disclaimer": DISCLAIMER,
     }
-    _map_cache.clear()
+    for key in [c for c in _map_cache if not c.startswith(date.today().isoformat())]:
+        _map_cache.pop(key)  # forget yesterday's maps
+    result["k"] = k
     _map_cache[today] = result
     return result
 
 
-def strategy_insight(text, raw_rules, result, events, closes):
+def strategy_insight(text, raw_rules, result, events, closes, edited_by_user=False):
     """Two measured things: did the AI read the rules from your words, and how much evidence is there?"""
     r = result["rules"]
+    if edited_by_user:  # the person set every rule themselves: nothing was guessed
+        text = " ".join(str(v) for v in (r["symbol"], r["initial"], r["monthly"], r.get("dip_drop_pct"),
+                                         r.get("dip_extra"), r.get("stop_loss_pct"), r["start"][:4]) if v)
+        raw_rules = {**raw_rules, "dip_extra": r.get("dip_extra"), "monthly": r["monthly"] or None}
     said = confidence.numbers_in(text)
     lower = text.lower()
     sources = {"symbol": "said_it" if r["symbol"].lower() in lower else "ai_guess"}
@@ -1199,7 +1226,7 @@ def strategy_insight(text, raw_rules, result, events, closes):
             why=[
                 f"Your strategy ended ${abs(gap):,.0f} {'ahead of' if gap >= 0 else 'behind'} simply investing every month."
                 + (" That's within 2% of what you put in: too close to call." if close_call else ""),
-                f"The AI guessed: {', '.join(guessed)}. Check the rules above." if guessed else "Every rule came from your own words.",
+                f"The AI guessed: {', '.join(guessed)}. Check the rules above." if guessed else ("You set every rule yourself." if edited_by_user else "Every rule came from your own words."),
             ],
             based_on=[f"{r['symbol']} monthly prices, {closes[0][0]} to {closes[-1][0]} ({months} months)"],
             assumptions=["Trades happen at month-end prices, with no fees or taxes.", "The past doesn't promise the future."],

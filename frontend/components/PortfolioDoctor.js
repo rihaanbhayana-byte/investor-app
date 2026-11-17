@@ -21,6 +21,7 @@ const STATUS = {
 
 export default function PortfolioDoctor({ hasHoldings, onResult }) {
   const [report, setReport] = useState(null);
+  const [hidden, setHidden] = useState([]); // tips the person said aren't for them
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -33,6 +34,7 @@ export default function PortfolioDoctor({ hasHoldings, onResult }) {
     } catch {}
     try {
       const r = await api.practiceDoctor(riskLevel);
+      setHidden([]);
       setReport(r);
       onResult?.(r);
     } catch (e) {
@@ -104,11 +106,33 @@ export default function PortfolioDoctor({ hasHoldings, onResult }) {
             </ul>
             {report.tips.length > 0 && (
               <div className="rounded-2xl border border-mint-line bg-mint-soft p-4">
-                <div className="text-sm font-semibold text-mint">The doctor suggests</div>
-                <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-slate-800">
-                  {report.tips.map((t, i) => (
-                    <li key={i}>{t}</li>
-                  ))}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-mint">The doctor suggests</div>
+                  {hidden.length > 0 && (
+                    <button type="button" onClick={() => setHidden([])} className="text-xs font-semibold text-muted underline underline-offset-2 hover:text-fg">
+                      Show {hidden.length} hidden tip{hidden.length > 1 ? "s" : ""}
+                    </button>
+                  )}
+                </div>
+                <ul className="mt-2 flex flex-col gap-2 text-sm text-slate-800">
+                  {report.tips.map((t, i) =>
+                    hidden.includes(i) ? null : (
+                      <li key={i} className="flex items-start gap-3">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-mint" aria-hidden="true" />
+                        <span className="flex-1">{t}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHidden((h) => [...h, i]);
+                            api.feedback({ feature: "doctor", helpful: false, confidence_level: report.insight?.confidence?.level, note: "tip hidden: not for me" }).catch(() => {});
+                          }}
+                          className="shrink-0 rounded-full border border-line px-2.5 py-0.5 text-xs text-muted transition hover:border-slate-300 hover:text-fg"
+                        >
+                          Not for me
+                        </button>
+                      </li>
+                    )
+                  )}
                 </ul>
               </div>
             )}

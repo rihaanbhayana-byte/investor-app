@@ -12,6 +12,7 @@ export const CLUSTER_COLORS = {
   grower: "var(--color-mint)",
   rocket: "var(--color-gold)",
   bumpy: "var(--color-rose)",
+  middle: "var(--color-violet)",
 };
 
 // Labels are only drawn for the group you focus on, so 36 symbols never pile on top of each other.
@@ -55,10 +56,14 @@ export default function StockMap() {
   const [error, setError] = useState("");
   const [focus, setFocus] = useState(null);
   const [showHow, setShowHow] = useState(false);
+  const [k, setK] = useState(4); // how many groups the algorithm should find (you choose)
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api.stockMap().then(setData).catch((e) => setError(e.message));
-  }, []);
+    setBusy(true);
+    setFocus(null);
+    api.stockMap(k).then(setData).catch((e) => setError(e.message)).finally(() => setBusy(false));
+  }, [k]);
 
   if (error) return <p className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-red-700">{error}</p>;
   if (!data) return <div className="h-[520px] animate-pulse rounded-3xl border border-line bg-surface" />;
@@ -91,13 +96,22 @@ export default function StockMap() {
           <ol className="mt-2 list-decimal space-y-1 pl-5">
             <li>For each stock we measure three things from real prices: yearly return, how much it swings, and its biggest drop.</li>
             <li>We put those numbers on the same scale, so none of them counts more than the others.</li>
-            <li>The algorithm drops 4 &ldquo;centres&rdquo; on the map, puts every stock with its nearest centre, then moves each centre to the middle of its group, again and again until nothing changes.</li>
+            <li>The algorithm drops {data.k ?? 4} &ldquo;centres&rdquo; on the map, puts every stock with its nearest centre, then moves each centre to the middle of its group, again and again until nothing changes.</li>
             <li>Nobody tells it the answers. It discovers the groups by itself (this is called unsupervised learning). We just name the groups afterwards.</li>
           </ol>
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface-2 px-4 py-3">
+        <label htmlFor="groups" className="text-sm font-medium text-slate-700">Groups to find</label>
+        <input id="groups" type="range" min={3} max={5} step={1} value={k} onChange={(e) => setK(Number(e.target.value))} className="w-32 cursor-pointer accent-mint" />
+        <span className="font-display text-xl font-bold tabular-nums">{k}</span>
+        <span className="text-sm text-muted">
+          {busy ? "Re-running the algorithm…" : "You choose how many groups. Compare the quality score below to see which fits best."}
+        </span>
+      </div>
+
+      <div className={`flex flex-wrap gap-2 transition-opacity ${busy ? "opacity-50" : ""}`}>
         {data.clusters.map((c) => (
           <button
             key={c.key}

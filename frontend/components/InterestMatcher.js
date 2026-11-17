@@ -1,5 +1,6 @@
 "use client";
 
+import SymbolSearch from "@/components/SymbolSearch";
 import InsightCard from "@/components/InsightCard";
 import Link from "next/link";
 import { useState } from "react";
@@ -14,6 +15,41 @@ export default function InterestMatcher() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [moreFor, setMoreFor] = useState(null); // symbol we're finding look-alikes for
+  const [adding, setAdding] = useState(false);
+
+  // You stay in charge of the list: remove picks, add your own, or ask for more like one you like.
+  const remove = (symbol) => setResult((r) => ({ ...r, matches: r.matches.filter((m) => m.symbol !== symbol) }));
+
+  async function addOwn(item) {
+    if (result.matches.some((m) => m.symbol === item.symbol)) return;
+    setAdding(true);
+    try {
+      const q = await api.quote(item.symbol);
+      setResult((r) => ({
+        ...r,
+        matches: [...r.matches, { symbol: q.symbol, name: q.name, latest_price: q.price, return_1y: null, reason: "You added this one.", match: "Your pick" }],
+      }));
+    } catch (e) {
+      setError(e.message);
+    }
+    setAdding(false);
+  }
+
+  async function moreLike(m) {
+    setMoreFor(m.symbol);
+    setError("");
+    try {
+      const r = await api.matchInterests(`${text}. Suggest companies similar to ${m.name} (${m.symbol}).`.slice(0, 390));
+      const have = new Set(result.matches.map((x) => x.symbol));
+      const fresh = r.matches.filter((x) => !have.has(x.symbol)).map((x) => ({ ...x, reason: x.reason, similarTo: m.symbol }));
+      if (!fresh.length) setError(`No new companies like ${m.symbol} in our list. Try searching for one to add.`);
+      setResult((prev) => ({ ...prev, matches: [...prev.matches, ...fresh].slice(0, 12) }));
+    } catch (e) {
+      setError(e.message);
+    }
+    setMoreFor(null);
+  }
 
   async function run(value) {
     const q = (value ?? text).trim();
@@ -81,32 +117,50 @@ export default function InterestMatcher() {
           {result.matches.length > 0 && <InsightCard insight={result.insight} feature="matcher" title="How sure are these picks?" />}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {result.matches.map((m, i) => (
-              <Link
+              <div
                 key={m.symbol}
-                href={`/stocks/${m.symbol}`}
-                style={{ animationDelay: `${i * 80}ms` }}
-                className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5 transition hover:-translate-y-1 hover:border-mint/40 motion-safe:animate-page-in"
+                style={{ animationDelay: `${Math.min(i, 6) * 80}ms` }}
+                className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5 transition hover:border-mint/40 motion-safe:animate-page-in"
               >
-                <div className="flex items-center gap-3">
+                <Link href={`/stocks/${m.symbol}`} className="flex items-center gap-3 rounded-xl transition hover:opacity-80">
                   <Avatar symbol={m.symbol} size={40} />
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold">{m.symbol}</div>
                     <div className="truncate text-sm text-muted">{m.name}</div>
                   </div>
-                  <ReturnPill value={m.return_1y}>{percent(Math.abs(m.return_1y ?? 0))}</ReturnPill>
-                </div>
+                  {m.return_1y != null && <ReturnPill value={m.return_1y}>{percent(Math.abs(m.return_1y))}</ReturnPill>}
+                </Link>
                 {m.match && (
                   <span
-                    title={`Picked in ${m.votes} of ${m.runs} independent AI runs`}
-                    className={`self-start rounded-full border px-2 py-0.5 text-[11px] font-semibold ${m.match === "Strong match" ? "border-mint-line bg-mint-soft text-mint" : "border-amber-200 bg-amber-50 text-gold"}`}
+                    title={m.votes ? `Picked in ${m.votes} of ${m.runs} independent AI runs` : undefined}
+                    className={`self-start rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                      m.match === "Strong match" ? "border-mint-line bg-mint-soft text-mint" : m.match === "Your pick" ? "border-line bg-slate-100 text-fg" : "border-amber-200 bg-amber-50 text-gold"
+                    }`}
                   >
-                    {m.match} · {m.votes}/{m.runs} runs
+                    {m.match}{m.votes ? ` · ${m.votes}/${m.runs} runs` : ""}{m.similarTo ? ` · like ${m.similarTo}` : ""}
                   </span>
                 )}
                 <p className="text-sm leading-relaxed text-slate-800">{m.reason}</p>
-                <div className="mt-auto text-xs text-muted">{price(m.latest_price)} a share · 1-year change shown</div>
-              </Link>
+                <div className="mt-auto flex items-center justify-between gap-2 text-xs text-muted">
+                  <span>{price(m.latest_price)} a share</span>
+                  <span className="flex gap-1">
+                    {m.match !== "Your pick" && (
+                      <button type="button" onClick={() => moreLike(m)} disabled={Boolean(moreFor)} className="rounded-full border border-line px-2.5 py-1 font-semibold text-fg transition hover:border-mint hover:text-mint disabled:opacity-50">
+                        {moreFor === m.symbol ? "Finding…" : "More like this"}
+                      </button>
+                    )}
+                    <button type="button" onClick={() => remove(m.symbol)} aria-label={`Remove ${m.symbol}`} className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition hover:bg-red-50 hover:text-red-600">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                    </button>
+                  </span>
+                </div>
+              </div>
             ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm text-muted">Missing one you love?</span>
+            <SymbolSearch size="sm" className="w-72 max-w-full" placeholder="Add a company…" label="Add your own company" exclude={result.matches.map((m) => m.symbol)} onSelect={addOwn} />
+            {adding && <span className="text-sm text-muted" role="status">Adding…</span>}
           </div>
           {result.fund_tip && (
             <p className="flex items-start gap-3 rounded-2xl border border-line bg-surface p-4 text-sm text-slate-800">
