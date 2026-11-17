@@ -2,6 +2,8 @@
 
 import InsightCard from "@/components/InsightCard";
 import Link from "next/link";
+import { PracticePlanButton } from "./PlanPractice";
+import WhatIf from "./WhatIf";
 import { useEffect, useState } from "react";
 import GrowthChart from "@/components/GrowthChart";
 import { LEVEL_LABELS, money, percent } from "@/lib/format";
@@ -90,7 +92,7 @@ function Box({ label, value, highlight }) {
 
 const PERSONALITY_NAMES = { conservative: "Steady Saver", moderate: "Balanced Builder", aggressive: "Growth Seeker" };
 
-export default function PlanResults({ result, goal, years, saved, onStartOver, onChangePersonality, switching = false }) {
+export default function PlanResults({ result, goal, years, inputs, saved, onStartOver, onChangePersonality, switching = false }) {
   const { risk, portfolio, projection } = result;
   const final = projection.final;
   const stats = portfolio.stats;
@@ -104,7 +106,7 @@ export default function PlanResults({ result, goal, years, saved, onStartOver, o
       <style>{`@keyframes sw-rise { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: none } }`}</style>
 
       {saved === "saved" && (
-        <p className="rounded-2xl border border-brand-line bg-green-50 px-5 py-3 text-sm text-slate-800">
+        <p className="rounded-2xl border border-brand-line bg-brand-soft px-5 py-3 text-sm text-fg">
           <span className="font-semibold text-brand">Plan saved.</span> Find it any time under My plans.
         </p>
       )}
@@ -118,6 +120,15 @@ export default function PlanResults({ result, goal, years, saved, onStartOver, o
           <Link href="/login" className="font-semibold text-amber-700 underline">Log in or sign up</Link> to save plans like this one.
         </p>
       )}
+
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface px-5 py-4">
+        <div className="mr-auto min-w-0">
+          <div className="font-semibold">Next: try it with play money</div>
+          <div className="text-sm text-muted">Put $10,000 of practice money into this exact mix and watch it move with real prices.</div>
+        </div>
+        <PracticePlanButton plan={{ goal, portfolio: portfolio.name, risk_level: risk.risk_level, holdings: portfolio.holdings }} />
+        <Link href="/dashboard" className="rounded-xl border border-line px-5 py-3 text-sm font-semibold transition hover:border-brand hover:text-brand">Go to dashboard</Link>
+      </div>
 
       <section className="flex flex-wrap gap-6">
         <div
@@ -216,6 +227,8 @@ export default function PlanResults({ result, goal, years, saved, onStartOver, o
         </div>
       </section>
 
+      {inputs && <WhatIf key={`${risk.risk_level}-${inputs.initialAmount}-${inputs.monthly}-${years}`} riskLevel={risk.risk_level} initialAmount={Number(inputs.initialAmount)} monthly={Number(inputs.monthly)} years={years} base={final} />}
+
       <section className="flex flex-wrap gap-6 motion-safe:animate-[sw-rise_0.6s_ease-out_0.3s_both]">
         <div className="min-w-0 flex-[1_1_500px] rounded-3xl border border-line bg-surface p-8">
           <h2 className="font-display text-2xl font-bold">What you&rsquo;d invest in</h2>
@@ -257,6 +270,9 @@ export default function PlanResults({ result, goal, years, saved, onStartOver, o
 
           <div className="flex flex-col gap-3 rounded-3xl border border-line bg-surface p-7">
             <h2 className="mb-1 font-display text-xl font-bold">Your next steps</h2>
+            <Link href="/practice" className="flex justify-between rounded-2xl border border-line bg-ink px-4 py-3.5 transition hover:border-brand/40">
+              Practice this plan with play money <span className="text-brand">→</span>
+            </Link>
             <Link href="/coach" className="flex justify-between rounded-2xl border border-line bg-ink px-4 py-3.5 transition hover:border-brand/40">
               Ask the AI Coach about my plan <span className="text-brand">→</span>
             </Link>

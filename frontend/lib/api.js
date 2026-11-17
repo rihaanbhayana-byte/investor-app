@@ -51,5 +51,6 @@ export const api = {
   guardrails: () => request("/guardrails"),
   matchInterests: (text) => post("/match-interests", { text }),
   feedback: (body) => withLogin("/feedback", { method: "POST", body: JSON.stringify(body) }),
+  matchPlan: (targets, useCash = 0, apply = false) => withLogin("/practice/match-plan", { method: "POST", body: JSON.stringify({ targets, use_cash: useCash, apply }) }),
   practiceDoctor: (riskLevel) => withLogin("/practice/doctor", { method: "POST", body: JSON.stringify({ risk_level: riskLevel }) }),
 };

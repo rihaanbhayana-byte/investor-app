@@ -26,7 +26,7 @@ const ICON = {
 export const APP_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: "home" },
   { href: "/plan", label: "Build my plan", icon: "plan" },
-  { href: "/dashboard#plans", label: "My plans", icon: "plans" },
+  { href: "/plans", label: "My plans", icon: "plans" },
   { href: "/practice", label: "Practice", icon: "practice" },
   { href: "/stocks", label: "Stocks", icon: "stocks" },
   { href: "/watchlist", label: "Watchlist", icon: "star" },
@@ -69,7 +69,7 @@ export function SidebarMenu({ active = "", onNavigate }) {
   return (
     <div className="flex h-full flex-col gap-6 px-4 py-6">
       <div className="flex items-center justify-between gap-2">
-        <Link href="/" onClick={onNavigate} className="flex items-center gap-2.5 px-2">
+        <Link href={user ? "/dashboard" : "/"} onClick={onNavigate} className="flex items-center gap-2.5 px-2">
           <Logo size={32} />
           <span className="text-[19px] font-bold tracking-tight">Seedwise</span>
         </Link>

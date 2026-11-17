@@ -5,10 +5,11 @@ import { useEffect, useState } from "react";
 import { askCoach } from "../lib/coach";
 import Bell from "./Bell";
 import Logo from "./Logo";
-import { SidebarMenu } from "./Sidebar";
+import { SidebarMenu, useUser } from "./Sidebar";
 
 // App pages on phones: logo, Ask AI, and a menu button that opens the sidebar as a drawer.
 export default function MobileBar() {
+  const user = useUser();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export default function MobileBar() {
   return (
     <>
       <header className="app-mobilebar sticky top-0 z-40 h-14 items-center gap-2 border-b border-line bg-surface/90 px-4 backdrop-blur-xl">
-        <Link href="/" className="flex items-center gap-2">
+        <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
           <Logo size={28} />
           <span className="text-[17px] font-bold tracking-tight">Seedwise</span>
         </Link>

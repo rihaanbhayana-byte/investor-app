@@ -1,5 +1,6 @@
 "use client";
 
+import FeeCalculator from "@/components/FeeCalculator";
 import SymbolSearch from "@/components/SymbolSearch";
 import { useEffect, useState } from "react";
 import MultiLineChart from "@/components/MultiLineChart";
@@ -18,6 +19,7 @@ const TABS = [
   { id: "strategy", title: "Strategy lab", text: "Test an idea with AI.", icon: <path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3" /> },
   { id: "goal", title: "Goal calculator", text: "How much to save each month?", icon: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" /></> },
   { id: "compare", title: "Compare stocks", text: "Race up to 4 side by side.", icon: <><path d="M3 3v18h18" /><path d="M7 15l4-4 3 3 5-6" /></> },
+  { id: "fees", title: "Fee calculator", text: "What would fees cost you?", icon: <><circle cx="12" cy="12" r="9" /><path d="M15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .9-3 2s1.3 1.7 3 2 3 .9 3 2-1.3 2-3 2c-1.4 0-2.5-.5-3-1.5M12 6v2M12 16v2" /></> },
 ];
 
 const card = "rounded-3xl border border-line bg-surface p-7";
@@ -118,7 +120,7 @@ export default function ToolsPage() {
       <style>{RISE}</style>
       <PageHeader eyebrow="Tools" title="Play with real market data." subtitle="Every number here comes from real US prices since 2016." />
 
-      <div role="tablist" aria-label="Tools" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      <div role="tablist" aria-label="Tools" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {TABS.map((t) => {
           const on = tab === t.id;
           return (
@@ -152,6 +154,7 @@ export default function ToolsPage() {
         {tab === "compare" && <Compare stocks={stocks} />}
         {tab === "crash" && <CrashTest />}
         {tab === "strategy" && <StrategyLab />}
+        {tab === "fees" && <FeeCalculator />}
       </div>
     </div>
   );

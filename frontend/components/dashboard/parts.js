@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 import { askCoach } from "@/lib/coach";
 import { money, price as fmtPrice } from "@/lib/format";
 import { addToWatchlist } from "@/lib/watchlist";
+import { PracticePlanButton } from "../PlanPractice";
 
 export const card = "rounded-2xl border border-line bg-surface";
 
@@ -453,7 +454,7 @@ export function MoversCard({ movers, watch, quotes, watchReady }) {
 /* Practice holdings row                                              */
 /* ------------------------------------------------------------------ */
 
-export function HoldingsRow({ practice, quotes }) {
+export function HoldingsRow({ practice, quotes, plan }) {
   if (!practice) return null;
   const list = practice.holdings || [];
   return (
@@ -468,7 +469,10 @@ export function HoldingsRow({ practice, quotes }) {
             <div className="font-semibold">You have {money(practice.cash)} of play money</div>
             <div className="text-sm text-muted">Try your plan risk-free. Real prices, no real money.</div>
           </div>
-          <Link href="/practice" className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-ink">Make your first trade</Link>
+          <div className="flex flex-wrap gap-2">
+            {plan?.holdings?.length > 0 && <PracticePlanButton plan={plan} label={`Practice my ${plan.portfolio} plan`} className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-ink" />}
+            <Link href="/practice" className={plan?.holdings?.length ? "rounded-xl border border-line px-4 py-2.5 text-sm font-semibold" : "rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-ink"}>Pick stocks myself</Link>
+          </div>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -559,6 +563,8 @@ export function PlanSummary({ plan, latest }) {
       )}
       <div className="flex flex-wrap gap-x-1.5 text-xs font-semibold text-brand">
         <Link href="/plan" className="hover:underline">Why? · Based on · How we measured it</Link>
+        <span className="text-muted">·</span>
+        <Link href="/plans" className="hover:underline">All my plans</Link>
         <span className="text-muted">·</span>
         <button type="button" onClick={() => askCoach("Explain my plan in simple words")} className="hover:underline">Ask AI to explain it</button>
       </div>

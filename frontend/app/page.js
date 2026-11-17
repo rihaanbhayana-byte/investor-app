@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { price, percent } from "../lib/format";
@@ -125,6 +126,12 @@ function TickerItem({ s }) {
 }
 
 export default function Home() {
+  const router = useRouter();
+  useEffect(() => {
+    // logged in already? the app is your home, not the sales page
+    supabase.auth.getSession().then(({ data }) => data.session && router.replace("/dashboard"));
+  }, [router]);
+
   const [tickers, setTickers] = useState([]);
 
   useEffect(() => {

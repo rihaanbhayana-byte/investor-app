@@ -250,8 +250,8 @@ html.dark {
     background: color-mix(in srgb, var(--color-brand) 30%, transparent);
   }
   :focus-visible {
-    outline: 2px solid var(--color-brand);
-    outline-offset: 3px;
+    outline: 2px solid color-mix(in srgb, var(--color-brand) 60%, transparent);
+    outline-offset: 2px;
     border-radius: 10px;
   }
   input:focus-visible,
@@ -368,3 +368,6 @@ html:not([data-layout="marketing"]) .site-footer { display: none; }
 html[data-layout="marketing"] .app-sidebar,
 html[data-layout="marketing"] .app-mobilebar { display: none; }
 html[data-layout="marketing"] .app-content { max-width: 72rem; padding: 2.5rem 1.5rem; }
+
+/* menu items: keyboard focus ring sits inside the pill, never a heavy box */
+.app-sidebar a:focus-visible, .app-sidebar button:focus-visible { outline-offset: -2px; }

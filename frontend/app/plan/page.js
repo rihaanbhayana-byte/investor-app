@@ -203,6 +203,21 @@ export default function PlanPage() {
       setSaved("login");
       return;
     }
+    // the same plan saved before? reuse it instead of making a copy
+    const { data: same } = await supabase
+      .from("investment_plans")
+      .select("id")
+      .eq("goal", p.goal)
+      .eq("horizon_years", p.years)
+      .eq("initial_amount", p.initialAmount)
+      .eq("monthly_contribution", p.monthly)
+      .eq("risk_level", risk.risk_level)
+      .limit(1);
+    if (same?.length) {
+      setSaved("saved");
+      setSavedId(same[0].id);
+      return;
+    }
     const { data: row, error } = await supabase.from("investment_plans").insert({
       user_id: data.user.id,
       goal: p.goal,
@@ -270,7 +285,7 @@ export default function PlanPage() {
       {phase === "loading" && <Loading />}
 
       {phase === "results" && result && (
-        <PlanResults result={result} goal={plan.goal} years={plan.years} saved={saved} onStartOver={startOver} onChangePersonality={changePersonality} switching={switching} />
+        <PlanResults result={result} goal={plan.goal} years={plan.years} inputs={{ initialAmount: plan.initialAmount, monthly: plan.monthly }} saved={saved} onStartOver={startOver} onChangePersonality={changePersonality} switching={switching} />
       )}
 
       {wizardMode && questions.length > 0 && (

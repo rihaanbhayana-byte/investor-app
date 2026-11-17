@@ -8,6 +8,7 @@ import { setPageContext } from "@/lib/coach";
 import { supabase } from "@/lib/supabase";
 import { money, percent, price } from "@/lib/format";
 import PortfolioDoctor from "@/components/PortfolioDoctor";
+import { PlanTracker } from "@/components/PlanPractice";
 import { Avatar, ReturnPill, RISE, SERIES_COLORS, Segmented, useCountUp } from "@/components/ui";
 
 const QUICK = [100, 500, 1000];
@@ -251,6 +252,8 @@ export default function PracticePage() {
           <Badge key={b.title} {...b} />
         ))}
       </section>
+
+      <PlanTracker state={state} onChange={(s) => s && setState(s)} />
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[380px_minmax(0,1fr)] [&>*]:min-w-0">
         <form onSubmit={trade} className="flex flex-col gap-5 rounded-3xl border border-line bg-surface p-5 sm:p-6 lg:sticky lg:top-24">

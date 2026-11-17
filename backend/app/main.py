@@ -820,7 +820,7 @@ def practice_state(user_id):
     return {
         "start_cash": START_CASH,
         "started_at": account["started_at"],
-        "cash": round(cash, 2),
+        "cash": round(cash, 2) + 0.0,
         "invested": round(total - cash, 2),
         "total": round(total, 2),
         "gain": round(total - START_CASH, 2) + 0.0,
@@ -875,6 +875,90 @@ def practice_trade(request: TradeRequest, http_request: Request, user_id: str = 
         "user_id": user_id, "symbol": symbol, "side": request.side, "shares": shares, "price": price,
     })
     return {**practice_state(user_id), "message": f"{message} at ${price:,.2f} a share."}
+
+
+class PlanTarget(BaseModel):
+    symbol: str = Field(min_length=1, max_length=10)
+    weight: float = Field(gt=0, le=1)
+
+
+class MatchPlanRequest(BaseModel):
+    targets: list[PlanTarget] = Field(min_length=1, max_length=15)
+    use_cash: float = Field(default=0, ge=0, le=1_000_000)  # extra play money to put to work (0 = just rebalance)
+    apply: bool = False  # False = preview only
+
+
+DRIFT_ALERT = 0.05  # 5 percentage points away from the plan is worth a nudge
+
+
+@app.post("/practice/match-plan")
+def practice_match_plan(body: MatchPlanRequest, http_request: Request, user_id: str = Depends(current_user)):
+    """Line the practice portfolio up with a plan's mix.
+
+    Works out the trades (sells first, then buys) so each fund ends at its target share of the money invested.
+    Holdings that aren't in the plan are sold. Preview shows the trades; apply carries them out at today's prices.
+    Plain arithmetic on real prices, no AI.
+    """
+    total_w = sum(t.weight for t in body.targets)
+    targets = {}
+    for t in body.targets:
+        sym = ensure_security(t.symbol, http_request)
+        targets[sym] = targets.get(sym, 0) + t.weight / total_w
+    state = practice_state(user_id)
+    use_cash = min(body.use_cash, state["cash"])
+    holdings = {h["symbol"]: h for h in state["holdings"]}
+    prices = latest_prices(list(set(targets) | set(holdings)))
+    invested = sum(h["value"] for h in holdings.values())
+    pot = invested + use_cash
+    if pot < 1:
+        raise HTTPException(400, "There's nothing to invest yet. Add play money to the plan first.")
+
+    def share(sym):
+        return holdings[sym]["value"] / invested if invested else 0.0
+
+    rows, trades = [], []
+    for sym in sorted(set(targets) | set(holdings), key=lambda x: -targets.get(x, 0)):
+        price = prices.get(sym, (None,))[0]
+        if not price:
+            raise HTTPException(400, f"No price available for {sym} right now.")
+        now_value = holdings[sym]["value"] if sym in holdings else 0.0
+        want = targets.get(sym, 0.0) * pot
+        diff = round(want - now_value, 2)
+        rows.append({"symbol": sym, "name": holdings[sym]["name"] if sym in holdings else sym,
+                     "now": round(share(sym), 4), "target": round(targets.get(sym, 0.0), 4),
+                     "value_now": round(now_value, 2), "value_after": round(want, 2)})
+        if abs(diff) >= 1:
+            side = "buy" if diff > 0 else "sell"
+            shares = abs(diff) / price
+            if side == "sell" and sym in holdings:
+                shares = min(shares, holdings[sym]["shares"])
+            trades.append({"symbol": sym, "side": side, "dollars": round(abs(diff), 2), "shares": round(shares, 6), "price": price})
+    drift = max((abs(r["now"] - r["target"]) for r in rows), default=0.0) if invested else None
+    trades.sort(key=lambda t: t["side"] != "sell")  # sell first to free up cash
+
+    result = {"rows": rows, "trades": trades, "drift": round(drift, 4) if drift is not None else None,
+              "drifted": bool(drift is not None and drift >= DRIFT_ALERT), "pot": round(pot, 2), "use_cash": round(use_cash, 2)}
+    if not body.apply:
+        return result
+    if not trades:
+        return {**result, "applied": 0, "state": state, "message": "Already in line with your plan. Nothing to do."}
+
+    cash = state["cash"]
+    done = 0
+    for t in trades:
+        if t["side"] == "sell":
+            cash += t["shares"] * t["price"]
+        else:
+            spend = min(t["dollars"], cash)  # never spend more play money than you have
+            t["shares"] = round(spend / t["price"], 6)
+            cash -= spend
+        if t["shares"] <= 0:
+            continue
+        db.admin("POST", "practice_trades", json={"user_id": user_id, "symbol": t["symbol"], "side": t["side"],
+                                                   "shares": t["shares"], "price": t["price"]})
+        done += 1
+    return {**result, "applied": done, "state": practice_state(user_id),
+            "message": f"Done: {done} trade{'s' if done != 1 else ''} at today's prices. Your portfolio now follows your plan."}
 
 
 @app.post("/practice/reset")
