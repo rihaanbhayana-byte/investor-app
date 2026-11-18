@@ -6,6 +6,9 @@ import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
+import PinPad, { PinDots } from "@/components/PinPad";
+import { api } from "@/lib/api";
+import { forgetDevice, getDevice, markUnlocked, maskEmail } from "@/lib/pin";
 
 const BENEFITS = [
   "Save every plan and come back to it any time",
@@ -92,12 +95,20 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState("");
+  const [device, setDevice] = useState(null); // this device can log in with a PIN
+  const [usePin, setUsePin] = useState(false);
+  const [pin, setPin] = useState("");
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("mode");
     if (wanted === "signup" || wanted === "reset") setMode(wanted);
     const pinNote = new URLSearchParams(window.location.search).get("pin");
     if (pinNote === "reset") setInfo("Too many wrong PINs, so we signed you out to keep your account safe. Log in, then set a new PIN in Profile.");
     if (pinNote === "forgot") setInfo("Log in with your email and password. Then you can set a new PIN in Profile.");
+    if (pinNote === "reset") forgetDevice();
+    const d = getDevice();
+    setDevice(d);
+    if (d) setEmail(d.email);
+    if (d && !wanted && !pinNote) setUsePin(true);
     // already logged in? go to the app (except when choosing a new password)
     if (wanted !== "reset") supabase.auth.getSession().then(({ data: d }) => d.session && router.replace("/dashboard"));
     // The link in the reset email logs the user in for one purpose: choosing a new password.
@@ -149,6 +160,61 @@ export default function LoginPage() {
     router.push(safe || (mode === "signup" ? "/plan" : "/dashboard"));
   }
 
+  function goToApp() {
+    const next = new URLSearchParams(window.location.search).get("next") || "";
+    const safe = next.startsWith("/") && !next.startsWith("//") ? next : null;
+    router.push(safe || "/dashboard");
+  }
+
+  async function loginWithPin(value) {
+    setError("");
+    setInfo("");
+    setLoading(true);
+    try {
+      const r = await api.pinLogin(device.token, value);
+      if (!r.ok) {
+        setError(`Wrong PIN. ${r.attempts_left} ${r.attempts_left === 1 ? "try" : "tries"} left.`);
+        setPin("");
+        setLoading(false);
+        return;
+      }
+      let { error: err } = await supabase.auth.verifyOtp({ token_hash: r.token_hash, type: "email" });
+      if (err) ({ error: err } = await supabase.auth.verifyOtp({ token_hash: r.token_hash, type: "magiclink" }));
+      if (err) throw new Error("Couldn't log you in with the PIN right now. Please use your password.");
+      markUnlocked();
+      goToApp();
+    } catch (e) {
+      if (e.status === 401 || e.status === 423) {
+        forgetDevice();
+        setDevice(null);
+        setUsePin(false);
+      }
+      setError(e.message);
+      setPin("");
+      setLoading(false);
+    }
+  }
+
+  function notYou() {
+    forgetDevice({ tellServer: true });
+    setDevice(null);
+    setUsePin(false);
+    setEmail("");
+    setPin("");
+    setError("");
+  }
+
+  function askForPin() {
+    setError("");
+    if (device) {
+      setPin("");
+      setInfo("");
+      return setUsePin(true);
+    }
+    setInfo("PIN log in works on a device where you've logged in with your password and turned on a PIN in Profile → Security. Log in with your password once, then set it up.");
+  }
+
+  const pinView = mode === "login" && usePin && device;
   const signup = mode === "signup";
   const HEADINGS = {
     login: ["Welcome back", "Log in to see your saved plans."],
@@ -189,6 +255,28 @@ export default function LoginPage() {
           ))}
         </div>
 
+        {pinView ? (
+          <div className="mt-8 flex flex-col items-center text-center">
+            <h1 className="text-[28px] font-bold leading-tight tracking-tight">Welcome back{device.name ? `, ${device.name}` : ""}</h1>
+            <p className="mt-1.5 text-[15px] text-muted">Enter your 6-digit PIN for {maskEmail(device.email)}</p>
+            <div className="mt-8">
+              <PinDots value={pin} error={Boolean(error)} />
+            </div>
+            <p className="mt-4 min-h-5 text-sm font-medium text-loss" role="alert">{loading ? <span className="text-muted">Logging you in…</span> : error}</p>
+            <div className="mt-4 w-full">
+              <PinPad value={pin} onChange={(v) => (setPin(v), setError(""))} onComplete={loginWithPin} disabled={loading} />
+            </div>
+            <div className="mt-6 flex w-full flex-col gap-2">
+              <button type="button" onClick={() => (setUsePin(false), setError(""))} className="rounded-xl border border-line py-3 text-sm font-semibold transition hover:border-brand hover:text-brand">
+                Use password instead
+              </button>
+              <button type="button" onClick={notYou} className="py-2 text-sm text-muted hover:text-fg">
+                Not you? Use a different account
+              </button>
+            </div>
+          </div>
+        ) : (
+        <>
         <h1 className="mt-8 text-[28px] font-bold leading-tight tracking-tight">{HEADINGS[mode][0]}</h1>
         <p className="mt-1.5 text-[15px] text-muted">{HEADINGS[mode][1]}</p>
 
@@ -233,6 +321,14 @@ export default function LoginPage() {
             {loading && <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-ink/30 border-t-brand-ink" />}
             {loading ? "Please wait..." : { login: "Log in →", signup: "Create my account →", forgot: "Send reset link →", reset: "Save new password →" }[mode]}
           </button>
+          {mode === "login" && (
+            <button type="button" onClick={askForPin} className="flex items-center justify-center gap-2 rounded-xl border border-line py-3 text-sm font-semibold transition hover:border-brand hover:text-brand">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="6" cy="6" r="1.5" /><circle cx="12" cy="6" r="1.5" /><circle cx="18" cy="6" r="1.5" /><circle cx="6" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="18" cy="12" r="1.5" /><circle cx="12" cy="18" r="1.5" />
+              </svg>
+              Log in with PIN
+            </button>
+          )}
         </form>
 
         <p className="mt-6 text-center text-sm text-muted">
@@ -247,6 +343,8 @@ export default function LoginPage() {
             </>
           )}
         </p>
+        </>
+        )}
           {signup && <p className="mt-6 text-center text-xs text-muted">Seedwise is for learning. It never touches real money and isn&rsquo;t financial advice.</p>}
         </div>
 

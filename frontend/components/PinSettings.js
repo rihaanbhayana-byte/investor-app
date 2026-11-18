@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { lockNow, markUnlocked, rememberPin } from "@/lib/pin";
+import { enableDeviceLogin, forgetDevice, lockNow, markUnlocked, rememberPin } from "@/lib/pin";
 import { supabase } from "@/lib/supabase";
 
 function PinField({ id, label, value, onChange, autoFocus }) {
@@ -50,14 +50,16 @@ export default function PinSettings({ user }) {
       if (mode === "off") {
         await api.pinRemove(current);
         rememberPin(null);
+        forgetDevice();
         setEnabled(false);
         setMsg({ text: "PIN turned off.", ok: true });
       } else {
         await api.pinSet(pin, mode === "change" ? current : undefined);
         rememberPin(user.id);
         markUnlocked();
+        await enableDeviceLogin(user);
         setEnabled(true);
-        setMsg({ text: mode === "change" ? "PIN changed." : "PIN is on. We'll ask for it when you come back.", ok: true });
+        setMsg({ text: mode === "change" ? "PIN changed." : "PIN is on. Use it to unlock, or to log in on this device.", ok: true });
       }
       reset();
     } catch (err) {
@@ -81,7 +83,7 @@ export default function PinSettings({ user }) {
               {enabled !== null && <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${enabled ? "bg-gain-soft text-gain" : "bg-surface-2 text-muted"}`}>{enabled ? "On" : "Off"}</span>}
             </div>
             <p className="mt-1 max-w-md text-sm text-muted">
-              Unlock Seedwise on this device with a PIN instead of your password. We ask for it in a new tab, after 5 minutes away, or when you tap Lock now. 5 wrong tries signs you out everywhere.
+              Log in and unlock Seedwise on this device with a PIN instead of your password. We ask for it in a new tab, after 5 minutes away, or when you tap Lock now. 5 wrong tries turns the PIN off.
             </p>
           </div>
           {mode === null && enabled !== null && (

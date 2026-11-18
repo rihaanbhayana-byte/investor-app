@@ -84,5 +84,8 @@ export const api = {
   pinSet: (pin, currentPin) => withLogin("/pin", { method: "POST", body: JSON.stringify({ pin, current_pin: currentPin || undefined }) }),
   pinVerify: (pin) => withLogin("/pin/verify", { method: "POST", body: JSON.stringify({ pin }) }),
   pinRemove: (pin) => withLogin("/pin", { method: "DELETE", body: JSON.stringify({ pin }) }),
+  pinAddDevice: () => withLogin("/pin/device", { method: "POST" }),
+  pinForgetDevice: (deviceToken) => post("/pin/device/forget", { device_token: deviceToken }),
+  pinLogin: (deviceToken, pin) => post("/pin/login", { device_token: deviceToken, pin }),
   practiceDoctor: (riskLevel) => withLogin("/practice/doctor", { method: "POST", body: JSON.stringify({ risk_level: riskLevel }) }),
 };

@@ -1939,6 +1939,7 @@ PIN_MAX_TRIES = 5
 WEAK_PINS = {"000000", "111111", "222222", "333333", "444444", "555555", "666666", "777777", "888888", "999999",
              "123456", "654321", "123123", "112233", "121212", "123321", "012345", "098765", "696969", "101010"}
 MISSING_PIN_SQL = "Run database/pin.sql in Supabase to turn on PINs."
+NO_DEVICE = "PIN log in isn't set up on this device. Log in with your password, then set up a PIN in Profile."
 
 
 def _hash_pin(pin, salt=None):
@@ -2040,3 +2041,76 @@ def pin_remove(body: PinCheck, user_id: str = Depends(current_user)):
         raise HTTPException(403, "That PIN isn't right.")
     db.admin("DELETE", "user_pins", {"user_id": f"eq.{user_id}"}, prefer="return=minimal")
     return {"enabled": False}
+
+
+
+# ---------------------------------------------------------------------
+# Log in with PIN, on a device that was set up for it
+# ---------------------------------------------------------------------
+def _device_hash(token):
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _device_admin(method, params=None, json=None, prefer=None):
+    try:
+        return db.admin(method, "pin_devices", params, json=json, prefer=prefer)
+    except RuntimeError as error:
+        raise HTTPException(503, MISSING_PIN_SQL if "pin_devices" in str(error) else str(error))
+
+
+class DeviceToken(BaseModel):
+    device_token: str = Field(min_length=20, max_length=200)
+
+
+class PinLogin(DeviceToken):
+    pin: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+@app.post("/pin/device")
+def pin_device_add(user_id: str = Depends(current_user)):
+    """Let this device log in with the PIN next time. Returns a key the device keeps."""
+    if not _pin_row(user_id):
+        raise HTTPException(400, "Set up a PIN first.")
+    token = secrets.token_urlsafe(32)
+    _device_admin("POST", json={"user_id": user_id, "token_hash": _device_hash(token)}, prefer="return=minimal")
+    return {"device_token": token}
+
+
+@app.post("/pin/device/forget")
+def pin_device_forget(body: DeviceToken):
+    """Stop this device logging in with the PIN ("Not you?")."""
+    _device_admin("DELETE", {"token_hash": f"eq.{_device_hash(body.device_token)}"}, prefer="return=minimal")
+    return {"forgotten": True}
+
+
+@app.post("/pin/login")
+def pin_login(body: PinLogin, request: Request):
+    """Device key + PIN -> a one-time login code. 5 wrong PINs remove the PIN (and every device)."""
+    if guardrails.rate_limited(guardrails.client_ip(request)):
+        raise HTTPException(429, "Too many tries. Please wait a minute.")
+    rows = _device_admin("GET", {"select": "id,user_id", "token_hash": f"eq.{_device_hash(body.device_token)}"})
+    if not rows:
+        raise HTTPException(401, NO_DEVICE)
+    device, user_id = rows[0]["id"], rows[0]["user_id"]
+    row = _pin_row(user_id)
+    if not row:
+        raise HTTPException(401, NO_DEVICE)
+    if not _pin_matches(body.pin, row["pin_hash"]):
+        tries = row["failed_attempts"] + 1
+        if tries >= PIN_MAX_TRIES:
+            db.admin("DELETE", "user_pins", {"user_id": f"eq.{user_id}"}, prefer="return=minimal")  # devices go too
+            raise HTTPException(423, "Too many wrong PINs, so PIN log in is now off. Log in with your password and set a new PIN.")
+        db.admin("PATCH", "user_pins", {"user_id": f"eq.{user_id}"}, json={"failed_attempts": tries}, prefer="return=minimal")
+        return {"ok": False, "attempts_left": PIN_MAX_TRIES - tries}
+    if row["failed_attempts"]:
+        db.admin("PATCH", "user_pins", {"user_id": f"eq.{user_id}"}, json={"failed_attempts": 0}, prefer="return=minimal")
+    _device_admin("PATCH", {"id": f"eq.{device}"}, json={"last_used_at": datetime.now(timezone.utc).isoformat()}, prefer="return=minimal")
+    try:
+        email = db.user_email(user_id)
+        token_hash = db.one_time_login(email)
+    except Exception as error:
+        print("PIN login failed:", error)
+        token_hash = None
+    if not token_hash:
+        raise HTTPException(502, "Couldn't log you in with the PIN right now. Please use your password.")
+    return {"ok": True, "token_hash": token_hash}

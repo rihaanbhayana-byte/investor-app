@@ -101,3 +101,27 @@ def sign_out_everywhere(access_token):
                    headers={"apikey": SUPABASE_SECRET_KEY or "", "Authorization": f"Bearer {access_token}"}, timeout=15)
     except Exception:
         pass  # the PIN is wiped either way; the app also signs out locally
+
+
+def _auth_admin(method, path, json=None):
+    """Call Supabase Auth's admin API (needs the SECRET key)."""
+    if not SUPABASE_SECRET_KEY:
+        raise RuntimeError("SUPABASE_SECRET_KEY is missing from the backend settings.")
+    url = f"{SUPABASE_URL}/auth/v1/admin/{path}"
+    response = _http.request(method, url, json=json, headers={"apikey": SUPABASE_SECRET_KEY}, timeout=20)
+    if response.status_code in (401, 403):  # some key types also want the Authorization header
+        response = _http.request(method, url, json=json, timeout=20,
+                                 headers={"apikey": SUPABASE_SECRET_KEY, "Authorization": f"Bearer {SUPABASE_SECRET_KEY}"})
+    if response.status_code >= 300:
+        raise RuntimeError(f"Supabase said {response.status_code}: {response.text[:200]}")
+    return response.json()
+
+
+def user_email(user_id):
+    return (_auth_admin("GET", f"users/{user_id}") or {}).get("email")
+
+
+def one_time_login(email):
+    """A single-use login code for this email. Nothing is emailed; the app trades it for a session right away."""
+    data = _auth_admin("POST", "generate_link", json={"type": "magiclink", "email": email})
+    return data.get("hashed_token") or (data.get("properties") or {}).get("hashed_token")

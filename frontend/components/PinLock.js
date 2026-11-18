@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { LOCK_AFTER_MS, PIN_ON, UNLOCKED, markUnlocked, rememberPin } from "@/lib/pin";
+import { LOCK_AFTER_MS, PIN_ON, UNLOCKED, enableDeviceLogin, forgetDevice, markUnlocked, rememberPin } from "@/lib/pin";
 import { supabase } from "@/lib/supabase";
 import Logo from "./Logo";
 import PinPad, { PinDots } from "./PinPad";
@@ -42,8 +42,10 @@ export default function PinLock() {
       // keep this device in step with the server (PIN set or removed on another device)
       api.pinStatus().then((s) => {
         if (s.enabled && !onHere) rememberPin(u.id);
+        if (s.enabled) enableDeviceLogin(u);
         if (!s.enabled && onHere) {
           rememberPin(null);
+          forgetDevice();
           setLocked(false);
           markUnlocked();
         }
@@ -101,6 +103,7 @@ export default function PinLock() {
       }
     } catch (e) {
       if (e.status === 423 || e.status === 401) {
+        if (e.status === 423) forgetDevice();
         await supabase.auth.signOut({ scope: "local" });
         window.location.href = "/login?pin=reset";
         return;
