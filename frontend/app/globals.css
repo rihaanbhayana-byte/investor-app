@@ -379,3 +379,6 @@ html:not(.kbd) :focus-visible:not(input):not(textarea):not(select) { outline: no
 html[data-layout="auth"] .app-sidebar, html[data-layout="auth"] .app-mobilebar,
 html[data-layout="auth"] .site-topbar, html[data-layout="auth"] .site-footer { display: none; }
 html[data-layout="auth"] .app-content { max-width: none; padding: 0; }
+
+/* PIN lock: hide the app until the PIN is entered (set before the first paint) */
+html.pin-locked .app-shell { visibility: hidden; }

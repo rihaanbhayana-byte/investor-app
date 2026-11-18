@@ -9,6 +9,37 @@ import { RISE } from "@/components/ui";
 import { useWatchlist } from "@/lib/watchlist";
 import { DoctorSummary, FeaturedChart, HoldingsRow, KpiRow, MoversCard, PlanSummary, TopBar } from "@/components/dashboard/parts";
 
+// A one-time nudge to protect the account with a PIN.
+function PinNudge() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("seedwise-pin-nudge") === "done") return;
+    } catch {}
+    api.pinStatus().then((s) => setShow(!s.enabled)).catch(() => {});
+  }, []);
+  if (!show) return null;
+  const dismiss = () => {
+    try {
+      localStorage.setItem("seedwise-pin-nudge", "done");
+    } catch {}
+    setShow(false);
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-brand-line bg-brand-soft px-4 py-3">
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface text-brand" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-semibold">Set up a 6-digit PIN</div>
+        <div className="text-sm text-muted">Unlock Seedwise quickly and keep it private on shared devices.</div>
+      </div>
+      <a href="/profile#security" onClick={dismiss} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-ink">Set up PIN</a>
+      <button type="button" onClick={dismiss} className="text-sm font-medium text-muted hover:text-fg">Not now</button>
+    </div>
+  );
+}
+
 function readFlag(key) {
   try {
     const v = JSON.parse(localStorage.getItem(key) || "null");
@@ -120,6 +151,8 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-5">
       <style>{RISE}</style>
       <TopBar name={name} fullName={fullName} personality={lastPlan?.portfolio} />
+
+      <PinNudge />
 
       <KpiRow practice={practice} quotes={quotes} earned={earned} />
 

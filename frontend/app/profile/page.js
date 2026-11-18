@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PortfolioPdfButton } from "@/components/DownloadPdf";
+import PinSettings from "@/components/PinSettings";
 import { THEME_KEY } from "@/components/ThemeToggle";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
@@ -161,6 +162,12 @@ export default function ProfilePage() {
           <input id="pf-email" value={user.email} readOnly className={`${field} bg-surface-2 text-muted`} />
         </form>
       </Section>
+
+      <div id="security" className="scroll-mt-6">
+        <Section title="Security" text="A 6-digit PIN for quick, safe unlocking on this device.">
+          <PinSettings user={user} />
+        </Section>
+      </div>
 
       <Section title="Appearance" text="Light, dark, or follow your device.">
         <div role="radiogroup" aria-label="Theme" className="grid max-w-md grid-cols-3 gap-1 rounded-xl border border-line bg-surface-2 p-1">

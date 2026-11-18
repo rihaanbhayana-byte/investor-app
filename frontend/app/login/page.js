@@ -92,10 +92,12 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState("");
-
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("mode");
     if (wanted === "signup" || wanted === "reset") setMode(wanted);
+    const pinNote = new URLSearchParams(window.location.search).get("pin");
+    if (pinNote === "reset") setInfo("Too many wrong PINs, so we signed you out to keep your account safe. Log in, then set a new PIN in Profile.");
+    if (pinNote === "forgot") setInfo("Log in with your email and password. Then you can set a new PIN in Profile.");
     // already logged in? go to the app (except when choosing a new password)
     if (wanted !== "reset") supabase.auth.getSession().then(({ data: d }) => d.session && router.replace("/dashboard"));
     // The link in the reset email logs the user in for one purpose: choosing a new password.

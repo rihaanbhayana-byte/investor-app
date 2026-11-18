@@ -8,6 +8,7 @@ import Sidebar, { StaticSidebar } from "../components/Sidebar";
 import MobileBar from "../components/MobileBar";
 import CoachPanel from "../components/CoachPanel";
 import { LayoutMode } from "../lib/layoutMode";
+import PinLock from "../components/PinLock";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -19,7 +20,7 @@ export const metadata = {
 // Runs before the page paints, so a saved light theme never flashes dark first.
 // Light by default; dark if the person chose it, or (until they choose) if their device is in dark mode.
 // Before the first paint: landing page and login use the top menu layout (see lib/layoutMode.js).
-const LAYOUT_SCRIPT = `try{var p=location.pathname.replace(/\\/+$/,"")||"/";if(p==="/")document.documentElement.dataset.layout="marketing";else if(p==="/login")document.documentElement.dataset.layout="auth"}catch(e){}`;
+const LAYOUT_SCRIPT = `try{var p=location.pathname.replace(/\\/+$/,"")||"/";if(p==="/")document.documentElement.dataset.layout="marketing";else if(p==="/login")document.documentElement.dataset.layout="auth";if(p!=="/login"&&localStorage.getItem("seedwise-pin-user")&&sessionStorage.getItem("seedwise-unlocked")!=="1")document.documentElement.classList.add("pin-locked")}catch(e){}`;
 // Show focus rings only while someone is using the keyboard, never after a mouse click.
 const KEYBOARD_SCRIPT = `try{var d=document.documentElement;addEventListener("keydown",function(e){if(e.key==="Tab")d.classList.add("kbd")},true);addEventListener("mousedown",function(){d.classList.remove("kbd")},true)}catch(e){}`;
 const THEME_SCRIPT = `try{var t=localStorage.getItem("seedwise-theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(e){}`;
@@ -81,6 +82,7 @@ export default function RootLayout({ children }) {
           </div>
         </div>
         <CoachPanel />
+        <PinLock />
       </body>
     </html>
   );

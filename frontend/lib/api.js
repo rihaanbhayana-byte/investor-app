@@ -10,7 +10,7 @@ async function request(path, options = {}) {
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     const message = typeof body.detail === "string" ? body.detail : `Request failed (${response.status})`;
-    throw new Error(message);
+    throw Object.assign(new Error(message), { status: response.status });
   }
   return response.json();
 }
@@ -80,5 +80,9 @@ export const api = {
   account: () => withLogin("/account"),
   setAccountPrefs: (prefs) => withLogin("/account/preferences", { method: "POST", body: JSON.stringify(prefs) }),
   deleteAccount: () => withLogin("/account", { method: "DELETE" }),
+  pinStatus: () => withLogin("/pin"),
+  pinSet: (pin, currentPin) => withLogin("/pin", { method: "POST", body: JSON.stringify({ pin, current_pin: currentPin || undefined }) }),
+  pinVerify: (pin) => withLogin("/pin/verify", { method: "POST", body: JSON.stringify({ pin }) }),
+  pinRemove: (pin) => withLogin("/pin", { method: "DELETE", body: JSON.stringify({ pin }) }),
   practiceDoctor: (riskLevel) => withLogin("/practice/doctor", { method: "POST", body: JSON.stringify({ risk_level: riskLevel }) }),
 };

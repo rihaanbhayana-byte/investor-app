@@ -92,3 +92,12 @@ def list_auth_users(page=1, per_page=200):
     response = _http.get(url, params={"page": page, "per_page": per_page}, headers=headers, timeout=20)
     response.raise_for_status()
     return response.json().get("users", [])
+
+
+def sign_out_everywhere(access_token):
+    """End every session of the user who owns this token (all devices)."""
+    try:
+        _http.post(f"{SUPABASE_URL}/auth/v1/logout", params={"scope": "global"},
+                   headers={"apikey": SUPABASE_SECRET_KEY or "", "Authorization": f"Bearer {access_token}"}, timeout=15)
+    except Exception:
+        pass  # the PIN is wiped either way; the app also signs out locally

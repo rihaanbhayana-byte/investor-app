@@ -59,6 +59,10 @@ export function useUser() {
 
 export async function logOut() {
   await supabase.auth.signOut();
+  try {
+    localStorage.removeItem("seedwise-pin-user");
+    sessionStorage.removeItem("seedwise-unlocked");
+  } catch {}
   localStorage.removeItem("lastPlan"); // don't show this person's plan to the next one on this device
   window.location.href = "/";
 }

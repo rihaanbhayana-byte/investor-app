@@ -1925,3 +1925,118 @@ def delete_account(request: Request, user_id: str = Depends(current_user)):
         if uid == user_id:
             _user_cache.pop(token, None)
     return {"deleted": True}
+
+
+# =====================================================================
+# 6-digit PIN: quick unlock on a device you're already signed in on
+# =====================================================================
+import hashlib  # noqa: E402
+import hmac  # noqa: E402
+import secrets  # noqa: E402
+
+PIN_ROUNDS = 200_000
+PIN_MAX_TRIES = 5
+WEAK_PINS = {"000000", "111111", "222222", "333333", "444444", "555555", "666666", "777777", "888888", "999999",
+             "123456", "654321", "123123", "112233", "121212", "123321", "012345", "098765", "696969", "101010"}
+MISSING_PIN_SQL = "Run database/pin.sql in Supabase to turn on PINs."
+
+
+def _hash_pin(pin, salt=None):
+    salt = salt or secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", pin.encode(), bytes.fromhex(salt), PIN_ROUNDS).hex()
+    return f"pbkdf2_sha256${PIN_ROUNDS}${salt}${digest}"
+
+
+def _pin_matches(pin, stored):
+    try:
+        _, rounds, salt, digest = stored.split("$")
+        test = hashlib.pbkdf2_hmac("sha256", pin.encode(), bytes.fromhex(salt), int(rounds)).hex()
+        return hmac.compare_digest(test, digest)
+    except Exception:
+        return False
+
+
+def _pin_row(user_id):
+    try:
+        rows = db.admin("GET", "user_pins", {"select": "pin_hash,failed_attempts", "user_id": f"eq.{user_id}"})
+    except RuntimeError as error:
+        raise HTTPException(503, MISSING_PIN_SQL if "user_pins" in str(error) else str(error))
+    return rows[0] if rows else None
+
+
+def _token(authorization):
+    return (authorization or "").split(" ", 1)[1].strip() if " " in (authorization or "") else ""
+
+
+def _fresh_login(authorization, minutes=15):
+    """True if the person typed their password (or used Google) in the last few minutes."""
+    user = db.get_user(_token(authorization)) or {}
+    signed_in = user.get("last_sign_in_at")
+    if not signed_in:
+        return False
+    when = datetime.fromisoformat(signed_in.replace("Z", "+00:00"))
+    return datetime.now(timezone.utc) - when < timedelta(minutes=minutes)
+
+
+class PinBody(BaseModel):
+    pin: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+    current_pin: Optional[str] = Field(default=None, min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class PinCheck(BaseModel):
+    pin: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+@app.get("/pin")
+def pin_status(user_id: str = Depends(current_user)):
+    row = _pin_row(user_id)
+    return {"enabled": bool(row)}
+
+
+@app.post("/pin")
+def pin_set(body: PinBody, request: Request, user_id: str = Depends(current_user), authorization: str | None = Header(default=None)):
+    """Set or change the PIN. Changing needs the current PIN, or a log-in in the last 15 minutes (forgot PIN)."""
+    if guardrails.rate_limited(guardrails.client_ip(request)):
+        raise HTTPException(429, "Too many tries. Please wait a minute.")
+    if body.pin in WEAK_PINS or len(set(body.pin)) <= 2:
+        raise HTTPException(400, "That PIN is too easy to guess. Avoid repeats and simple sequences.")
+    row = _pin_row(user_id)
+    if row:
+        ok = body.current_pin and _pin_matches(body.current_pin, row["pin_hash"])
+        if not ok and not _fresh_login(authorization):
+            raise HTTPException(403, "Enter your current PIN, or log in again to reset it.")
+    db.admin("POST", "user_pins", {"on_conflict": "user_id"},
+             json={"user_id": user_id, "pin_hash": _hash_pin(body.pin), "failed_attempts": 0, "updated_at": datetime.now(timezone.utc).isoformat()},
+             prefer="resolution=merge-duplicates,return=minimal")
+    return {"enabled": True}
+
+
+@app.post("/pin/verify")
+def pin_verify(body: PinCheck, request: Request, user_id: str = Depends(current_user), authorization: str | None = Header(default=None)):
+    """Unlock the app. After 5 wrong PINs the PIN is removed and the account is signed out on every device."""
+    if guardrails.rate_limited(guardrails.client_ip(request)):
+        raise HTTPException(429, "Too many tries. Please wait a minute.")
+    row = _pin_row(user_id)
+    if not row:
+        return {"ok": True, "enabled": False}
+    if _pin_matches(body.pin, row["pin_hash"]):
+        if row["failed_attempts"]:
+            db.admin("PATCH", "user_pins", {"user_id": f"eq.{user_id}"}, json={"failed_attempts": 0}, prefer="return=minimal")
+        return {"ok": True}
+    tries = row["failed_attempts"] + 1
+    if tries >= PIN_MAX_TRIES:
+        db.admin("DELETE", "user_pins", {"user_id": f"eq.{user_id}"}, prefer="return=minimal")
+        db.sign_out_everywhere(_token(authorization))
+        raise HTTPException(423, "Too many wrong PINs. For your safety you've been signed out. Log in again to set a new PIN.")
+    db.admin("PATCH", "user_pins", {"user_id": f"eq.{user_id}"}, json={"failed_attempts": tries}, prefer="return=minimal")
+    left = PIN_MAX_TRIES - tries
+    return {"ok": False, "attempts_left": left}
+
+
+@app.delete("/pin")
+def pin_remove(body: PinCheck, user_id: str = Depends(current_user)):
+    row = _pin_row(user_id)
+    if row and not _pin_matches(body.pin, row["pin_hash"]):
+        raise HTTPException(403, "That PIN isn't right.")
+    db.admin("DELETE", "user_pins", {"user_id": f"eq.{user_id}"}, prefer="return=minimal")
+    return {"enabled": False}
