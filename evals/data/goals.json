@@ -1,0 +1,409 @@
+[
+ {
+  "text": "I have $2,000 and can save $250 a month for a house in 6 years",
+  "goal": "Buying a home",
+  "initial_amount": 2000,
+  "monthly_contribution": 250,
+  "years": 6,
+  "tag": "plain"
+ },
+ {
+  "text": "I want to retire in 30 years. I have 10k saved and can put in $500 every month",
+  "goal": "Retirement",
+  "initial_amount": 10000,
+  "monthly_contribution": 500,
+  "years": 30,
+  "tag": "k shorthand"
+ },
+ {
+  "text": "Saving for my kid's college in 12 years, starting with $1,500 and $200 monthly",
+  "goal": "Education",
+  "initial_amount": 1500,
+  "monthly_contribution": 200,
+  "years": 12,
+  "tag": "plain"
+ },
+ {
+  "text": "I want to buy a car in 3 years. I have $4,000 and can add $300 a month",
+  "goal": "A big purchase",
+  "initial_amount": 4000,
+  "monthly_contribution": 300,
+  "years": 3,
+  "tag": "plain"
+ },
+ {
+  "text": "Just want to grow my money. $5,000 now, $100 a month, for 15 years",
+  "goal": "Grow my wealth",
+  "initial_amount": 5000,
+  "monthly_contribution": 100,
+  "years": 15,
+  "tag": "plain"
+ },
+ {
+  "text": "two grand now and fifty bucks a week, house deposit in 5 years",
+  "goal": "Buying a home",
+  "initial_amount": 2000,
+  "monthly_contribution": 216.67,
+  "years": 5,
+  "tag": "slang + weekly"
+ },
+ {
+  "text": "I can save $1,200 a year for retirement, starting from zero, I'm 25 and want to retire at 60",
+  "goal": "Retirement",
+  "initial_amount": 0,
+  "monthly_contribution": 100,
+  "years": 35,
+  "tag": "yearly + ages"
+ },
+ {
+  "text": "I'm 22 and want a house by the time I'm 30. I have $3k and can save $400/month",
+  "goal": "Buying a home",
+  "initial_amount": 3000,
+  "monthly_contribution": 400,
+  "years": 8,
+  "tag": "ages"
+ },
+ {
+  "text": "Wedding in 2 years, $6,000 saved, $500 a month",
+  "goal": "A big purchase",
+  "initial_amount": 6000,
+  "monthly_contribution": 500,
+  "years": 2,
+  "tag": "big purchase"
+ },
+ {
+  "text": "I have $20,000 to invest and nothing monthly, leave it for 20 years",
+  "goal": "Grow my wealth",
+  "initial_amount": 20000,
+  "monthly_contribution": 0,
+  "years": 20,
+  "tag": "no monthly"
+ },
+ {
+  "text": "Put $150 a month away for my master's degree in 4 years",
+  "goal": "Education",
+  "initial_amount": 0,
+  "monthly_contribution": 150,
+  "years": 4,
+  "tag": "no initial"
+ },
+ {
+  "text": "I've got 1.5k and want to grow it",
+  "goal": "Grow my wealth",
+  "initial_amount": 1500,
+  "monthly_contribution": 0,
+  "years": 10,
+  "tag": "no years \u2192 default 10"
+ },
+ {
+  "text": "Retirement savings: $50,000 now, $1,000/month, 25 years to go",
+  "goal": "Retirement",
+  "initial_amount": 50000,
+  "monthly_contribution": 1000,
+  "years": 25,
+  "tag": "large"
+ },
+ {
+  "text": "I want to save for a trip to Japan in 2 years with $100 a week",
+  "goal": "A big purchase",
+  "initial_amount": 0,
+  "monthly_contribution": 433.33,
+  "years": 2,
+  "tag": "weekly"
+ },
+ {
+  "text": "$500 now, $25 a week, for a laptop next year",
+  "goal": "A big purchase",
+  "initial_amount": 500,
+  "monthly_contribution": 108.33,
+  "years": 1,
+  "tag": "weekly, 1 year"
+ },
+ {
+  "text": "I have 8000 dollars and can save 350 per month to buy an apartment in 7 years",
+  "goal": "Buying a home",
+  "initial_amount": 8000,
+  "monthly_contribution": 350,
+  "years": 7,
+  "tag": "words for currency"
+ },
+ {
+  "text": "Grow my wealth over the next decade with $3,000 upfront and $250 each month",
+  "goal": "Grow my wealth",
+  "initial_amount": 3000,
+  "monthly_contribution": 250,
+  "years": 10,
+  "tag": "decade"
+ },
+ {
+  "text": "I'm 40 and want to retire at 65 with $30k saved and $800 a month",
+  "goal": "Retirement",
+  "initial_amount": 30000,
+  "monthly_contribution": 800,
+  "years": 25,
+  "tag": "ages"
+ },
+ {
+  "text": "College fund for my newborn: $1,000 now and $100 per month until she's 18",
+  "goal": "Education",
+  "initial_amount": 1000,
+  "monthly_contribution": 100,
+  "years": 18,
+  "tag": "until child is 18"
+ },
+ {
+  "text": "I get paid every two weeks and can invest $200 each paycheck for 10 years, no savings yet",
+  "goal": "Grow my wealth",
+  "initial_amount": 0,
+  "monthly_contribution": 433.33,
+  "years": 10,
+  "tag": "biweekly"
+ },
+ {
+  "text": "Down payment on a condo in 4 years. Currently have $12,500, adding $600 monthly",
+  "goal": "Buying a home",
+  "initial_amount": 12500,
+  "monthly_contribution": 600,
+  "years": 4,
+  "tag": "condo"
+ },
+ {
+  "text": "I have 3k. I want to buy a motorbike in 18 months",
+  "goal": "A big purchase",
+  "initial_amount": 3000,
+  "monthly_contribution": 0,
+  "years": 2,
+  "tag": "months \u2192 years (rounds)",
+  "years_ok": [
+   1,
+   2
+  ]
+ },
+ {
+  "text": "I want to be rich",
+  "goal": "Grow my wealth",
+  "initial_amount": 0,
+  "monthly_contribution": 0,
+  "years": 10,
+  "tag": "vague"
+ },
+ {
+  "text": "saving $75 a month for retirement, I'm 30, retiring at 67, nothing saved",
+  "goal": "Retirement",
+  "initial_amount": 0,
+  "monthly_contribution": 75,
+  "years": 37,
+  "tag": "ages"
+ },
+ {
+  "text": "Got an inheritance of $25,000, want to grow it for 12 years and add $200 a month",
+  "goal": "Grow my wealth",
+  "initial_amount": 25000,
+  "monthly_contribution": 200,
+  "years": 12,
+  "tag": "inheritance"
+ },
+ {
+  "text": "Tuition for law school in 5 years. $2,500 now, $350 per month",
+  "goal": "Education",
+  "initial_amount": 2500,
+  "monthly_contribution": 350,
+  "years": 5,
+  "tag": "plain"
+ },
+ {
+  "text": "I want to put away $1,000 a quarter for 8 years toward a house",
+  "goal": "Buying a home",
+  "initial_amount": 0,
+  "monthly_contribution": 333.33,
+  "years": 8,
+  "tag": "quarterly"
+ },
+ {
+  "text": "Buying a home in 10 years \u2014 $15k saved, $1k a month",
+  "goal": "Buying a home",
+  "initial_amount": 15000,
+  "monthly_contribution": 1000,
+  "years": 10,
+  "tag": "k shorthand"
+ },
+ {
+  "text": "New car in 4 years: I can save $50 a week and have $1,000 now",
+  "goal": "A big purchase",
+  "initial_amount": 1000,
+  "monthly_contribution": 216.67,
+  "years": 4,
+  "tag": "weekly"
+ },
+ {
+  "text": "Retire early in 15 years, I have $100,000 invested and add $2,000 monthly",
+  "goal": "Retirement",
+  "initial_amount": 100000,
+  "monthly_contribution": 2000,
+  "years": 15,
+  "tag": "large"
+ },
+ {
+  "text": "I'm a student with $300 and can put in $20 a month, just to learn and grow it over 5 years",
+  "goal": "Grow my wealth",
+  "initial_amount": 300,
+  "monthly_contribution": 20,
+  "years": 5,
+  "tag": "small amounts"
+ },
+ {
+  "text": "$10k now, want a house in 3 yrs",
+  "goal": "Buying a home",
+  "initial_amount": 10000,
+  "monthly_contribution": 0,
+  "years": 3,
+  "tag": "abbreviations"
+ },
+ {
+  "text": "save for my son's university: he is 8 now, starts at 18, $200 per month, $0 now",
+  "goal": "Education",
+  "initial_amount": 0,
+  "monthly_contribution": 200,
+  "years": 10,
+  "tag": "age gap"
+ },
+ {
+  "text": "Wedding fund, 3 years away, $250 monthly, starting with $1,250",
+  "goal": "A big purchase",
+  "initial_amount": 1250,
+  "monthly_contribution": 250,
+  "years": 3,
+  "tag": "plain"
+ },
+ {
+  "text": "I want my money to grow long term \u2014 25 years \u2014 with $600 per month and $4,000 to start",
+  "goal": "Grow my wealth",
+  "initial_amount": 4000,
+  "monthly_contribution": 600,
+  "years": 25,
+  "tag": "plain"
+ },
+ {
+  "text": "Retirement: I have 200k and will add nothing, 10 years left",
+  "goal": "Retirement",
+  "initial_amount": 200000,
+  "monthly_contribution": 0,
+  "years": 10,
+  "tag": "k shorthand, nothing added"
+ },
+ {
+  "text": "I'd like a house deposit in six years, I can save three hundred a month and have five thousand",
+  "goal": "Buying a home",
+  "initial_amount": 5000,
+  "monthly_contribution": 300,
+  "years": 6,
+  "tag": "numbers in words"
+ },
+ {
+  "text": "I make $3,000 a month and want to invest 10% of it for retirement over 30 years",
+  "goal": "Retirement",
+  "initial_amount": 0,
+  "monthly_contribution": 300,
+  "years": 30,
+  "tag": "percent of income"
+ },
+ {
+  "text": "Bootcamp fees in 1 year, $2,000 now, $400 a month",
+  "goal": "Education",
+  "initial_amount": 2000,
+  "monthly_contribution": 400,
+  "years": 1,
+  "tag": "short"
+ },
+ {
+  "text": "Saving for a big TV next year: $50 a month",
+  "goal": "A big purchase",
+  "initial_amount": 0,
+  "monthly_contribution": 50,
+  "years": 1,
+  "tag": "tiny"
+ },
+ {
+  "text": "I have $7,500 in savings, want it to grow for 8 years, can add $150 every month",
+  "goal": "Grow my wealth",
+  "initial_amount": 7500,
+  "monthly_contribution": 150,
+  "years": 8,
+  "tag": "plain"
+ },
+ {
+  "text": "retire at 55, I'm 35, $40k saved, $1,500/mo",
+  "goal": "Retirement",
+  "initial_amount": 40000,
+  "monthly_contribution": 1500,
+  "years": 20,
+  "tag": "terse"
+ },
+ {
+  "text": "I want to buy land for a house in 9 years with $9,000 and $450 a month",
+  "goal": "Buying a home",
+  "initial_amount": 9000,
+  "monthly_contribution": 450,
+  "years": 9,
+  "tag": "land/house"
+ },
+ {
+  "text": "My daughter's college in 15 years, I'll put in $250 a month and $3,000 today",
+  "goal": "Education",
+  "initial_amount": 3000,
+  "monthly_contribution": 250,
+  "years": 15,
+  "tag": "plain"
+ },
+ {
+  "text": "Holiday to Europe in 2 years, I can put away $40 a week",
+  "goal": "A big purchase",
+  "initial_amount": 0,
+  "monthly_contribution": 173.33,
+  "years": 2,
+  "tag": "weekly"
+ },
+ {
+  "text": "Long-term wealth, 40 years, $100 a month",
+  "goal": "Grow my wealth",
+  "initial_amount": 0,
+  "monthly_contribution": 100,
+  "years": 40,
+  "tag": "long"
+ },
+ {
+  "text": "I have 50,000 rupees... no wait, $600, and can add $60 a month for 6 years to grow it",
+  "goal": "Grow my wealth",
+  "initial_amount": 600,
+  "monthly_contribution": 60,
+  "years": 6,
+  "tag": "self-correction"
+ },
+ {
+  "text": "Retirement in 20 years with $5k now and $5k every year",
+  "goal": "Retirement",
+  "initial_amount": 5000,
+  "monthly_contribution": 416.67,
+  "years": 20,
+  "tag": "yearly"
+ },
+ {
+  "text": "Need a new laptop in 6 months, have $800",
+  "goal": "A big purchase",
+  "initial_amount": 800,
+  "monthly_contribution": 0,
+  "years": 1,
+  "tag": "6 months",
+  "years_ok": [
+   1
+  ]
+ },
+ {
+  "text": "house in 7 years, 0 saved, 700 a month",
+  "goal": "Buying a home",
+  "initial_amount": 0,
+  "monthly_contribution": 700,
+  "years": 7,
+  "tag": "terse"
+ }
+]

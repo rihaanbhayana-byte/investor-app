@@ -95,7 +95,7 @@ def guess_kind(name):
     return "stock"
 
 
-def run(wishes_text, core_symbols, ensure_security, max_checks=4):
+def run(wishes_text, core_symbols, ensure_security, max_checks=4, months_of=None):
     """The agent search for one person's wishes. Returns the funnel, what the agent did, and the funds that passed."""
     stages, survivors = funnel()
     report = {"stages": stages, "searched": [], "summary": "", "candidates": [], "added": [], "model": None, "ran": False}
@@ -117,6 +117,7 @@ def run(wishes_text, core_symbols, ensure_security, max_checks=4):
     matched = len({r["symbol"] for t in trace for r in (t.get("result") or {}).get("results", [])})
     report["stages"].append({"label": "Matched your wishes (agent search)", "count": matched,
                              "why": f"The agent searched {len(report['searched'])} times: " + ", ".join(f'"{q}"' for q in report["searched"])})
+    report["raw_picks"] = [str(p.get("symbol") or "").upper().strip() for p in (data.get("picks") or [])]
     picks = []
     for p in (data.get("picks") or [])[:max_checks]:
         sym = str(p.get("symbol") or "").upper().strip()
@@ -127,8 +128,11 @@ def run(wishes_text, core_symbols, ensure_security, max_checks=4):
             p["status"], p["note"] = "core", "Already in the 26 core funds."
             continue
         try:
-            ensure_security(p["symbol"])
-            months = len(analytics.monthly_closes([p["symbol"]]).get(p["symbol"], []))
+            if months_of:  # read-only check (used by the evaluations)
+                months = months_of(p["symbol"])
+            else:
+                ensure_security(p["symbol"])
+                months = len(analytics.monthly_closes([p["symbol"]]).get(p["symbol"], []))
         except Exception:
             months = 0
         if months > 96:

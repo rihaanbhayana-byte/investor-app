@@ -1,0 +1,297 @@
+[
+ {
+  "text": "I like tech",
+  "tilts": [
+   "tech"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "no oil companies",
+  "tilts": [],
+  "exclude": [
+   "fossil_fuels"
+  ],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "keep it simple",
+  "tilts": [],
+  "exclude": [],
+  "max_funds": "<=4",
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "more dividends please",
+  "tilts": [
+   "dividends"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "add some gold",
+  "tilts": [
+   "gold"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "nothing in banks",
+  "tilts": [],
+  "exclude": [
+   "financials"
+  ],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "I want more international exposure",
+  "tilts": [
+   "international"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "emerging markets like India",
+  "tilts": [
+   "emerging_markets"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "small companies have more upside, add some",
+  "tilts": [
+   "small_companies"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "protect me from inflation",
+  "tilts": [
+   "inflation_protection"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "I like healthcare and tech",
+  "tilts": [
+   "healthcare",
+   "tech"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "green investing only, no fossil fuels",
+  "tilts": [],
+  "exclude": [
+   "fossil_fuels"
+  ],
+  "max_funds": null,
+  "never": [
+   "energy"
+  ],
+  "note": ""
+ },
+ {
+  "text": "no single-industry bets",
+  "tilts": [],
+  "exclude": [
+   "sector"
+  ],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "real estate is my thing",
+  "tilts": [
+   "real_estate"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "value stocks, not growth",
+  "tilts": [
+   "value"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "utilities and consumer staples, I want calm",
+  "tilts": [
+   "consumer_staples",
+   "utilities"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "no gold, no real estate",
+  "tilts": [],
+  "exclude": [
+   "gold",
+   "real_estate"
+  ],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "just a few funds please",
+  "tilts": [],
+  "exclude": [],
+  "max_funds": "<=4",
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "I love Apple and Tesla",
+  "tilts": [],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": "specific companies are ignored"
+ },
+ {
+  "text": "guarantee me 20% a year",
+  "tilts": [],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": "nothing usable"
+ },
+ {
+  "text": "more growth companies",
+  "tilts": [
+   "growth"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "long-term government bonds",
+  "tilts": [
+   "long_bonds"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "avoid emerging markets",
+  "tilts": [],
+  "exclude": [
+   "emerging_markets"
+  ],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "clean energy and solar",
+  "tilts": [],
+  "exclude": [],
+  "max_funds": null,
+  "never": [
+   "energy"
+  ],
+  "note": "left to the fund agent"
+ },
+ {
+  "text": "ethical, ESG investing",
+  "tilts": [],
+  "exclude": [
+   "fossil_fuels"
+  ],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "I want dividends but no banks",
+  "tilts": [
+   "dividends"
+  ],
+  "exclude": [
+   "financials"
+  ],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "keep it to 3 funds",
+  "tilts": [],
+  "exclude": [],
+  "max_funds": 3,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "more health care",
+  "tilts": [
+   "healthcare"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "Japan and Europe",
+  "tilts": [
+   "international"
+  ],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ },
+ {
+  "text": "I don't care, you choose",
+  "tilts": [],
+  "exclude": [],
+  "max_funds": null,
+  "never": [],
+  "note": ""
+ }
+]

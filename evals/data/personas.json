@@ -1,0 +1,35 @@
+[
+ {
+  "name": "Maya, the cautious student",
+  "text": "I'm 20 with $1,500 saved and can add $100 a month. I want a car in 3 years and I don't want to lose much.",
+  "answers": {
+   "market_drop": "sell_some",
+   "priority": "mostly_safety",
+   "experience": "none",
+   "income": "somewhat",
+   "emergency_fund": "building"
+  }
+ },
+ {
+  "name": "Arjun, the first-job saver",
+  "text": "I have $9,000 in savings and can invest $500 a month for a house deposit in 6 years. I like tech, no oil companies.",
+  "answers": {
+   "market_drop": "wait",
+   "priority": "balance",
+   "experience": "little",
+   "income": "stable",
+   "emergency_fund": "yes"
+  }
+ },
+ {
+  "name": "Daniel, the helping parent",
+  "text": "Teaching my 16-year-old: $2,000 now, $150 a month, for 10 years. Keep it simple, clean energy if possible.",
+  "answers": {
+   "market_drop": "wait",
+   "priority": "balance",
+   "experience": "some",
+   "income": "very_stable",
+   "emergency_fund": "yes"
+  }
+ }
+]

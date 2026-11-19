@@ -1,0 +1,34 @@
+[
+ {
+  "text": "clean energy and solar",
+  "relevant": "clean|solar|renew|green|wind|energy transition"
+ },
+ {
+  "text": "cybersecurity companies",
+  "relevant": "cyber|security"
+ },
+ {
+  "text": "India",
+  "relevant": "india"
+ },
+ {
+  "text": "artificial intelligence and robotics",
+  "relevant": "artificial intelligence|\\bai\\b|robot|autonom|tech"
+ },
+ {
+  "text": "ESG and sustainable investing",
+  "relevant": "esg|sustainab|responsib|social|climate|fossil|carbon"
+ },
+ {
+  "text": "water",
+  "relevant": "water"
+ },
+ {
+  "text": "semiconductors",
+  "relevant": "semiconductor|chip"
+ },
+ {
+  "text": "biotech",
+  "relevant": "biotech|genom|health|pharma"
+ }
+]

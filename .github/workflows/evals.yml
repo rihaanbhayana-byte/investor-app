@@ -1,0 +1,53 @@
+name: AI evaluations
+
+# Tests every AI step and the portfolio engine, then saves a report you can download.
+# Run it from GitHub: Actions -> "AI evaluations" -> Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: "Models to compare (comma-separated)"
+        default: "openai/gpt-oss-120b,openai/gpt-oss-20b"
+      quick:
+        description: "Quick run (smaller samples, about 4 minutes)"
+        type: boolean
+        default: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install packages
+        run: pip install -r backend/requirements.txt matplotlib
+
+      - name: Run the evaluations
+        run: python evals/run_evals.py --models "${{ inputs.models }}" ${{ inputs.quick && '--quick' || '' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+          AI_BASE_URL: ${{ secrets.AI_BASE_URL }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_MODEL: ${{ secrets.AI_MODEL }}
+          SMART_AI_BASE_URL: ${{ secrets.SMART_AI_BASE_URL }}
+          SMART_AI_API_KEY: ${{ secrets.SMART_AI_API_KEY }}
+          SMART_AI_MODEL: ${{ secrets.SMART_AI_MODEL }}
+
+      - name: Save the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seedwise-evaluation-report
+          path: evals/out/
