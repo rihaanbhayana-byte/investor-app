@@ -52,6 +52,7 @@ export const api = {
   riskProfile: (body) => post("/risk-profile", body),
   portfolio: (level) => request(`/portfolios/${level}`),
   projection: (body) => post("/projection", body),
+  buildMix: (body) => post("/engine/build", body),
   stocks: () => request("/stocks"),
   candles: (symbol, range = "1Y") => request(`/candles/${encodeURIComponent(symbol)}?range=${range}`),
   quotes: (symbols) => request(`/quotes?symbols=${encodeURIComponent(symbols.join(","))}`),

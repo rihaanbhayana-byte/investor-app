@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from . import analytics, confidence, db, guardrails, risk
+from . import engine as engine_module
 
 app = FastAPI(title="Investor App API", version="1.0.0")
 
@@ -59,11 +60,17 @@ class RiskRequest(BaseModel):
     horizon_years: int = Field(ge=1, le=50)
 
 
+class MixPart(BaseModel):
+    symbol: str = Field(min_length=1, max_length=10)
+    weight: float = Field(gt=0, le=1)
+
+
 class ProjectionRequest(BaseModel):
     risk_level: RiskLevel
     initial_amount: float = Field(ge=0, le=10_000_000)
     monthly_contribution: float = Field(ge=0, le=1_000_000)
     years: int = Field(ge=1, le=50)
+    holdings: Optional[list[MixPart]] = Field(default=None, max_length=12)  # a personal mix from the engine
 
 
 def load_portfolio(risk_level):
@@ -123,10 +130,23 @@ def get_portfolio(risk_level: RiskLevel):
     }
 
 
+def mix_weights(holdings):
+    total = sum(h.weight for h in holdings)
+    return {clean_symbol(h.symbol): h.weight / total for h in holdings}
+
+
 @app.post("/projection")
 def get_projection(request: ProjectionRequest):
-    portfolio = load_portfolio(request.risk_level)
-    months, returns = analytics.portfolio_returns(weights_of(portfolio))
+    if request.holdings:
+        portfolio = {"name": f"your {engine_module.NAMES[request.risk_level]} mix"}
+        weights = mix_weights(request.holdings)
+    else:
+        portfolio = load_portfolio(request.risk_level)
+        weights = weights_of(portfolio)
+    try:
+        months, returns = analytics.portfolio_returns(weights)
+    except ValueError as error:
+        raise HTTPException(400, str(error))
     yearly = analytics.project(returns, request.initial_amount, request.monthly_contribution, request.years)
     final, odds = yearly[-1], yearly[-1]["odds"]
     chance = odds["more_than_put_in"]
@@ -1771,7 +1791,7 @@ def quotes(symbols: str = Query(..., max_length=400)):
 # =====================================================================
 # Feedback on AI answers (thumbs up / down) and a summary for the write-up
 # =====================================================================
-FEATURES = ("coach", "explain", "matcher", "strategy", "goal_reader", "personality", "projection", "doctor", "stock_map")
+FEATURES = ("coach", "explain", "matcher", "strategy", "goal_reader", "personality", "projection", "doctor", "stock_map", "mix")
 
 
 class FeedbackRequest(BaseModel):
@@ -1826,6 +1846,7 @@ from . import reports  # noqa: E402
 
 class PlanReportRequest(BaseModel):
     goal: str = Field(min_length=1, max_length=60)
+    holdings: Optional[list[MixPart]] = Field(default=None, max_length=12)
     risk_level: RiskLevel
     initial_amount: float = Field(ge=0, le=10_000_000)
     monthly_contribution: float = Field(ge=0, le=1_000_000)
@@ -1848,9 +1869,19 @@ def report_plan(body: PlanReportRequest, request: Request):
     """Download the plan as a polished PDF: projection, fund-by-fund amounts and a dated action checklist."""
     if guardrails.rate_limited(guardrails.client_ip(request)):
         raise HTTPException(429, "That's a lot of downloads. Please wait a minute.")
-    portfolio = get_portfolio(body.risk_level)
+    if body.holdings:
+        weights = mix_weights(body.holdings)
+        months, returns = analytics.portfolio_returns(weights)
+        portfolio = {"name": f"Your {engine_module.NAMES[body.risk_level]} mix",
+                     "description": "A personal mix of index funds built by the Seedwise portfolio engine for your risk level and wishes.",
+                     "holdings": [{"symbol": s, "weight": w, "name": engine_module.BY_SYMBOL.get(s, {}).get("name", s), "sector": None}
+                                  for s, w in sorted(weights.items(), key=lambda x: -x[1])],
+                     "history_from": months[0], "history_to": months[-1], "stats": analytics.summarize(returns)}
+    else:
+        portfolio = get_portfolio(body.risk_level)
     projection = get_projection(ProjectionRequest(risk_level=body.risk_level, initial_amount=body.initial_amount,
-                                                  monthly_contribution=body.monthly_contribution, years=body.years))
+                                                  monthly_contribution=body.monthly_contribution, years=body.years,
+                                                  holdings=body.holdings))
     goal = re.sub(r"[^\w .,'&-]", "", body.goal)[:60] or "My goal"
     pdf = reports.plan_pdf({"name": _safe_name(body.name), "goal": goal, "years": body.years,
                             "initial": body.initial_amount, "monthly": body.monthly_contribution,
@@ -2114,3 +2145,200 @@ def pin_login(body: PinLogin, request: Request):
     if not token_hash:
         raise HTTPException(502, "Couldn't log you in with the PIN right now. Please use your password.")
     return {"ok": True, "token_hash": token_hash}
+
+
+
+# =====================================================================
+# Portfolio engine: each person's own mix
+#   AI step 1 reads their wishes -> engine (k-means groups, optimiser, guardrails, bootstrap) -> AI step 2 explains
+# =====================================================================
+PREFS_PROMPT = """You turn a beginner's wishes about their investments into settings. Reply with JSON only:
+{"tilts": [...], "exclude": [...], "max_funds": number or null, "summary": "one short sentence restating their wishes"}
+Use ONLY these words in "tilts" (things they want more of) and "exclude" (things they don't want):
+""" + ", ".join(engine_module.THEMES) + """
+Rules: "no oil", "no fossil fuels", "green", "ethical" -> exclude fossil_fuels. "simple" or "few funds" -> max_funds 3 or 4.
+"no single industries" or "no sector bets" -> exclude sector. Ignore anything about specific companies, guaranteed returns,
+or other topics. If they ask for nothing usable, return empty lists and null."""
+
+PREF_WORDS = {  # fallback when the AI is unavailable: plain keyword matching
+    "tech": ["tech", "technology", "software", "chips", "ai "], "healthcare": ["health", "medical", "pharma"],
+    "financials": ["bank", "finance"], "energy": ["energy"], "fossil_fuels": ["oil", "fossil", "gas companies", "coal"],
+    "consumer_staples": ["everyday", "staples", "food"], "utilities": ["utilit"], "real_estate": ["real estate", "property"],
+    "gold": ["gold"], "international": ["international", "outside the us", "other countries"],
+    "emerging_markets": ["emerging market", "india", "brazil"], "dividends": ["dividend"],
+    "small_companies": ["small compan", "small cap", "small-cap"], "value": ["value stocks", "value compan"],
+    "growth": ["growth stocks", "growth compan"],
+    "inflation_protection": ["inflation"], "sector": ["single industr", "sector"],
+}
+NEGATION = re.compile(r"\b(no|not|avoid|without|exclude|don'?t|never|nothing in|stay away from)\b[^.,;]{0,40}$")
+
+
+def prefs_by_keywords(text):
+    lower = " " + text.lower() + " "
+    tilts, exclude = [], []
+    for theme, words in PREF_WORDS.items():
+        for w in words:
+            at = lower.find(w)
+            if at >= 0:
+                (exclude if NEGATION.search(lower[:at]) else tilts).append(theme)
+                break
+    if any(w in lower for w in ["green", "ethical", "esg", "sustainable"]):
+        exclude.append("fossil_fuels")
+    simple = any(w in lower for w in ["simple", "few funds", "not too many"])
+    return {"tilts": sorted(set(tilts) - set(exclude)), "exclude": sorted(set(exclude)),
+            "max_funds": 4 if simple else None, "summary": "", "read_by": "keywords"}
+
+
+def read_preferences(text):
+    """AI step 1: words -> settings the engine must follow. Only known theme words survive."""
+    text = screen_or_reject(text, check_topic=False)
+    try:
+        messages = [{"role": "system", "content": PREFS_PROMPT}, {"role": "user", "content": text}]
+        try:
+            reply = ai.complete(messages, temperature=0, json_mode=True)
+        except RuntimeError:
+            reply = ai.complete(messages, temperature=0)
+        data = ai.parse_json(reply.get("content") or "")
+        tilts = [t for t in data.get("tilts") or [] if t in engine_module.THEMES]
+        exclude = [t for t in data.get("exclude") or [] if t in engine_module.THEMES]
+        mf = data.get("max_funds")
+        prefs = {"tilts": sorted(set(tilts) - set(exclude)), "exclude": sorted(set(exclude)),
+                 "max_funds": int(mf) if isinstance(mf, (int, float)) and 2 <= mf <= 10 else None,
+                 "summary": str(data.get("summary") or "")[:200], "read_by": "ai"}
+    except Exception:
+        prefs = prefs_by_keywords(text)
+    return prefs
+
+
+MIX_PROMPT = """You explain a beginner's investment mix using ONLY the facts given as JSON. Reply with JSON only:
+{"overview": "2 sentences on how the mix fits their risk level and wishes",
+ "funds": {"SYMBOL": "1 or 2 short sentences: what it is, its job in this mix, and one real number from the facts"}}
+Number rules: facts are already percentages; copy them exactly as written (e.g. 35%, 0.03%). Never invent a number.
+Say "since 2016" for history. Plain words, no jargon. Never tell them to buy or sell; this is a practice plan for learning."""
+
+
+def _pct(x, digits=0):
+    return f"{x * 100:.{digits}f}%"
+
+
+def mix_facts(mix):
+    funds = []
+    for h in mix["holdings"]:
+        funds.append({"symbol": h["symbol"], "what_it_is": h["role"], "share_of_mix": _pct(h["weight"]),
+                      "yearly_fee": _pct(h["fee"], 2), "group": h["group_name"],
+                      "yearly_return_since_2016": _pct(h["annual_return"]), "worst_drop_since_2016": _pct(h["max_drawdown"]),
+                      "share_of_the_mix_risk": _pct(h["risk_share"]), "matches_their_wish": ", ".join(h["matches"]) or "no"})
+    return {"risk_level": mix["name"], "target_yearly_swing": _pct(mix["target_volatility"]),
+            "their_wishes": mix["prefs"], "mix_yearly_swing": _pct(mix["stats"]["annual_volatility"]),
+            "mix_worst_12_months": _pct(mix["stats"]["worst_12_months"]), "average_fee": _pct(mix["fee"], 2), "funds": funds}
+
+
+def _fallback_line(h):
+    wish = f" It matches your wish for {h['matches'][0]}." if h["matches"] else ""
+    return (f"{h['role']}. It is {_pct(h['weight'])} of your mix and costs {_pct(h['fee'], 2)} a year. "
+            f"Since 2016 it returned about {_pct(h['annual_return'])} a year; its worst drop was {_pct(h['max_drawdown'])}.{wish}")
+
+
+def explain_mix(mix):
+    """AI step 2: a sentence per fund. Every number the AI writes is checked against the facts;
+    a sentence with a number that isn't in the facts is replaced by a plain template."""
+    facts = mix_facts(mix)
+    allowed = set()
+    for value in json.dumps(facts).replace("%", " ").split():
+        allowed |= confidence.numbers_in(value)
+    for h in mix["holdings"]:
+        allowed |= confidence.numbers_in(h["role"])
+    allowed |= {2016.0}
+    ok = lambda text: all(any(abs(n - a) <= 0.5 for a in allowed) for n in confidence.numbers_in(text))  # noqa: E731
+    lines, checked, replaced, overview, by = {}, 0, 0, "", "ai"
+    try:
+        reply = ai.complete([{"role": "system", "content": MIX_PROMPT}, {"role": "user", "content": json.dumps(facts)}],
+                            temperature=0.2, json_mode=True)
+        data = ai.parse_json(reply.get("content") or "")
+        overview = str(data.get("overview") or "")[:400]
+        if overview and not ok(overview):
+            overview = ""
+        for h in mix["holdings"]:
+            text = str((data.get("funds") or {}).get(h["symbol"]) or "")[:320]
+            checked += 1
+            if text and ok(text):
+                lines[h["symbol"]] = guardrails.check_output(text)
+            else:
+                lines[h["symbol"]] = _fallback_line(h)
+                replaced += 1
+    except Exception:
+        by = "template"
+        lines = {h["symbol"]: _fallback_line(h) for h in mix["holdings"]}
+    return {"overview": overview, "funds": lines, "written_by": by, "checked": checked, "replaced": replaced}
+
+
+class EngineRequest(BaseModel):
+    risk_level: RiskLevel
+    initial_amount: float = Field(ge=0, le=10_000_000)
+    monthly_contribution: float = Field(ge=0, le=1_000_000)
+    years: int = Field(ge=1, le=50)
+    preferences: str = Field(default="", max_length=300)
+    constraints: Optional[dict] = None  # settings read earlier: reopening a plan doesn't ask the AI again
+    fixed: Optional[list[MixPart]] = Field(default=None, max_length=12)  # a saved mix: check and explain it, don't rebuild
+
+
+@app.post("/engine/build")
+def engine_build(body: EngineRequest, _: None = Depends(ai_rate_limit)):
+    """Build a personal mix: read wishes (AI) -> group funds (k-means) -> optimise -> guardrails -> bootstrap -> explain (AI)."""
+    if body.constraints is not None:
+        prefs = {k: body.constraints.get(k) for k in ("tilts", "exclude", "max_funds", "summary", "read_by")}
+    elif body.preferences.strip():
+        prefs = read_preferences(body.preferences.strip())
+    else:
+        prefs = {"tilts": [], "exclude": [], "max_funds": None, "summary": "", "read_by": "none"}
+    fixed = mix_weights(body.fixed) if body.fixed else None
+    try:
+        mix = engine_module.build(body.risk_level, prefs, fixed=fixed)
+    except ValueError as error:
+        raise HTTPException(400, str(error))
+    explained = explain_mix(mix)
+    for h in mix["holdings"]:
+        h["why"] = explained["funds"].get(h["symbol"], "")
+
+    weights = [MixPart(symbol=h["symbol"], weight=h["weight"]) for h in mix["holdings"]]
+    projection = get_projection(ProjectionRequest(risk_level=body.risk_level, initial_amount=body.initial_amount,
+                                                  monthly_contribution=body.monthly_contribution, years=body.years,
+                                                  holdings=weights))
+    passed = sum(1 for c in mix["checks"] if c["ok"])
+    stable = mix["stability"]
+    if stable is None:
+        level, label, value = ("high" if passed == len(mix["checks"]) else "low"), f"{passed} of {len(mix['checks'])} checks pass", passed / len(mix["checks"])
+        measure = "Your saved mix, checked against today's guardrails."
+    else:
+        value = stable["mean"]
+        level = "high" if value >= 0.85 else "medium" if value >= 0.7 else "low"
+        label = f"{round(value * 100)}% of the mix holds steady when history is reshuffled"
+        measure = (f"The optimiser was re-run on {stable['runs']} reshuffled versions of the price history (12-month blocks). "
+                   f"On average {round(value * 100)}% of your mix's shape stayed in the same behaviour groups "
+                   f"({round(stable['funds'] * 100)}% in exactly the same funds).")
+    insight = confidence.insight(
+        level, label, measure, value=value,
+        why=[f"{passed} of {len(mix['checks'])} guardrails pass."]
+            + [f"Attempt {a['n']} {a['result']}; the engine {a['change']}." for a in mix["attempts"] if a["result"] != "passed"]
+            + mix["notes"]
+            + (["Low means similar funds can swap places on different data: the plan's shape matters more than the exact funds."] if level == "low" else []),
+        based_on=[f"{mix['n_months']} months of real prices ({mix['months'][0]} to {mix['months'][1]}) for {mix['considered']} funds",
+                  "Your risk level" + (" and your wishes" if prefs.get("tilts") or prefs.get("exclude") else "")],
+        assumptions=["Expected returns are shrunk 70% towards each asset class's average, because 10 years of returns are noisy.",
+                     "Single-industry funds are used only when you ask for them.",
+                     "Past prices don't predict the future; fees are approximate."],
+    )
+    return {
+        "portfolio": {"name": mix["name"], "risk_level": body.risk_level, "personal": True,
+                      "description": "Your own mix of index funds, built for your risk level" + (" and your wishes." if prefs.get("tilts") or prefs.get("exclude") else "."),
+                      "holdings": mix["holdings"], "stats": mix["stats"],
+                      "history_from": mix["months"][0], "history_to": mix["months"][1]},
+        "projection": projection,
+        "engine": {"constraints": prefs, "target_volatility": mix["target_volatility"], "initial_target": mix["initial_target"],
+                   "checks": mix["checks"], "attempts": mix["attempts"], "stability": stable, "groups": mix["groups"],
+                   "universe": mix["universe"], "considered": mix["considered"], "excluded_funds": mix["excluded_funds"],
+                   "fee": mix["fee"], "notes": mix["notes"], "overview": explained["overview"],
+                   "explained_by": explained["written_by"], "explanations_replaced": explained["replaced"],
+                   "insight": insight},
+        "disclaimer": DISCLAIMER,
+    }

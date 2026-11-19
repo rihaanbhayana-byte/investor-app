@@ -20,7 +20,7 @@ function Slider({ id, label, value, min, max, step, onChange, format }) {
   );
 }
 
-export default function WhatIf({ riskLevel, initialAmount, monthly, years, base }) {
+export default function WhatIf({ riskLevel, holdings = null, initialAmount, monthly, years, base }) {
   const start = { initialAmount, monthly, years };
   const [v, setV] = useState(start);
   const [result, setResult] = useState(null);
@@ -34,7 +34,7 @@ export default function WhatIf({ riskLevel, initialAmount, monthly, years, base 
     setLoading(true);
     const t = setTimeout(() => {
       api
-        .projection({ risk_level: riskLevel, initial_amount: v.initialAmount, monthly_contribution: v.monthly, years: v.years })
+        .projection({ risk_level: riskLevel, initial_amount: v.initialAmount, monthly_contribution: v.monthly, years: v.years, holdings: holdings || undefined })
         .then((r) => n === seq.current && setResult(r))
         .catch(() => {})
         .finally(() => n === seq.current && setLoading(false));

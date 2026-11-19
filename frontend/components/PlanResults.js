@@ -4,6 +4,7 @@ import InsightCard from "@/components/InsightCard";
 import Link from "next/link";
 import { PracticePlanButton } from "./PlanPractice";
 import WhatIf from "./WhatIf";
+import { EngineTrace, MixTable, WishesBox } from "./MixEngine";
 import { Kpi, Pill } from "./dashboard/parts";
 import { PlanPdfButton } from "./DownloadPdf";
 import { useEffect, useState } from "react";
@@ -94,8 +95,9 @@ function Box({ label, value, highlight }) {
 
 const PERSONALITY_NAMES = { conservative: "Steady Saver", moderate: "Balanced Builder", aggressive: "Growth Seeker" };
 
-export default function PlanResults({ result, goal, years, inputs, saved, onStartOver, onChangePersonality, switching = false }) {
-  const { risk, portfolio, projection } = result;
+export default function PlanResults({ result, goal, years, inputs, saved, onStartOver, onChangePersonality, switching = false, wishes = "", onRebuild }) {
+  const { risk, portfolio, projection, engine } = result;
+  const mix = engine ? portfolio.holdings.map((h) => ({ symbol: h.symbol, weight: h.weight })) : null;
   const final = projection.final;
   const stats = portfolio.stats;
   const animated = useCountUp(final.median);
@@ -127,7 +129,7 @@ export default function PlanResults({ result, goal, years, inputs, saved, onStar
         </div>
         <div className="flex flex-wrap items-start gap-2">
           <PracticePlanButton plan={{ goal, portfolio: portfolio.name, risk_level: risk.risk_level, holdings: portfolio.holdings }} className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-ink transition hover:bg-brand-light" />
-          {inputs && <PlanPdfButton plan={{ goal, risk_level: risk.risk_level, initial_amount: inputs.initialAmount, monthly_contribution: inputs.monthly, years }} />}
+          {inputs && <PlanPdfButton plan={{ goal, risk_level: risk.risk_level, initial_amount: inputs.initialAmount, monthly_contribution: inputs.monthly, years, holdings: mix }} />}
           <button type="button" onClick={onStartOver} className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold transition hover:border-brand hover:text-brand">New plan</button>
         </div>
       </div>
@@ -168,7 +170,7 @@ export default function PlanResults({ result, goal, years, inputs, saved, onStar
             </span>
             <h2 className="text-xl font-bold tracking-tight">{portfolio.name}</h2>
           </div>
-          <p className="text-sm leading-relaxed text-muted">{risk.chosen ? portfolio.description : risk.explanation}</p>
+          <p className="text-sm leading-relaxed text-muted">{risk.chosen && !engine ? portfolio.description : risk.explanation}</p>
           {risk.chosen && (
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
               <span className="font-semibold">You chose this.</span> The quiz suggested {PERSONALITY_NAMES[risk.quiz_level]}.{" "}
@@ -227,10 +229,30 @@ export default function PlanResults({ result, goal, years, inputs, saved, onStar
         </div>
       </section>
 
-      {inputs && <WhatIf key={`${risk.risk_level}-${inputs.initialAmount}-${inputs.monthly}-${years}`} riskLevel={risk.risk_level} initialAmount={Number(inputs.initialAmount)} monthly={Number(inputs.monthly)} years={years} base={final} />}
+      {engine && (
+        <section className={`grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] motion-safe:animate-[sw-rise_0.6s_ease-out_0.2s_both] ${switching ? "opacity-60" : ""}`} aria-busy={switching}>
+          <MixTable portfolio={portfolio} engine={engine} />
+          <div className="flex min-w-0 flex-col gap-5">
+            <WishesBox key={wishes} engine={engine} initialText={wishes} onRebuild={onRebuild} busy={switching} />
+            <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
+              <h2 className="text-lg font-bold">How this mix behaved since 2016</h2>
+              <div className="mt-3 grid grid-cols-2 gap-4">
+                <div><div className="text-xs text-muted">Avg yearly return</div><div className="text-2xl font-semibold text-brand">{percent(stats.annual_return)}</div></div>
+                <div><div className="text-xs text-muted">Typical yearly swing</div><div className="text-2xl font-semibold">{percent(stats.annual_volatility)}</div></div>
+                <div><div className="text-xs text-muted">Biggest drop</div><div className="text-2xl font-semibold">{percent(stats.max_drawdown)}</div></div>
+                <div><div className="text-xs text-muted">Worst 12 months</div><div className="text-2xl font-semibold">{percent(stats.worst_12_months)}</div></div>
+              </div>
+              <p className="mt-3 text-[13px] leading-relaxed text-muted">A strong decade for markets. Future results may be lower.</p>
+            </div>
+          </div>
+        </section>
+      )}
+      {engine && <EngineTrace engine={engine} portfolio={portfolio} />}
+
+      {inputs && <WhatIf key={`${risk.risk_level}-${inputs.initialAmount}-${inputs.monthly}-${years}-${(mix || []).map((h) => h.symbol + h.weight).join()}`} riskLevel={risk.risk_level} holdings={mix} initialAmount={Number(inputs.initialAmount)} monthly={Number(inputs.monthly)} years={years} base={final} />}
 
       <section className="flex flex-wrap items-start gap-5 motion-safe:animate-[sw-rise_0.6s_ease-out_0.3s_both]">
-        <div className="min-w-0 flex-[1_1_500px] rounded-2xl border border-line bg-surface p-5 sm:p-6">
+        {!engine && <div className="min-w-0 flex-[1_1_500px] rounded-2xl border border-line bg-surface p-5 sm:p-6">
           <h2 className="text-lg font-bold">What you&rsquo;d invest in</h2>
           <p className="mt-1.5 text-muted">{portfolio.description}</p>
           <div className="mt-6 flex h-3.5 overflow-hidden rounded-full">
@@ -252,10 +274,10 @@ export default function PlanResults({ result, goal, years, inputs, saved, onStar
               </Link>
             ))}
           </div>
-        </div>
+        </div>}
 
-        <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
-          <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
+        <div className={`flex min-w-0 flex-[1_1_320px] gap-6 ${engine ? "flex-col lg:flex-row" : "flex-col"}`}>
+          {!engine && <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
             <h2 className="text-lg font-bold">How it behaved in the past</h2>
             <div className="mt-4 grid grid-cols-2 gap-4">
               <div><div className="text-xs text-muted">Avg yearly return</div><div className="text-2xl font-semibold text-brand">{percent(stats.annual_return)}</div></div>
@@ -266,9 +288,9 @@ export default function PlanResults({ result, goal, years, inputs, saved, onStar
             <p className="mt-4 text-[13px] leading-relaxed text-slate-500">
               Based on 2016 onward, a strong decade for markets. Future results may be lower.
             </p>
-          </div>
+          </div>}
 
-          <div className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5 sm:p-6">
+          <div className="flex flex-1 flex-col gap-3 rounded-2xl border border-line bg-surface p-5 sm:p-6">
             <h2 className="mb-1 text-lg font-bold">Your next steps</h2>
             <Link href="/practice" className="flex justify-between rounded-xl border border-line bg-surface-2 px-4 py-3.5 transition hover:border-brand/40">
               Practice this plan with play money <span className="text-brand">→</span>

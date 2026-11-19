@@ -160,19 +160,68 @@ export default function PlanPage() {
     if (!result || level === result.risk.risk_level) return;
     setSwitching(true);
     try {
-      const [portfolio, projection] = await Promise.all([
-        api.portfolio(level),
-        api.projection({ risk_level: level, initial_amount: plan.initialAmount, monthly_contribution: plan.monthly, years: plan.years }),
-      ]);
+      const { portfolio, projection, engine } = await getMix(level, plan, { constraints: result.engine?.constraints });
       const quizLevel = result.risk.quiz_level ?? result.risk.risk_level;
       const risk = { ...result.risk, risk_level: level, quiz_level: quizLevel, chosen: level !== quizLevel };
-      const answers = { ...plan.answers, _chosen_level: risk.chosen ? level : undefined };
+      const answers = withMix({ ...plan.answers, _chosen_level: risk.chosen ? level : undefined }, portfolio, engine);
       if (!risk.chosen) delete answers._chosen_level;
       setPlan({ ...plan, answers });
-      setResult({ risk, portfolio, projection });
+      setResult({ risk, portfolio, projection, engine });
       rememberPlan(plan, risk, portfolio, projection);
       if (savedId) {
         const { error } = await supabase.from("investment_plans").update({ risk_level: level, risk_answers: answers }).eq("id", savedId);
+        if (error) setError(`Couldn't update your saved plan: ${error.message}`);
+      }
+    } catch (e) {
+      setError(e.message);
+    }
+    setSwitching(false);
+  }
+
+  // The personal mix from the portfolio engine. If the engine can't run (fund prices not loaded yet),
+  // fall back to the fixed mix for the personality so the plan still works.
+  async function getMix(level, p, { wishes, constraints, fixed } = {}) {
+    try {
+      return await api.buildMix({
+        risk_level: level, initial_amount: p.initialAmount, monthly_contribution: p.monthly, years: p.years,
+        preferences: wishes || "", constraints: constraints || null, fixed: fixed || null,
+      });
+    } catch (e) {
+      if (e.status === 429) throw e;
+      const [portfolio, projection] = await Promise.all([
+        api.portfolio(level),
+        api.projection({ risk_level: level, initial_amount: p.initialAmount, monthly_contribution: p.monthly, years: p.years }),
+      ]);
+      return { portfolio, projection, engine: null };
+    }
+  }
+
+  // Keep the mix (and the wishes behind it) with the saved plan, so reopening shows the same funds.
+  function withMix(answers, portfolio, engine) {
+    const next = { ...answers };
+    if (engine) {
+      next._mix = portfolio.holdings.map((h) => ({ symbol: h.symbol, weight: h.weight }));
+      next._constraints = engine.constraints;
+    } else {
+      delete next._mix;
+      delete next._constraints;
+    }
+    return next;
+  }
+
+  async function rebuildWithWishes(text) {
+    if (!result) return;
+    setSwitching(true);
+    setError("");
+    try {
+      const { portfolio, projection, engine } = await getMix(result.risk.risk_level, plan, { wishes: text || " " });
+      const answers = withMix({ ...plan.answers, _wishes: text || undefined }, portfolio, engine);
+      if (!text) delete answers._wishes;
+      setPlan({ ...plan, answers });
+      setResult({ ...result, portfolio, projection, engine });
+      rememberPlan(plan, result.risk, portfolio, projection);
+      if (savedId) {
+        const { error } = await supabase.from("investment_plans").update({ risk_answers: answers }).eq("id", savedId);
         if (error) setError(`Couldn't update your saved plan: ${error.message}`);
       }
     } catch (e) {
@@ -230,20 +279,26 @@ export default function PlanPage() {
     window.scrollTo({ top: 0 });
     try {
       const work = (async () => {
-        const { _chosen_level: chosenLevel, ...quizAnswers } = p.answers || {};
+        const all = p.answers || {};
+        const chosenLevel = all._chosen_level;
+        const quizAnswers = Object.fromEntries(Object.entries(all).filter(([k]) => !k.startsWith("_")));
         let risk = await api.riskProfile({ answers: quizAnswers, horizon_years: p.years });
         if (chosenLevel && chosenLevel !== risk.risk_level) {
           risk = { ...risk, quiz_level: risk.risk_level, risk_level: chosenLevel, chosen: true };
         }
-        const [portfolio, projection] = await Promise.all([
-          api.portfolio(risk.risk_level),
-          api.projection({ risk_level: risk.risk_level, initial_amount: p.initialAmount, monthly_contribution: p.monthly, years: p.years }),
-        ]);
-        return { risk, portfolio, projection };
+        const goalText = all._goal_text || p.wishes || ""; // wishes can sit in the goal sentence itself
+        const wishes = all._wishes || goalText;
+        const sameLevel = !all._mix || (all._chosen_level || risk.risk_level) === risk.risk_level;
+        const mix = await getMix(risk.risk_level, p, reopening && all._mix && sameLevel
+          ? { constraints: all._constraints, fixed: all._mix }
+          : { wishes });
+        return { risk, ...mix, goalText };
       })();
-      const [{ risk, portfolio, projection }] = await Promise.all([work, wait(reopening ? 400 : 2400)]);
+      const [{ risk, portfolio, projection, engine, goalText }] = await Promise.all([work, wait(reopening ? 400 : 2400)]);
+      p = { ...p, answers: withMix({ ...(p.answers || {}), ...(goalText ? { _goal_text: goalText.slice(0, 300) } : {}) }, portfolio, engine) };
+      setPlan(p);
 
-      setResult({ risk, portfolio, projection });
+      setResult({ risk, portfolio, projection, engine });
       rememberPlan(p, risk, portfolio, projection);
       setPhase("results");
       if (save) await savePlan(p, risk);
@@ -274,6 +329,7 @@ export default function PlanPage() {
     if (same?.length) {
       setSaved("saved");
       setSavedId(same[0].id);
+      await supabase.from("investment_plans").update({ risk_answers: p.answers }).eq("id", same[0].id); // keep the newest mix
       return;
     }
     const { data: row, error } = await supabase.from("investment_plans").insert({
@@ -332,7 +388,7 @@ export default function PlanPage() {
       {phase === "loading" && <Loading />}
 
       {phase === "results" && result && (
-        <PlanResults result={result} goal={plan.goal} years={plan.years} inputs={{ initialAmount: plan.initialAmount, monthly: plan.monthly }} saved={saved} onStartOver={startOver} onChangePersonality={changePersonality} switching={switching} />
+        <PlanResults result={result} goal={plan.goal} years={plan.years} inputs={{ initialAmount: plan.initialAmount, monthly: plan.monthly }} saved={saved} onStartOver={startOver} onChangePersonality={changePersonality} switching={switching} wishes={plan.answers?._wishes || ""} onRebuild={rebuildWithWishes} />
       )}
 
       {wizardMode && questions.length > 0 && (

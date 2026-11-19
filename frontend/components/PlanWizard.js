@@ -165,7 +165,7 @@ export default function PlanWizard({ questions, startMode, initial, initialText 
     setPicked(optionId);
     setTimeout(() => {
       setPicked(null);
-      if (index === screens.length - 1) onFinish({ goal, years, initialAmount, monthly, answers: next });
+      if (index === screens.length - 1) onFinish({ goal, years, initialAmount, monthly, answers: next, wishes: aiText.trim() });
       else go(1);
     }, 380);
   }

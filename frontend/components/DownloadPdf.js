@@ -45,6 +45,7 @@ export function PlanPdfButton({ plan, className = BTN, label = "Download PDF" })
       initial_amount: Number(plan.initial_amount),
       monthly_contribution: Number(plan.monthly_contribution),
       years: Number(plan.years),
+      holdings: plan.holdings || undefined,
       name: await myName(),
     })
   );
