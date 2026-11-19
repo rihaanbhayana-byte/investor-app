@@ -397,7 +397,7 @@ from datetime import date  # noqa: E402
 GOAL_OPTIONS = ["Grow my wealth", "Retirement", "Buying a home", "Education", "A big purchase"]
 
 GOAL_PROMPT = """Extract an investing plan from the user's description. Reply with JSON only, using these keys:
-"goal": one of OPTIONS (pick the closest),
+"goal": one of OPTIONS (pick the closest; "Buying a home" covers any house, flat, apartment or condo, including a down payment; "A big purchase" is for cars, weddings, travel and other one-off costs),
 "initial_amount": US dollars they can invest now (0 if not mentioned),
 "monthly_contribution": US dollars per month (convert weekly x 52 / 12, yearly / 12; 0 if not mentioned),
 "years": whole number of years until they need the money (1 to 50; if they give a target age, work it out; if unknown, 10),

@@ -86,6 +86,9 @@ INJECTION = re.compile(
     r"|pretend (that )?(you have no|there are no) (rules|restrictions|limits)"
     r"|act as (an? )?(unfiltered|unrestricted|uncensored|different (ai|assistant|chatbot))"
     r"|new instructions:"
+    r"|^\s*(system|assistant|developer)\s*:|\n\s*(system|developer)\s*:"
+    r"|\byou (have|had|with) no (restrictions|rules|limits|filters|guardrails)"
+    r"|(you|adviser|advisor|assistant|ai|bot|coach)\b.{0,40}\bwith no (restrictions|rules|limits|filters|guardrails)"
     r")"
 )
 

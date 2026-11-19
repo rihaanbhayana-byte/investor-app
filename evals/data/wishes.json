@@ -145,10 +145,12 @@
   "tilts": [
    "value"
   ],
-  "exclude": [],
+  "exclude": [
+   "growth"
+  ],
   "max_funds": null,
   "never": [],
-  "note": ""
+  "note": "\"not growth\" = leave out growth funds (label corrected after the first run)."
  },
  {
   "text": "utilities and consumer staples, I want calm",

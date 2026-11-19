@@ -116,7 +116,13 @@ def run_with_tools(messages, tool_specs, tool_functions, max_rounds=5, trace=Non
                 "tool_call_id": call["id"],
                 "content": json.dumps(result, default=str)[:6000],
             })
-    return complete(messages, smart=smart).get("content") or ""
+    # Out of rounds: ask for the final answer. Tools stay attached because Groq returns error 400
+    # ("Tool choice is none, but model called a tool") if the model reaches for a tool with none offered.
+    messages.append({"role": "user", "content": "Stop searching now. Reply with your final answer only, using what you already found."})
+    try:
+        return complete(messages, tools=tool_specs, smart=smart).get("content") or ""
+    except RuntimeError:
+        return complete(messages, smart=smart).get("content") or ""
 
 
 def parse_json(text):
