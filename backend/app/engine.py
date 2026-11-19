@@ -53,6 +53,23 @@ FUNDS = [
 BY_SYMBOL = {f["symbol"]: f for f in FUNDS}
 # Single-industry and concentrated funds are bets, not building blocks: they're used only when someone asks.
 SATELLITES = {"QQQ", "XLK", "XLV", "XLF", "XLE", "XLP", "XLU"}
+UNVERIFIED_FEE = 0.0075   # funds the agent finds: a cautious fee until it's checked
+WISH_CAP = 0.10           # ...and at most 10% each
+
+
+def is_bet(symbol):
+    """Single-industry funds, QQQ, and anything the agent found for a wish: kept small together."""
+    return symbol in SATELLITES or "wish" in BY_SYMBOL[symbol]["themes"]
+
+
+def register(found):
+    """Add funds the agent found (kind guessed from the name) so the engine can use them."""
+    for f in found or []:
+        sym = f["symbol"]
+        if sym not in BY_SYMBOL or "wish" in BY_SYMBOL[sym]["themes"]:
+            BY_SYMBOL[sym] = {"symbol": sym, "name": f["name"], "kind": f.get("kind") or "stock", "fee": UNVERIFIED_FEE,
+                              "cap": WISH_CAP, "themes": ["wish"], "role": f"Found by the agent for your wish: {f['name']}",
+                              "fee_verified": False}
 
 # What people can ask for. The AI may only use these words; anything else is ignored.
 THEMES = {
@@ -61,7 +78,7 @@ THEMES = {
     "real_estate": "real estate", "gold": "gold", "international": "outside the US",
     "emerging_markets": "emerging markets", "dividends": "dividends", "small_companies": "small companies",
     "value": "value companies", "growth": "growth companies", "inflation_protection": "inflation protection",
-    "long_bonds": "long-term bonds", "sector": "single-industry funds",
+    "long_bonds": "long-term bonds", "sector": "single-industry funds", "wish": "your wish",
 }
 
 TARGET_VOL = {"conservative": 0.07, "moderate": 0.11, "aggressive": 0.16}
@@ -100,7 +117,8 @@ def load_returns(symbols):
         usable.pop(min(usable, key=lambda s: len(usable[s])))  # the shortest history shrinks the window: drop it
     if len(usable) < 3:
         raise ValueError("Not enough fund price history yet. Run the data refresh to load the fund list.")
-    syms = sorted(usable, key=lambda s: [f["symbol"] for f in FUNDS].index(s))
+    order = [f["symbol"] for f in FUNDS]
+    syms = sorted(usable, key=lambda s: (order.index(s) if s in order else len(order), s))
     prices = np.array([[usable[s][m] for s in syms] for m in months])
     return syms, months, prices[1:] / prices[:-1] - 1
 
@@ -180,7 +198,7 @@ def optimise(syms, mu, cov, level, target_vol, bounds, fee_weight=1.0):
     fees = np.array([BY_SYMBOL[s]["fee"] for s in syms])
     bond = np.array([1.0 if BY_SYMBOL[s]["kind"] == "bond" else 0.0 for s in syms])
     real = np.array([1.0 if BY_SYMBOL[s]["kind"] == "real_asset" else 0.0 for s in syms])
-    sat = np.array([1.0 if s in SATELLITES else 0.0 for s in syms])
+    sat = np.array([1.0 if is_bet(s) else 0.0 for s in syms])
     lo_b, hi_b = BOND_BAND[level]
     lo, hi = np.array([b[0] for b in bounds]), np.array([b[1] for b in bounds])
     # instant check: can these bounds hold 100% of the money and the bond range at all?
@@ -225,7 +243,7 @@ def solve(syms, R, level, prefs, target_vol, forced=(), fee_weight=1.0):
     mu = mu + np.array([TILT_BONUS if tilts & set(BY_SYMBOL[s]["themes"]) else 0.0 for s in syms])
     cov = covariance(R)
     max_funds = prefs.get("max_funds") or 6
-    allowed = [s not in SATELLITES or bool(tilts & set(BY_SYMBOL[s]["themes"])) for s in syms]
+    allowed = [not is_bet(s) or bool(tilts & set(BY_SYMBOL[s]["themes"])) for s in syms]
     lower = {}
     for t in tilts:  # each wish gets at least 5% in its best-matching fund
         options = [i for i, s in enumerate(syms) if t in BY_SYMBOL[s]["themes"]]
@@ -244,7 +262,7 @@ def solve(syms, R, level, prefs, target_vol, forced=(), fee_weight=1.0):
     kind = lambda i: BY_SYMBOL[syms[i]]["kind"]  # noqa: E731
     # broad core funds first (they can hold the most), then whatever the optimiser liked best
     bonds = sorted([i for i in range(len(syms)) if kind(i) == "bond"], key=lambda i: (-cap(i), -w[i]))
-    stocks = sorted([i for i in range(len(syms)) if kind(i) == "stock" and cap(i) > 0 and syms[i] not in SATELLITES], key=lambda i: (-cap(i), -w[i]))
+    stocks = sorted([i for i in range(len(syms)) if kind(i) == "stock" and cap(i) > 0 and not is_bet(syms[i])], key=lambda i: (-cap(i), -w[i]))
     # the kept funds must be able to hold the bond range and the stock share: add the biggest until they can
     for pool, need in ((bonds, lo_b + 0.02), (stocks, 1 - hi_b + 0.02)):
         for i in pool:
@@ -279,7 +297,7 @@ def check(syms, w, R, level, groups, prefs, target_vol):
     port = R @ w
     stats = analytics.summarize(port)
     fees = sum(w[i] * BY_SYMBOL[s]["fee"] for i, s in enumerate(syms))
-    bets = sum(w[i] for i, s in enumerate(syms) if s in SATELLITES)
+    bets = sum(w[i] for i, s in enumerate(syms) if is_bet(s))
     bond = sum(w[i] for i, s in enumerate(syms) if BY_SYMBOL[s]["kind"] == "bond")
     held = [s for i, s in enumerate(syms) if w[i] > 0]
     n_groups = len({groups[s] for s in held})
@@ -297,8 +315,8 @@ def check(syms, w, R, level, groups, prefs, target_vol):
          "detail": f"{n_groups} different behaviour groups; at least {MIN_GROUPS} needed"},
         {"id": "single", "name": "No fund too big", "ok": max(w) <= MAX_SINGLE + 1e-6,
          "detail": f"Biggest fund {pct(max(w))}; limit {pct(MAX_SINGLE)}"},
-        {"id": "bets", "name": "Small industry bets", "ok": bets <= SATELLITE_MAX + 1e-3,
-         "detail": f"Single-industry funds {pct(bets)}; limit {pct(SATELLITE_MAX)}"},
+        {"id": "bets", "name": "Small bets stay small", "ok": bets <= SATELLITE_MAX + 1e-3,
+         "detail": f"Industry and wish funds {pct(bets)}; limit {pct(SATELLITE_MAX)}"},
         {"id": "fees", "name": "Low fees", "ok": fees <= MAX_FEE,
          "detail": f"Average yearly fee {fees * 100:.2f}%; limit {MAX_FEE * 100:.2f}%"},
         {"id": "bonds", "name": "Right amount of bonds", "ok": lo_b - 1e-3 <= bond <= hi_b + 1e-3,
@@ -344,12 +362,15 @@ def stability(syms, R, level, prefs, target_vol, w, forced, groups, runs=10, see
 # ---------------------------------------------------------------------
 # The whole pipeline
 # ---------------------------------------------------------------------
-def build(level, prefs, fixed=None):
-    """Build (or, with `fixed`, just evaluate) a mix. Returns everything the API and the AI need."""
-    prefs = {"tilts": [t for t in (prefs.get("tilts") or []) if t in THEMES],
+def build(level, prefs, fixed=None, found=None):
+    """Build (or, with `fixed`, just evaluate) a mix. `found` = funds the agent found for the person's wishes."""
+    register(found)
+    found_syms = [f["symbol"] for f in found or []]
+    prefs = {"tilts": [t for t in (prefs.get("tilts") or []) if t in THEMES] + (["wish"] if found_syms else []),
              "exclude": [t for t in (prefs.get("exclude") or []) if t in THEMES],
              "max_funds": max(3, min(8, int(prefs.get("max_funds") or 6)))}
-    candidates = [f["symbol"] for f in FUNDS if not (set(prefs["exclude"]) & set(f["themes"]))]
+    candidates = [f["symbol"] for f in FUNDS if not (set(prefs["exclude"]) & set(f["themes"]))] + \
+                 [s for s in found_syms if s not in [f["symbol"] for f in FUNDS]]
     if fixed:
         candidates = sorted(set(candidates) | set(fixed))
     syms, months, R = load_returns(candidates)
@@ -410,7 +431,7 @@ def build(level, prefs, fixed=None):
         f = BY_SYMBOL[s]
         holdings.append({
             "symbol": s, "name": f["name"], "weight": round(float(w[i]), 4), "sector": None,
-            "kind": f["kind"], "fee": f["fee"], "role": f["role"],
+            "kind": f["kind"], "fee": f["fee"], "role": f["role"], "fee_verified": f.get("fee_verified", True),
             "group": groups[s], "group_name": GROUP_NAMES[groups[s]][0],
             "annual_return": round(float(fstats["annual_return"][i]), 4),
             "volatility": round(float(fstats["volatility"][i]), 4),
@@ -442,6 +463,7 @@ def build(level, prefs, fixed=None):
         "stats": stats, "checks": checks, "attempts": attempts, "stability": stable,
         "groups": group_list, "universe": len(FUNDS), "considered": len(syms),
         "excluded_funds": [f["symbol"] for f in FUNDS if f["symbol"] not in candidates],
+        "core_count": len(FUNDS), "found_used": [h["symbol"] for h in holdings if h["symbol"] in found_syms],
         "months": (months[0], months[-1]), "n_months": len(R),
         "fee": round(sum(h["weight"] * h["fee"] for h in holdings), 5),
     }

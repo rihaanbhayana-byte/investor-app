@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from . import analytics, confidence, db, guardrails, risk
 from . import engine as engine_module
+from . import scout
 
 app = FastAPI(title="Investor App API", version="1.0.0")
 
@@ -2156,7 +2157,8 @@ PREFS_PROMPT = """You turn a beginner's wishes about their investments into sett
 {"tilts": [...], "exclude": [...], "max_funds": number or null, "summary": "one short sentence restating their wishes"}
 Use ONLY these words in "tilts" (things they want more of) and "exclude" (things they don't want):
 """ + ", ".join(engine_module.THEMES) + """
-Rules: "no oil", "no fossil fuels", "green", "ethical" -> exclude fossil_fuels. "simple" or "few funds" -> max_funds 3 or 4.
+Rules: "no oil", "no fossil fuels", "green", "ethical" -> exclude fossil_fuels. "energy" means the oil and gas
+sector: never use it for clean energy, renewables, solar or wind (a separate fund search handles those). "simple" or "few funds" -> max_funds 3 or 4.
 "no single industries" or "no sector bets" -> exclude sector. Ignore anything about specific companies, guaranteed returns,
 or other topics. If they ask for nothing usable, return empty lists and null."""
 
@@ -2174,7 +2176,7 @@ NEGATION = re.compile(r"\b(no|not|avoid|without|exclude|don'?t|never|nothing in|
 
 
 def prefs_by_keywords(text):
-    lower = " " + text.lower() + " "
+    lower = " " + re.sub(r"\b(clean|renewable|green|solar|wind)\s+energy\b", "renewables", text.lower()) + " "
     tilts, exclude = [], []
     for theme, words in PREF_WORDS.items():
         for w in words:
@@ -2189,17 +2191,25 @@ def prefs_by_keywords(text):
             "max_funds": 4 if simple else None, "summary": "", "read_by": "keywords"}
 
 
+def _consistent(prefs):
+    """Drop a wish that only excluded funds could satisfy, e.g. "more energy" (oil and gas) with "no oil"."""
+    excluded = set(prefs["exclude"])
+    usable = lambda t: any(t in f["themes"] and not excluded & set(f["themes"]) for f in engine_module.FUNDS)  # noqa: E731
+    prefs["tilts"] = [t for t in prefs["tilts"] if usable(t)]
+    return prefs
+
+
 def read_preferences(text):
     """AI step 1: words -> settings the engine must follow. Only known theme words survive."""
     text = screen_or_reject(text, check_topic=False)
     try:
         messages = [{"role": "system", "content": PREFS_PROMPT}, {"role": "user", "content": text}]
         try:
-            reply = ai.complete(messages, temperature=0, json_mode=True)
+            reply = ai.complete(messages, temperature=0, json_mode=True, smart=True)
         except RuntimeError:
-            reply = ai.complete(messages, temperature=0)
+            reply = ai.complete(messages, temperature=0, smart=True)
         data = ai.parse_json(reply.get("content") or "")
-        tilts = [t for t in data.get("tilts") or [] if t in engine_module.THEMES]
+        tilts = [t for t in data.get("tilts") or [] if t in engine_module.THEMES and t != "wish"]
         exclude = [t for t in data.get("exclude") or [] if t in engine_module.THEMES]
         mf = data.get("max_funds")
         prefs = {"tilts": sorted(set(tilts) - set(exclude)), "exclude": sorted(set(exclude)),
@@ -2207,7 +2217,7 @@ def read_preferences(text):
                  "summary": str(data.get("summary") or "")[:200], "read_by": "ai"}
     except Exception:
         prefs = prefs_by_keywords(text)
-    return prefs
+    return _consistent(prefs)
 
 
 MIX_PROMPT = """You explain a beginner's investment mix using ONLY the facts given as JSON. Reply with JSON only:
@@ -2225,7 +2235,7 @@ def mix_facts(mix):
     funds = []
     for h in mix["holdings"]:
         funds.append({"symbol": h["symbol"], "what_it_is": h["role"], "share_of_mix": _pct(h["weight"]),
-                      "yearly_fee": _pct(h["fee"], 2), "group": h["group_name"],
+                      "yearly_fee": _pct(h["fee"], 2) + ("" if h.get("fee_verified", True) else " (assumed, not verified)"), "group": h["group_name"],
                       "yearly_return_since_2016": _pct(h["annual_return"]), "worst_drop_since_2016": _pct(h["max_drawdown"]),
                       "share_of_the_mix_risk": _pct(h["risk_share"]), "matches_their_wish": ", ".join(h["matches"]) or "no"})
     return {"risk_level": mix["name"], "target_yearly_swing": _pct(mix["target_volatility"]),
@@ -2253,7 +2263,7 @@ def explain_mix(mix):
     lines, checked, replaced, overview, by = {}, 0, 0, "", "ai"
     try:
         reply = ai.complete([{"role": "system", "content": MIX_PROMPT}, {"role": "user", "content": json.dumps(facts)}],
-                            temperature=0.2, json_mode=True)
+                            temperature=0.2, json_mode=True, smart=True)
         data = ai.parse_json(reply.get("content") or "")
         overview = str(data.get("overview") or "")[:400]
         if overview and not ok(overview):
@@ -2269,7 +2279,8 @@ def explain_mix(mix):
     except Exception:
         by = "template"
         lines = {h["symbol"]: _fallback_line(h) for h in mix["holdings"]}
-    return {"overview": overview, "funds": lines, "written_by": by, "checked": checked, "replaced": replaced}
+    return {"overview": overview, "funds": lines, "written_by": by, "checked": checked, "replaced": replaced,
+            "model": ai.last_model["name"] if by == "ai" else None}
 
 
 class EngineRequest(BaseModel):
@@ -2285,15 +2296,26 @@ class EngineRequest(BaseModel):
 @app.post("/engine/build")
 def engine_build(body: EngineRequest, _: None = Depends(ai_rate_limit)):
     """Build a personal mix: read wishes (AI) -> group funds (k-means) -> optimise -> guardrails -> bootstrap -> explain (AI)."""
+    core = [f["symbol"] for f in engine_module.FUNDS]
     if body.constraints is not None:
-        prefs = {k: body.constraints.get(k) for k in ("tilts", "exclude", "max_funds", "summary", "read_by")}
+        prefs = {k: body.constraints.get(k) for k in ("tilts", "exclude", "max_funds", "summary", "read_by", "found", "scout")}
+        stages, _ = scout.funnel()
+        found_report = {**(prefs.get("scout") or {}), "stages": stages, "reopened": True}
     elif body.preferences.strip():
         prefs = read_preferences(body.preferences.strip())
+        found_report = scout.run(body.preferences.strip(), core, ensure_security)
+        prefs["found"] = found_report["added"]
+        prefs["scout"] = {k: found_report.get(k) for k in ("searched", "summary", "candidates", "model", "ran", "error")}
     else:
         prefs = {"tilts": [], "exclude": [], "max_funds": None, "summary": "", "read_by": "none"}
+        stages, _ = scout.funnel()
+        found_report = {"stages": stages, "ran": False}
+    found_report["stages"] = found_report["stages"] + [{"label": "Core building blocks", "count": len(core),
+        "why": "Hand-checked index funds: low fees, hundreds or thousands of holdings, prices back to 2016. "
+               "Every plan can use these; the agent adds funds for wishes they don't cover."}]
     fixed = mix_weights(body.fixed) if body.fixed else None
     try:
-        mix = engine_module.build(body.risk_level, prefs, fixed=fixed)
+        mix = engine_module.build(body.risk_level, prefs, fixed=fixed, found=prefs.get("found"))
     except ValueError as error:
         raise HTTPException(400, str(error))
     explained = explain_mix(mix)
@@ -2339,6 +2361,8 @@ def engine_build(body: EngineRequest, _: None = Depends(ai_rate_limit)):
                    "universe": mix["universe"], "considered": mix["considered"], "excluded_funds": mix["excluded_funds"],
                    "fee": mix["fee"], "notes": mix["notes"], "overview": explained["overview"],
                    "explained_by": explained["written_by"], "explanations_replaced": explained["replaced"],
+                   "explain_model": explained.get("model"), "scout": {**found_report, "used": mix["found_used"]},
+                   "core_count": mix["core_count"],
                    "insight": insight},
         "disclaimer": DISCLAIMER,
     }

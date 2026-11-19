@@ -9,6 +9,12 @@ from . import db  # noqa: F401  (importing db loads the .env file)
 AI_BASE_URL = os.environ.get("AI_BASE_URL", "").rstrip("/")
 AI_API_KEY = os.environ.get("AI_API_KEY", "")
 AI_MODEL = os.environ.get("AI_MODEL", "")
+# Optional "smart" model for the portfolio engine's agent steps (e.g. Kimi K2 free on OpenRouter).
+# If it isn't set, or it's busy, the app falls back to the main model above.
+SMART_BASE_URL = os.environ.get("SMART_AI_BASE_URL", "").rstrip("/")
+SMART_API_KEY = os.environ.get("SMART_AI_API_KEY", "")
+SMART_MODEL = os.environ.get("SMART_AI_MODEL", "")
+last_model = {"name": AI_MODEL}  # which model answered the most recent request (shown in the app)
 
 _http = requests.Session()
 
@@ -39,10 +45,34 @@ Rules:
    2.5% yearly inflation. Say clearly which one you are quoting, and never call an adjusted number "future dollars" or the reverse."""
 
 
-def complete(messages, tools=None, temperature=0.3, json_mode=False):
-    """Send one request to the AI and return its reply message."""
-    if not AI_API_KEY or not AI_MODEL:
+def _models(smart):
+    out = []
+    if smart and SMART_API_KEY and SMART_MODEL:
+        out.append((SMART_BASE_URL or "https://openrouter.ai/api/v1", SMART_API_KEY, SMART_MODEL))
+    if AI_API_KEY and AI_MODEL:
+        out.append((AI_BASE_URL, AI_API_KEY, AI_MODEL))
+    return out
+
+
+def complete(messages, tools=None, temperature=0.3, json_mode=False, smart=False):
+    """Send one request to the AI and return its reply message.
+    smart=True tries the smart model first and falls back to the main model if it fails or is busy."""
+    models = _models(smart)
+    if not models:
         raise RuntimeError("AI is not set up (AI_API_KEY or AI_MODEL missing in .env).")
+    last_error = None
+    for base, key, model in models:
+        try:
+            reply = _send(base, key, model, messages, tools, temperature, json_mode)
+            last_model["name"] = model
+            return reply
+        except Exception as error:  # busy, down or timed out: try the next model
+            last_error = error if isinstance(error, RuntimeError) else RuntimeError(f"AI request failed: {error}")
+    raise last_error
+
+
+def _send(base, key, model, messages, tools, temperature, json_mode):
+    AI_BASE_URL, AI_API_KEY, AI_MODEL = base, key, model  # noqa: N806
     body = {"model": AI_MODEL, "messages": messages, "temperature": temperature}
     if tools:
         body["tools"] = tools
@@ -61,12 +91,12 @@ def complete(messages, tools=None, temperature=0.3, json_mode=False):
     return response.json()["choices"][0]["message"]
 
 
-def run_with_tools(messages, tool_specs, tool_functions, max_rounds=5, trace=None):
+def run_with_tools(messages, tool_specs, tool_functions, max_rounds=5, trace=None, smart=False):
     """Let the AI call our tools (real data) as many times as it needs, then return its final answer.
     If `trace` is a list, every tool call is recorded in it (so the app can show what data was used)."""
     messages = list(messages)
     for _ in range(max_rounds):
-        reply = complete(messages, tools=tool_specs)
+        reply = complete(messages, tools=tool_specs, smart=smart)
         calls = reply.get("tool_calls") or []
         if not calls:
             return reply.get("content") or ""
@@ -86,7 +116,7 @@ def run_with_tools(messages, tool_specs, tool_functions, max_rounds=5, trace=Non
                 "tool_call_id": call["id"],
                 "content": json.dumps(result, default=str)[:6000],
             })
-    return complete(messages).get("content") or ""
+    return complete(messages, smart=smart).get("content") or ""
 
 
 def parse_json(text):

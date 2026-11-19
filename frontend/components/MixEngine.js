@@ -13,11 +13,12 @@ const THEME_WORDS = {
   emerging_markets: "emerging markets", dividends: "dividends", small_companies: "small companies", value: "value companies",
   growth: "growth companies", inflation_protection: "inflation protection", long_bonds: "long-term bonds", sector: "single-industry funds",
 };
-const EXAMPLES = ["More tech", "No oil companies", "Add some gold", "More dividends", "Keep it simple", "More outside the US"];
+const EXAMPLES = ["Clean energy", "More tech", "No oil companies", "Add some gold", "More dividends", "Keep it simple"];
 
 const GROUP_STYLE = {
   ballast: "bg-sky-soft text-sky",
   absorber: "bg-gold-soft text-gold",
+  wish: "bg-violet-500/10 text-violet-600 dark:text-violet-300",
   earner: "bg-gain-soft text-gain",
   core: "bg-brand-soft text-brand",
   growth: "bg-violet-500/10 text-violet-600 dark:text-violet-300",
@@ -121,7 +122,10 @@ export function MixTable({ portfolio, engine }) {
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-6">
               <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${GROUP_STYLE[h.group] || "bg-surface-2 text-muted"}`}>{h.group_name}</span>
               {h.matches?.length > 0 && <span className="rounded-full bg-gain-soft px-2 py-0.5 text-[11px] font-semibold text-gain">Your wish: {h.matches.join(", ")}</span>}
-              <span className="text-[11px] text-muted">fee {(h.fee * 100).toFixed(2)}% · {Math.round(h.risk_share * 100)}% of the mix&rsquo;s risk</span>
+              <span className="text-[11px] text-muted">
+                {h.fee_verified === false ? "fee not verified (assumed 0.75%)" : `fee ${(h.fee * 100).toFixed(2)}%`} · {Math.round(h.risk_share * 100)}% of the mix&rsquo;s risk
+              </span>
+              {h.fee_verified === false && <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-semibold text-violet-600 dark:text-violet-300">Found by the AI agent</span>}
             </div>
             {h.why && <p className="mt-1.5 pl-6 text-sm leading-relaxed">{h.why}</p>}
           </li>
@@ -150,7 +154,66 @@ function Step({ n, title, tag, tagKind, last = false, children }) {
   );
 }
 
-// "How the engine built it": the five steps, with what happened at each.
+const STATUS = {
+  added: ["Passed", "bg-gain-soft text-gain"],
+  too_new: ["Too new", "bg-gold-soft text-gold"],
+  no_data: ["No prices", "bg-surface-2 text-muted"],
+  core: ["Already core", "bg-brand-soft text-brand"],
+};
+
+// Step 1: the funnel from every US fund down to what the engine may use, plus what the agent found.
+function Funnel({ scout, used = [] }) {
+  const top = scout.stages[0]?.count || 1;
+  return (
+    <div>
+      <ol className="flex flex-col gap-1.5">
+        {scout.stages.map((st, i) => (
+          <li key={st.label + i} className="grid grid-cols-1 items-center gap-x-3 gap-y-1 text-xs sm:grid-cols-[16rem_minmax(0,1fr)]">
+            <span className="font-semibold text-fg sm:truncate" title={st.why}>{st.label}</span>
+            <span className="flex items-center gap-2">
+              <span className="h-2.5 rounded-full bg-brand/70" style={{ width: `${Math.max(1.5, (st.count / top) * 100) * 0.8}%` }} aria-hidden="true" />
+              <span className="font-semibold tabular-nums text-fg">{st.count.toLocaleString()}</span>
+            </span>
+            <span className="mb-1.5 text-[11px] leading-snug sm:col-span-2 sm:-mt-1">{st.why}</span>
+          </li>
+        ))}
+      </ol>
+      {scout.ran && (
+        <div className="mt-3 rounded-xl border border-line p-3">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="font-semibold text-fg">The agent searched for:</span>
+            {scout.searched.map((q) => (
+              <span key={q} className="rounded-full bg-surface-2 px-2 py-0.5 font-semibold text-fg">&ldquo;{q}&rdquo;</span>
+            ))}
+          </div>
+          {scout.summary && <p className="mt-1.5 text-xs">{scout.summary}</p>}
+          {scout.candidates?.length > 0 && (
+            <ul className="mt-2 flex flex-col gap-1.5">
+              {scout.candidates.map((c) => (
+                <li key={c.symbol} className="rounded-lg bg-surface-2 px-2.5 py-2 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold text-fg">{c.symbol}</span>
+                    <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${(STATUS[c.status] || STATUS.no_data)[1]}`}>{(STATUS[c.status] || STATUS.no_data)[0]}</span>
+                    {used.includes(c.symbol) && <span className="rounded-full bg-brand px-2 py-0.5 text-[10.5px] font-bold text-brand-ink">In your mix</span>}
+                  </div>
+                  <div className="mt-0.5">{c.reason}</div>
+                  <div className="mt-0.5 text-[11px]">{c.note}</div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {scout.model && <p className="mt-2 text-[11px]">Agent model: {scout.model}</p>}
+        </div>
+      )}
+      {!scout.ran && !scout.reopened && (
+        <p className="mt-2 text-xs">{scout.error || "Add a wish such as “clean energy” or “India” in Make it yours, and an AI agent searches every fund left after the safety screen for it."}</p>
+      )}
+    </div>
+  );
+}
+
+// "How the engine built it": the six steps, with what happened at each.
 export function EngineTrace({ engine, portfolio }) {
   const passed = engine.checks.filter((c) => c.ok).length;
   const read = constraintWords(engine.constraints);
@@ -159,9 +222,14 @@ export function EngineTrace({ engine, portfolio }) {
   return (
     <section className="rounded-2xl border border-line bg-surface p-5 sm:p-6" aria-labelledby="engine-title">
       <h2 id="engine-title" className="text-lg font-bold">How the engine built your mix</h2>
-      <p className="mt-1 text-sm text-muted">Five steps, run fresh for you on real prices. The AI handles words; every weight comes from maths you can check.</p>
+      <p className="mt-1 text-sm text-muted">Six steps, run fresh for you on real prices. The AI handles words and searching; every weight comes from maths you can check.</p>
       <ol className="mt-5">
-        <Step n={1} title="Read your wishes" tag="AI · language model" tagKind="ai">
+        {engine.scout?.stages?.length > 0 && (
+          <Step n={1} title={`Searched every US fund, then narrowed it down`} tag="AI agent · tool use" tagKind="ai">
+            <Funnel scout={engine.scout} used={engine.scout.used || []} />
+          </Step>
+        )}
+        <Step n={2} title="Read your wishes" tag="AI · language model" tagKind="ai">
           {read.length ? (
             <div className="flex flex-wrap gap-1.5">
               {read.map((r) => (
@@ -173,7 +241,7 @@ export function EngineTrace({ engine, portfolio }) {
           )}
           {engine.excluded_funds?.length > 0 && <p className="mt-1.5">Left out: {engine.excluded_funds.join(", ")}.</p>}
         </Step>
-        <Step n={2} title={`Grouped ${engine.considered} funds by how they behave`} tag="Unsupervised learning · k-means" tagKind="ml">
+        <Step n={3} title={`Grouped ${engine.considered} funds by how they behave`} tag="Unsupervised learning · k-means" tagKind="ml">
           <p>No one labelled these funds. k-means found groups from 5 measures of their real history since 2016: return, swings, worst drop, and how closely they move with stocks and with bonds.</p>
           <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
             {engine.groups.map((g) => (
@@ -192,14 +260,14 @@ export function EngineTrace({ engine, portfolio }) {
             ))}
           </div>
         </Step>
-        <Step n={3} title="Chose the weights" tag="Optimisation" tagKind="math">
+        <Step n={4} title="Chose the weights" tag="Optimisation" tagKind="math">
           <p>
             The optimiser looked for the most expected growth with a typical yearly swing of about <b className="text-fg">{Math.round(engine.target_volatility * 100)}%</b>
             {engine.target_volatility < engine.initial_target ? ` (lowered from ${Math.round(engine.initial_target * 100)}% to pass the checks)` : ""}, the level that fits a {portfolio.name}.
             It got <b className="text-fg">{percent(stats.annual_volatility)}</b>. Past returns were shrunk towards their averages first, so one lucky fund can&rsquo;t take over.
           </p>
         </Step>
-        <Step n={4} title={`Checked itself: ${passed} of ${engine.checks.length} guardrails pass`} tag="Self-check" tagKind="math">
+        <Step n={5} title={`Checked itself: ${passed} of ${engine.checks.length} guardrails pass`} tag="Self-check" tagKind="math">
           <ul className="grid gap-1.5 sm:grid-cols-2">
             {engine.checks.map((c) => (
               <li key={c.id} className="flex gap-2 rounded-lg bg-surface-2 px-2.5 py-1.5 text-xs">
@@ -222,7 +290,7 @@ export function EngineTrace({ engine, portfolio }) {
             </div>
           )}
         </Step>
-        <Step n={5} last title="Stress-tested the answer" tag="Bootstrap resampling" tagKind="ml">
+        <Step n={6} last title="Stress-tested the answer" tag="Bootstrap resampling" tagKind="ml">
           <p>The engine re-ran itself on {engine.stability?.runs ?? 10} reshuffled versions of history to see if your mix holds up or was a fluke of the data.</p>
           <InsightCard insight={engine.insight} feature="mix" title="How sure is the engine?" className="mt-2.5" />
         </Step>
